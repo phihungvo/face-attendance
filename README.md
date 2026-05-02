@@ -1,0 +1,37 @@
+# Face Attendance (InsightFace + FastAPI + React + MySQL)
+
+Chạy production cơ bản bằng Docker Compose.
+
+## Yêu cầu
+- Docker + Docker Compose
+
+## Chạy nhanh
+```bash
+cd face-attendance
+docker compose up --build
+```
+
+## URL
+- Backend: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+- Frontend: `http://localhost:3000`
+- phpMyAdmin (optional): `http://localhost:8080`
+- ML service (internal): `http://localhost:8001`
+
+## API chính (bắt buộc)
+- `POST /api/v1/auth/register` (json: `username`, `password`)
+- `POST /api/v1/auth/login` (json: `username`, `password`)
+- `POST /api/v1/users/enroll` (multipart: `name`, `image`) *(cần JWT)*
+- `POST /api/v1/attendance/checkin` (multipart: `image`) *(cần JWT)*
+- `GET /api/v1/attendance/logs` *(cần JWT)*
+
+## API Response chuẩn
+Backend trả format thống nhất kiểu ez_tro:
+`{ "code": 1000, "message": "Thành công", "result": ... }`
+
+## Notes
+- Best practice production: tách `backend` (API/JWT/DB) và `ml_service` (InsightFace inference). `backend` gọi `ml_service` qua internal network.
+- Lần chạy đầu, ML service sẽ tải model `buffalo_l` (đã cache ở volume `insightface_cache`).
+- Backend hiện dùng `Base.metadata.create_all()` để tạo bảng. Với production nghiêm túc, nên dùng Alembic migrations.
+- Nếu chạy local không dùng Docker (hoặc Python của máy không phù hợp với `onnxruntime`), có thể cài tối thiểu bằng `backend/requirements.lite.txt` để test các endpoint không cần ML (ví dụ dashboard: `GET /api/v1/users`, `GET /api/v1/attendance/logs`).
+- Khi chạy `frontend` local bằng Vite, set `VITE_BACKEND_URL=http://127.0.0.1:8000` để proxy `/api` về backend local (mặc định proxy tới `http://backend:8000` cho môi trường Docker).

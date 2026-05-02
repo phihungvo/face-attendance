@@ -1,0 +1,55 @@
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env / secrets (keep *.sample)
+.env
+**/.env
+!.env.sample
+!**/.env.sample
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+**/.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# Node / frontend
+node_modules/
+**/node_modules/
+frontend/dist/
+**/dist/
+**/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Logs
+*.log
+
+# Docker
+*.pid
+
