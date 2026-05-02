@@ -1,0 +1,149 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.chartBars {
+  height: 170px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.barCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bar {
+  width: 100%;
+  border-radius: 10px 10px 8px 8px;
+  background: linear-gradient(180deg, rgba(255, 159, 10, 0.75), rgba(10, 132, 255, 0.55));
+  box-shadow: 0 10px 18px rgba(255, 159, 10, 0.12);
+}
+
+.barLabel {
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 800;
+}
+
+.insights {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insightItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.insightIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #e8f4ff;
+  color: var(--primary);
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.insightTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.insightSub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+  font-weight: 700;
+}
+
+.deptCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.deptIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.deptName {
+  font-weight: 900;
+  color: var(--text);
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+}
+
+.good {
+  background: #e9fbef;
+  border-color: rgba(48, 209, 88, 0.35);
+  color: #1a7f37;
+}
+
+.warn {
+  background: #fff3e0;
+  border-color: rgba(255, 159, 10, 0.25);
+  color: #a85a00;
+}
+
+.bad {
+  background: #ffe9e9;
+  border-color: rgba(255, 59, 48, 0.35);
+  color: #b42318;
+}
+
+@media (max-width: 1100px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+

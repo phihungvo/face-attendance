@@ -1,0 +1,351 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.checkinArea {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.cameraContainer {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  min-height: 340px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.cameraPlaceholder {
+  text-align: center;
+  color: var(--text2);
+  padding: 30px 16px;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.faceFrame {
+  width: min(62%, 360px);
+  aspect-ratio: 1 / 1;
+  border: 2px solid rgba(10, 132, 255, 0.75);
+  border-radius: 18px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+
+.scanLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  top: 10%;
+  background: rgba(48, 209, 88, 0.8);
+  animation: scan 1.6s linear infinite;
+}
+
+@keyframes scan {
+  0% {
+    top: 10%;
+  }
+  100% {
+    top: 90%;
+  }
+}
+
+.overlayHint {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.camIcon {
+  font-size: 46px;
+  margin-bottom: 10px;
+}
+
+.camTitle {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.camSub {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.cameraActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+  flex: 1;
+}
+
+.btnPrimary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: var(--primary-dark);
+}
+
+.btnGhost {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+}
+
+.btnGhost:hover {
+  background: #e5e5ea;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.timeDisplay {
+  text-align: center;
+  padding: 10px 10px 14px;
+  border-radius: 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.clock {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.dateStr {
+  font-size: 12px;
+  margin-top: 2px;
+  color: var(--text3);
+  font-weight: 700;
+}
+
+.modeTabs {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 12px;
+}
+
+.modeTab {
+  flex: 1;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text2);
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 12.5px;
+}
+
+.active {
+  color: var(--primary);
+  border-color: rgba(10, 132, 255, 0.35);
+  background: #e8f4ff;
+}
+
+.formLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text2);
+  margin: 8px 0 6px;
+}
+
+.formControl {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+.infoBox {
+  margin-top: 12px;
+  background: #e3f0ff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--primary);
+  font-size: 13px;
+  color: #0050aa;
+}
+
+.errorBox {
+  margin-top: 12px;
+  background: #ffe9e9;
+  border-radius: 10px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--danger);
+  font-size: 13px;
+  color: #b42318;
+  font-weight: 800;
+}
+
+.bottomGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.scanCard {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  padding: 14px;
+}
+
+.scanRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scanDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(48, 209, 88, 0.12);
+  flex-shrink: 0;
+}
+
+.scanTitle {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.scanSub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.warningBox {
+  background: #fff3e0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--warning);
+  font-size: 13px;
+  color: #a85a00;
+}
+
+.empCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.empAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--purple));
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.empMain {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.empName {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.empSub {
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 700;
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+}
+
+.good {
+  background: #e9fbef;
+  border-color: rgba(48, 209, 88, 0.35);
+  color: #1a7f37;
+}
+
+.bad {
+  background: #ffe9e9;
+  border-color: rgba(255, 59, 48, 0.35);
+  color: #b42318;
+}
+
+@media (max-width: 1050px) {
+  .checkinArea {
+    grid-template-columns: 1fr;
+  }
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+}

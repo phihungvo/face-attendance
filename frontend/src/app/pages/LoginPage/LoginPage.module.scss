@@ -1,0 +1,123 @@
+.wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(900px 500px at 10% 10%, rgba(10, 132, 255, 0.15), transparent 60%),
+    radial-gradient(900px 500px at 90% 20%, rgba(191, 90, 242, 0.12), transparent 60%), var(--bg);
+}
+
+.card {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.brandIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  background: linear-gradient(135deg, var(--primary), var(--purple));
+  color: #fff;
+}
+
+.brandTitle {
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.brandSub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.h1 {
+  font-size: 18px;
+  margin: 10px 0 14px;
+}
+
+.error {
+  background: #ffe9e9;
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  color: #b42318;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text2);
+  margin: 10px 0 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+.primaryBtn {
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.primaryBtn:hover {
+  background: var(--primary-dark);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.secondaryBtn:hover {
+  background: #e5e5ea;
+}
+

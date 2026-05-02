@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # ML
     FACE_MATCH_THRESHOLD: float = 0.5
 
+    # Attendance rules
+    SHIFT_START: str = "09:00"  # HH:MM
+    LATE_GRACE_MINUTES: int = 0
+
     # JWT Auth
     JWT_SECRET: str = "change_me"
     JWT_ALGORITHM: str = "HS256"

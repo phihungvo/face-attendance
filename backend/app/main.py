@@ -9,6 +9,7 @@ from app.api.v1.router import api_router
 from app.core.exception_handlers import register_exception_handlers
 from app.core.settings import settings
 from app.db.session import engine
+from app.db.migrate import run_lightweight_migrations
 from app.models.base import Base
 import app.models  # noqa: F401  # ensure models are registered
 
@@ -35,6 +36,8 @@ def create_app() -> FastAPI:
         for _ in range(30):
             try:
                 Base.metadata.create_all(bind=engine)
+                # Best-effort lightweight migrations for dev/local upgrades.
+                run_lightweight_migrations(engine, schema=settings.MYSQL_DB)
                 return
             except Exception as e:  # pragma: no cover
                 last_err = e
