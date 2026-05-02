@@ -1,0 +1,12 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.text {
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+

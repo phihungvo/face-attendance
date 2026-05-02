@@ -9,8 +9,31 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    code: str | None = None
     name: str
+    email: str | None = None
+    role: str | None = None
+    status: str
+    department_id: int | None = None
     created_at: datetime
+
+
+class UserUpdateRequest(BaseModel):
+    code: str | None = Field(default=None, max_length=32)
+    name: str = Field(..., min_length=1, max_length=255)
+    email: str | None = Field(default=None, max_length=255)
+    role: str | None = Field(default=None, max_length=64)
+    status: str | None = Field(default=None, max_length=16)
+    department_id: int | None = None
+
+
+class UserCreateRequest(BaseModel):
+    code: str | None = Field(default=None, max_length=32)
+    name: str = Field(..., min_length=1, max_length=255)
+    email: str | None = Field(default=None, max_length=255)
+    role: str | None = Field(default=None, max_length=64)
+    status: str | None = Field(default=None, max_length=16)
+    department_id: int | None = None
 
 
 class EnrollResponse(BaseModel):

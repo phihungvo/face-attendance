@@ -1,0 +1,36 @@
+.wrap {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+}
+
+.table th,
+.table td {
+  padding: 12px 14px;
+  font-size: 13px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  color: var(--text3);
+  font-weight: 700;
+  background: #fafafe;
+}
+
+.table td {
+  color: var(--text2);
+  font-weight: 500;
+}
+
+.table tr:hover td {
+  background: #f3f7ff;
+}
+
