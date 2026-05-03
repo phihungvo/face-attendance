@@ -1,6 +1,6 @@
 # Face Attendance (InsightFace + FastAPI + React + MySQL)
 
-Chạy production cơ bản bằng Docker Compose. 
+Chạy production cơ bản bằng Docker Compose.  
 
 ## Yêu cầu
 - Docker + Docker Compose 
