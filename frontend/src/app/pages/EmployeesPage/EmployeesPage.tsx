@@ -12,8 +12,47 @@ import type { Department } from "../../../shared/types/department";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import styles from "./EmployeesPage.module.scss";
 
+function initialsFromName(name: string) {
+  const parts = name
+    .trim()
+    .split(/\s+/g)
+    .filter(Boolean);
+  if (parts.length === 0) return "??";
+  const a = parts[0]?.[0] ?? "?";
+  const b = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : parts[0]?.[1] ?? "";
+  return `${a}${b}`.toUpperCase();
+}
+
+function colorFromString(input: string) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 75% 55%)`;
+}
+
+function nextEmployeeCode(users: User[]) {
+  let maxNum = 0;
+  let maxDigits = 3;
+  for (const u of users) {
+    const c = (u.code ?? "").trim().toUpperCase();
+    const m = /^NV(\d+)$/.exec(c);
+    if (!m) continue;
+    const digits = m[1]?.length ?? 0;
+    const num = Number(m[1]);
+    if (Number.isFinite(num)) {
+      maxNum = Math.max(maxNum, num);
+      maxDigits = Math.max(maxDigits, digits);
+    }
+  }
+  const next = maxNum + 1;
+  return `NV${String(next).padStart(maxDigits, "0")}`;
+}
+
 export default function EmployeesPage() {
   const [query, setQuery] = useState("");
+  const [deptFilter, setDeptFilter] = useState<string>("");
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -24,7 +63,6 @@ export default function EmployeesPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
-  const [status, setStatus] = useState<"active" | "inactive">("active");
   const [departmentId, setDepartmentId] = useState<string>("");
   const [faceModalOpen, setFaceModalOpen] = useState(false);
   const [faceUser, setFaceUser] = useState<User | null>(null);
@@ -34,7 +72,7 @@ export default function EmployeesPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await listUsers({ q: q?.trim() || undefined, limit: 200, offset: 0 });
+      const data = await listUsers({ q: q?.trim() || undefined, limit: 500, offset: 0 });
       setUsers(data);
     } catch (e) {
       setError(getApiErrorMessage(e));
@@ -61,6 +99,13 @@ export default function EmployeesPage() {
     return m;
   }, [departments]);
 
+  const deptOptions = useMemo(() => {
+    return departments
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+      .map((d) => ({ id: String(d.id), label: `${d.code} - ${d.name}` }));
+  }, [departments]);
+
   const stats = useMemo(() => {
     return [
       { icon: "👥", label: "Tổng nhân viên", value: users.length, delta: { label: "DB", tone: "neutral" as const } },
@@ -70,11 +115,40 @@ export default function EmployeesPage() {
     ];
   }, [users.length]);
 
+  const suggestedCode = useMemo(() => nextEmployeeCode(users), [users]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) => `${u.id} ${u.code ?? ""} ${u.name} ${u.email ?? ""}`.toLowerCase().includes(q));
-  }, [query, users]);
+    const byText = !q
+      ? users
+      : users.filter((u) => `${u.id} ${u.code ?? ""} ${u.name} ${u.email ?? ""}`.toLowerCase().includes(q));
+    if (!deptFilter) return byText;
+    return byText.filter((u) => String(u.department_id ?? "") === deptFilter);
+  }, [deptFilter, query, users]);
+
+  const pageSize = view === "grid" ? 12 : 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  useEffect(() => {
+    setPage(1);
+  }, [deptFilter, query, view]);
+
+  const pageSafe = Math.min(Math.max(1, page), totalPages);
+  const pageItems = useMemo(() => {
+    const start = (pageSafe - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, pageSafe, pageSize]);
+
+  const pageButtons = useMemo(() => {
+    const windowSize = 5;
+    const half = Math.floor(windowSize / 2);
+    let start = Math.max(1, pageSafe - half);
+    let end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+    const out: number[] = [];
+    for (let p = start; p <= end; p++) out.push(p);
+    return out;
+  }, [pageSafe, totalPages]);
 
   return (
     <div className={styles.page}>
@@ -84,139 +158,272 @@ export default function EmployeesPage() {
         ))}
       </div>
 
-      <Card
-        title="👥 Danh sách nhân viên"
-        sub="CRUD thật qua DB (FastAPI)"
-        right={
-          <div className={styles.actions}>
+      <Card>
+        {error ? <div className={styles.error}>{error}</div> : null}
+
+        <div className={styles.toolbar}>
+          <div className={styles.tabGroup} role="tablist" aria-label="Chế độ hiển thị nhân viên">
             <button
-              className={styles.btnGhost}
+              className={view === "grid" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
               type="button"
-              onClick={() => {
-                setEditing(null);
-                setCode("");
-                setName("");
-                setEmail("");
-                setRole("");
-                setStatus("active");
-                setDepartmentId("");
-                setModalOpen(true);
-              }}
+              role="tab"
+              aria-selected={view === "grid"}
+              onClick={() => setView("grid")}
             >
-              ➕ Thêm nhân viên
+              🔲 Lưới
+            </button>
+            <button
+              className={view === "list" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              type="button"
+              role="tab"
+              aria-selected={view === "list"}
+              onClick={() => setView("list")}
+            >
+              ☰ Danh sách
             </button>
           </div>
-        }
-      >
-        {error ? <div className={styles.error}>{error}</div> : null}
-        <div className={styles.filters}>
-          <div className={styles.searchBox}>
+
+          <div className={styles.searchBoxCompact}>
             <span className={styles.searchIcon}>🔍</span>
-            <input
-              value={query}
-              onChange={(e) => {
-                const v = e.target.value;
-                setQuery(v);
-              }}
-              placeholder="Tìm theo tên hoặc ID..."
-            />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm nhân viên..." />
           </div>
+
+          <select className={styles.select} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} aria-label="Lọc phòng ban">
+            <option value="">Tất cả phòng ban</option>
+            {deptOptions.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+
           <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh(query)}>
             {loading ? "Đang tải..." : "Làm mới"}
           </button>
-        </div>
 
-        <Table>
-          <thead>
-            <tr>
-              <th>Nhân viên</th>
-              <th>ID</th>
-              <th>Mã</th>
-              <th>Email</th>
-              <th>Phòng ban</th>
-              <th>Vai trò</th>
-              <th>Trạng thái</th>
-              <th style={{ width: 120 }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((u) => (
-              <tr key={u.id}>
-                <td className={styles.empCell}>
-                  <span className={styles.empAvatar}>{u.name.slice(0, 2).toUpperCase()}</span>
-                  <span className={styles.empMain}>
-                    <span className={styles.empName}>{u.name}</span>
-                    <span className={styles.empSub}>{new Date(u.created_at).toLocaleString("vi-VN")}</span>
-                  </span>
-                </td>
-                <td className={styles.mono}>{u.id}</td>
-                <td className={styles.mono}>{u.code || "—"}</td>
-                <td className={styles.muted}>{u.email || "—"}</td>
-                <td>{u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—"}</td>
-                <td>{u.role || "—"}</td>
-                <td>
-                  <span className={u.status === "active" ? `${styles.tag} ${styles.good}` : `${styles.tag} ${styles.bad}`}>{u.status}</span>
-                </td>
-                <td>
-                  <div className={styles.rowActions}>
-                    <button
-                      className={`${styles.rowBtn} ${styles.edit}`}
-                      type="button"
-                      title="Sửa"
-                      onClick={() => {
+          <button
+            className={styles.btnPrimary}
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setCode(suggestedCode);
+              setName("");
+              setEmail("");
+              setRole("");
+              setDepartmentId("");
+              setModalOpen(true);
+            }}
+          >
+            + Thêm nhân viên
+          </button>
+        </div>
+      </Card>
+
+      {view === "grid" ? (
+        <div className={styles.empGrid}>
+          {pageItems.map((u) => {
+            const deptLabel = u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—";
+            const avatarColor = colorFromString(u.name);
+            const initials = initialsFromName(u.name);
+            const statusDotClass = u.status === "active" ? `${styles.empStatusDot} ${styles.online}` : `${styles.empStatusDot} ${styles.offline}`;
+            return (
+              <div
+                key={u.id}
+                className={styles.empCard}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setEditing(u);
+                  setCode(u.code ?? "");
+                  setName(u.name);
+                  setEmail(u.email ?? "");
+                  setRole(u.role ?? "");
+                  setDepartmentId(u.department_id ? String(u.department_id) : "");
+                  setModalOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  setEditing(u);
+                  setCode(u.code ?? "");
+                  setName(u.name);
+                  setEmail(u.email ?? "");
+                  setRole(u.role ?? "");
+                  setDepartmentId(u.department_id ? String(u.department_id) : "");
+                  setModalOpen(true);
+                }}
+              >
+                <div className={styles.empBigAvatar} style={{ background: avatarColor }}>
+                  {initials}
+                  <div className={statusDotClass} />
+                </div>
+                <div className={styles.empCardName}>{u.name}</div>
+                <div className={styles.empCardRole}>{u.role || "—"}</div>
+                <div className={styles.deptBadge}>{deptLabel}</div>
+
+                <div className={styles.empStats}>
+                  <div className={styles.empStatItem}>
+                    <div className={styles.empStatVal}>{u.code || "—"}</div>
+                    <div className={styles.empStatLbl}>Mã</div>
+                  </div>
+                  <div className={styles.empStatItem}>
+                    <div className={styles.empStatValSmall}>{u.email ? u.email.split("@")[0] : "—"}</div>
+                    <div className={styles.empStatLbl}>Email</div>
+                  </div>
+                  <div className={styles.empStatItem}>
+                    <div className={u.status === "active" ? `${styles.empStatVal} ${styles.ok}` : `${styles.empStatVal} ${styles.warn}`}>{u.status}</div>
+                    <div className={styles.empStatLbl}>TT</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <Card title="👥 Danh sách nhân viên" sub="Hiển thị dạng bảng">
+          <Table>
+            <thead>
+              <tr>
+                <th>Nhân viên</th>
+                <th>Phòng ban</th>
+                <th>Chức vụ</th>
+                <th>Trạng thái</th>
+                <th>Email</th>
+                <th style={{ width: 120 }}>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((u) => (
+                <tr key={u.id}>
+                  <td className={styles.empCell}>
+                    <span className={styles.empAvatar}>{initialsFromName(u.name)}</span>
+                    <span className={styles.empMain}>
+                      <span className={styles.empName}>{u.name}</span>
+                      <span className={styles.empSub}>{u.code || `#${u.id}`}</span>
+                    </span>
+                  </td>
+                  <td>{u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—"}</td>
+                  <td className={styles.muted}>{u.role || "—"}</td>
+                  <td>
+                    <span className={u.status === "active" ? `${styles.tag} ${styles.good}` : `${styles.tag} ${styles.bad}`}>{u.status}</span>
+                  </td>
+                  <td className={styles.muted}>{u.email || "—"}</td>
+                  <td>
+                    <div className={styles.rowActions}>
+                      <button
+                        className={`${styles.rowBtn} ${styles.edit}`}
+                        type="button"
+                        title="Sửa"
+                        onClick={() => {
                         setEditing(u);
                         setCode(u.code ?? "");
                         setName(u.name);
                         setEmail(u.email ?? "");
                         setRole(u.role ?? "");
-                        setStatus((u.status as any) === "inactive" ? "inactive" : "active");
                         setDepartmentId(u.department_id ? String(u.department_id) : "");
                         setModalOpen(true);
                       }}
                     >
                       ✏️
-                    </button>
-                    <button
-                      className={styles.rowBtn}
-                      type="button"
-                      title="Đăng ký gương mặt"
-                      onClick={() => {
-                        setFaceUser(u);
-                        setFaceModalOpen(true);
-                        setError(null);
-                      }}
-                    >
-                      📷
-                    </button>
-                    <button
-                      className={`${styles.rowBtn} ${styles.del}`}
-                      type="button"
-                      title="Xóa"
-                      onClick={async () => {
-                        if (!confirm(`Xóa nhân viên "${u.name}"?`)) return;
-                        try {
-                          setLoading(true);
+                      </button>
+                      <button
+                        className={styles.rowBtn}
+                        type="button"
+                        title="Đăng ký gương mặt"
+                        onClick={() => {
+                          setFaceUser(u);
+                          setFaceModalOpen(true);
                           setError(null);
-                          await deleteUser(u.id);
-                          await refresh(query);
-                        } catch (e) {
-                          setError(getApiErrorMessage(e));
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                    >
-                      🗑
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+                        }}
+                      >
+                        📷
+                      </button>
+                      <button
+                        className={u.status === "active" ? styles.rowBtn : `${styles.rowBtn} ${styles.enable}`}
+                        type="button"
+                        title={u.status === "active" ? "Disable" : "Kích hoạt"}
+                        onClick={async () => {
+                          try {
+                            const nextStatus = u.status === "active" ? "inactive" : "active";
+                            setLoading(true);
+                            setError(null);
+                            await updateUser(u.id, {
+                              name: u.name,
+                              code: u.code ?? null,
+                              email: u.email ?? null,
+                              role: u.role ?? null,
+                              status: nextStatus,
+                              department_id: u.department_id ?? null
+                            });
+                            await refresh(query);
+                          } catch (e) {
+                            setError(getApiErrorMessage(e));
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      >
+                        {u.status === "active" ? "🚫" : "✅"}
+                      </button>
+                      <button
+                        className={`${styles.rowBtn} ${styles.del}`}
+                        type="button"
+                        title="Xóa"
+                        onClick={async () => {
+                          if (!confirm(`Xóa nhân viên "${u.name}"?`)) return;
+                          try {
+                            setLoading(true);
+                            setError(null);
+                            await deleteUser(u.id);
+                            await refresh(query);
+                          } catch (e) {
+                            setError(getApiErrorMessage(e));
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
 
-        {filtered.length === 0 ? <div className={styles.empty}>Chưa có nhân viên (hoặc không khớp tìm kiếm).</div> : null}
-      </Card>
+          {filtered.length === 0 ? <div className={styles.empty}>Chưa có nhân viên (hoặc không khớp tìm kiếm).</div> : null}
+        </Card>
+      )}
+
+      <div className={styles.pagination}>
+        <div className={styles.pageHint}>
+          {filtered.length === 0 ? "0 kết quả" : `Trang ${pageSafe}/${totalPages} • ${filtered.length} nhân viên`}
+        </div>
+        <div className={styles.pageControls}>
+          <button className={styles.pageBtn} type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
+            ←
+          </button>
+          {pageButtons.map((p) => (
+            <button
+              key={p}
+              className={p === pageSafe ? `${styles.pageBtn} ${styles.pageBtnActive}` : styles.pageBtn}
+              type="button"
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            className={styles.pageBtn}
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={pageSafe >= totalPages}
+          >
+            →
+          </button>
+        </div>
+      </div>
 
       <Modal
         open={modalOpen}
@@ -237,10 +444,10 @@ export default function EmployeesPage() {
                   setError(null);
                   const payload = {
                     name: name.trim(),
-                    code: code.trim() || null,
+                    code: editing ? (code.trim() || null) : (code.trim() || suggestedCode),
                     email: email.trim() || null,
                     role: role.trim() || null,
-                    status,
+                    status: editing ? (editing.status as any) : "active",
                     department_id: departmentId ? Number(departmentId) : null
                   };
                   if (editing) await updateUser(editing.id, payload);
@@ -259,41 +466,49 @@ export default function EmployeesPage() {
           </>
         }
       >
-        <div className={styles.formRow}>
-          <div className={styles.formLabel}>Mã</div>
-          <input className={styles.input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="VD: NV001" />
+        <div className={styles.modalIntro}>
+          <div className={styles.modalTitleLine}>Thông tin cơ bản</div>
+          <div className={styles.modalSubLine}>Nhập đủ dữ liệu cần thiết, có thể chỉnh sửa sau.</div>
         </div>
-        <div className={styles.formRow}>
-          <div className={styles.formLabel}>Tên nhân viên</div>
-          <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ví dụ: Nguyễn Văn A" />
+
+        <div className={styles.modalGrid}>
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Mã nhân viên</div>
+            <input className={styles.input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="VD: NV001" />
+            {!editing ? <div className={styles.fieldHint}>Gợi ý tự động: {suggestedCode}</div> : null}
+          </div>
+
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>
+              Tên nhân viên <span className={styles.req}>*</span>
+            </div>
+            <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ví dụ: Nguyễn Văn A" />
+          </div>
+
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Email</div>
+            <input className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="VD: a@company.vn" />
+          </div>
+
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Phòng ban</div>
+            <select className={styles.input} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+              <option value="">—</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.code} - {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Vai trò</div>
+            <input className={styles.input} value={role} onChange={(e) => setRole(e.target.value)} placeholder="VD: Engineer" />
+          </div>
         </div>
-        <div className={styles.formRow}>
-          <div className={styles.formLabel}>Email</div>
-          <input className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="VD: a@company.vn" />
-        </div>
-        <div className={styles.formRow}>
-          <div className={styles.formLabel}>Phòng ban</div>
-          <select className={styles.input} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-            <option value="">—</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.code} - {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={styles.formRow}>
-          <div className={styles.formLabel}>Vai trò</div>
-          <input className={styles.input} value={role} onChange={(e) => setRole(e.target.value)} placeholder="VD: Engineer" />
-        </div>
-        <div className={styles.formRow}>
-          <div className={styles.formLabel}>Trạng thái</div>
-          <select className={styles.input} value={status} onChange={(e) => setStatus(e.target.value as any)}>
-            <option value="active">active</option>
-            <option value="inactive">inactive</option>
-          </select>
-        </div>
-        <div className={styles.hint}>Code/email unique. Nếu trùng sẽ báo lỗi từ backend.</div>
+
+        <div className={styles.modalNote}>Lưu ý: `code`/`email` là duy nhất. Nếu trùng sẽ báo lỗi từ backend.</div>
       </Modal>
 
       <Modal

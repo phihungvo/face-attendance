@@ -16,7 +16,7 @@
 }
 
 .btnGhost:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
 .chips {
@@ -83,8 +83,7 @@
 }
 
 .good {
-  background: #e9fbef;
-  border-color: rgba(48, 209, 88, 0.35);
-  color: #1a7f37;
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
-

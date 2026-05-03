@@ -22,7 +22,7 @@
 .table th {
   color: var(--text3);
   font-weight: 700;
-  background: #fafafe;
+  background: var(--table-row-bg);
 }
 
 .table td {
@@ -31,6 +31,5 @@
 }
 
 .table tr:hover td {
-  background: #f3f7ff;
+  background: var(--table-head-bg);
 }
-

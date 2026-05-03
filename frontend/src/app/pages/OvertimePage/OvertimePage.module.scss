@@ -36,12 +36,12 @@
 }
 
 .infoBox {
-  background: #e3f0ff;
+  background: var(--info-bg);
   border-radius: 10px;
   padding: 12px 14px;
   border-left: 3px solid var(--primary);
   font-size: 13px;
-  color: #0050aa;
+  color: var(--info-text);
 }
 
 .empCell {
@@ -89,15 +89,15 @@
 }
 
 .good {
-  background: #e9fbef;
-  border-color: rgba(48, 209, 88, 0.35);
-  color: #1a7f37;
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .warn {
-  background: #fff3e0;
-  border-color: rgba(255, 159, 10, 0.25);
-  color: #a85a00;
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-text);
 }
 
 @media (max-width: 900px) {
@@ -105,4 +105,3 @@
     grid-template-columns: 1fr;
   }
 }
-

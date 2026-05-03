@@ -5,7 +5,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_account
+from app.api.deps import require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -30,7 +30,7 @@ service = AttendanceService()
 async def checkin(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[CheckInResponse]:
     """
     Check-in via face recognition.
@@ -47,7 +47,7 @@ async def checkin(
 async def checkout(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[CheckOutResponse]:
     """
     Check-out via face recognition.
@@ -63,7 +63,7 @@ async def checkout(
 @router.get("/logs", response_model=ApiResponse[list[AttendanceLogOut]])
 def list_logs(
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("attendance.read")),
 ) -> ApiResponse[list[AttendanceLogOut]]:
     return ok(service.list_logs(db))
 
@@ -72,7 +72,7 @@ def list_logs(
 def daily_attendance(
     day: date,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("timesheet.read")),
 ) -> ApiResponse[list[DailyAttendanceRow]]:
     rows = service.daily_report(db, day=day)
     out: list[DailyAttendanceRow] = []
@@ -96,7 +96,7 @@ def daily_attendance(
 def monthly_report(
     month: str,  # YYYY-MM
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("timesheet.read")),
 ) -> ApiResponse[list[MonthlyReportRow]]:
     try:
         year_s, month_s = month.split("-", 1)
@@ -119,7 +119,7 @@ def timelog_range(
     status: str | None = None,  # "on-time" | "late" | "absent"
     include_absent: bool = False,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("timesheet.read")),
 ) -> ApiResponse[list[TimelogRow]]:
     try:
         rows = service.timelog_range(
@@ -141,7 +141,7 @@ def timelog_upsert(
     day: date,
     payload: TimelogUpsertRequest,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[TimelogRow]:
     try:
         row = service.timelog_upsert_day(
@@ -161,7 +161,7 @@ def timelog_delete(
     user_id: int,
     day: date,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         service.timelog_delete_day(db, user_id=user_id, day=day)
@@ -175,7 +175,7 @@ def stats(
     from_date: date,
     to_date: date,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("reports.read")),
 ) -> ApiResponse[AttendanceStats]:
     try:
         data = service.stats(db, from_day=from_date, to_day_inclusive=to_date)

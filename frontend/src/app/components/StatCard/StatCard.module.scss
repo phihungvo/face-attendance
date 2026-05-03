@@ -50,14 +50,13 @@
 }
 
 .green {
-  background: #e9fbef;
-  border-color: rgba(48, 209, 88, 0.35);
-  color: #1a7f37;
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .red {
-  background: #ffe9e9;
-  border-color: rgba(255, 59, 48, 0.35);
-  color: #b42318;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
 }
-

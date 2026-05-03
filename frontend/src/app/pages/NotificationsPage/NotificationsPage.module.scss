@@ -16,7 +16,7 @@
 }
 
 .btnGhost:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
 .list {
@@ -37,8 +37,8 @@
 }
 
 .unread {
-  background: #e8f4ff;
-  border-color: rgba(10, 132, 255, 0.22);
+  background: var(--info-bg);
+  border-color: var(--info-border);
 }
 
 .icon {
@@ -47,7 +47,7 @@
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
   flex-shrink: 0;
   font-size: 16px;
@@ -75,7 +75,6 @@
   height: 8px;
   border-radius: 50%;
   background: var(--danger);
-  box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.12);
+  box-shadow: 0 0 0 4px var(--danger-bg-soft);
   margin-left: auto;
 }
-

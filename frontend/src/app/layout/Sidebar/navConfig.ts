@@ -37,7 +37,10 @@ export const navSections: NavSection[] = [
     label: "Hệ thống",
     items: [
       { key: "notifications", label: "Thông Báo", icon: "🔔", to: "/notifications", badge: { text: "5" } },
-      { key: "settings", label: "Cài Đặt", icon: "⚙️", to: "/settings" }
+      { key: "settings", label: "Cài Đặt", icon: "⚙️", to: "/settings" },
+      { key: "iam_users", label: "IAM Users", icon: "🛡️", to: "/iam/users" },
+      { key: "iam_roles", label: "IAM Roles", icon: "🔑", to: "/iam/roles" },
+      { key: "iam_perms", label: "IAM Perms", icon: "🧩", to: "/iam/permissions" }
     ]
   }
 ];

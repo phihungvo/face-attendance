@@ -6,8 +6,13 @@ from pydantic import BaseModel, ConfigDict, Field
 class AttendancePolicyOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    timezone: str = Field(..., min_length=1, max_length=64)
+    face_match_threshold: float = Field(..., ge=0.1, le=0.99)
+
     shift_start: str = Field(..., pattern=r"^\d{2}:\d{2}$")
+    shift_end: str = Field(..., pattern=r"^\d{2}:\d{2}$")
     late_grace_minutes: int = Field(..., ge=0, le=240)
+    early_leave_grace_minutes: int = Field(..., ge=0, le=240)
 
     checkin_from: str = Field(..., pattern=r"^\d{2}:\d{2}$")
     checkin_to: str = Field(..., pattern=r"^\d{2}:\d{2}$")
@@ -18,8 +23,13 @@ class AttendancePolicyOut(BaseModel):
 
 
 class AttendancePolicyUpdateRequest(BaseModel):
+    timezone: str = Field(..., min_length=1, max_length=64)
+    face_match_threshold: float = Field(..., ge=0.1, le=0.99)
+
     shift_start: str = Field(..., pattern=r"^\d{2}:\d{2}$")
+    shift_end: str = Field(..., pattern=r"^\d{2}:\d{2}$")
     late_grace_minutes: int = Field(..., ge=0, le=240)
+    early_leave_grace_minutes: int = Field(..., ge=0, le=240)
 
     checkin_from: str = Field(..., pattern=r"^\d{2}:\d{2}$")
     checkin_to: str = Field(..., pattern=r"^\d{2}:\d{2}$")
@@ -27,4 +37,3 @@ class AttendancePolicyUpdateRequest(BaseModel):
     checkout_to: str = Field(..., pattern=r"^\d{2}:\d{2}$")
 
     min_minutes_between_same_type: int = Field(..., ge=0, le=120)
-

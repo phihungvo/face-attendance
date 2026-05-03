@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../shared/auth/auth";
 import { formatAuthError } from "../../../shared/auth/auth";
 import styles from "./LoginPage.module.scss";
 
 export default function LoginPage() {
   const auth = useAuth();
+  const nav = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin123");
+  const [role, setRole] = useState<"employee" | "manager">("employee");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +43,8 @@ export default function LoginPage() {
               setLoading(true);
               setError(null);
               if (mode === "login") await auth.login(username, password);
-              else await auth.register(username, password);
+              else await auth.register(username, password, role);
+              nav("/", { replace: true });
             } catch (e) {
               setError(formatAuthError(e));
             } finally {
@@ -50,6 +54,16 @@ export default function LoginPage() {
         >
           {loading ? "Đang xử lý..." : mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}
         </button>
+
+        {mode === "register" ? (
+          <div className={styles.formRow}>
+            <div className={styles.formLabel}>Role</div>
+            <select className={styles.select} value={role} onChange={(e) => setRole(e.target.value as "employee" | "manager")} aria-label="Role">
+              <option value="employee">Nhân viên</option>
+              <option value="manager">Quản lý</option>
+            </select>
+          </div>
+        ) : null}
 
         <button className={styles.secondaryBtn} type="button" onClick={() => setMode((m) => (m === "login" ? "register" : "login"))}>
           {mode === "login" ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}

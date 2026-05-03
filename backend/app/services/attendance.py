@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -35,8 +36,8 @@ class AttendanceService:
         self._ml = MlClient()
 
     def checkin(self, db: Session, *, image_bytes: bytes) -> tuple[str, float, object]:
-        now = datetime.now()
         policy = self._policy.get_or_create(db)
+        now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkin_from, policy.checkin_to, label="check-in")
 
         # Probe embedding from ML service
@@ -47,7 +48,7 @@ class AttendanceService:
         for record in self._embeddings.list_all(db):
             candidates.append((record.user_id, embedding_from_json(record.embedding)))
 
-        match = match_best(probe_embedding=probe, candidates=candidates)
+        match = match_best(probe_embedding=probe, candidates=candidates, threshold=float(policy.face_match_threshold))
         if match is None:
             raise ValueError("No matched user (below threshold)")
 
@@ -62,8 +63,8 @@ class AttendanceService:
         return (user.name, match.confidence, log.timestamp)
 
     def checkout(self, db: Session, *, image_bytes: bytes) -> tuple[str, float, object]:
-        now = datetime.now()
         policy = self._policy.get_or_create(db)
+        now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkout_from, policy.checkout_to, label="check-out")
 
         probe = self._ml.extract_embedding(image_bytes=image_bytes)
@@ -72,7 +73,7 @@ class AttendanceService:
         for record in self._embeddings.list_all(db):
             candidates.append((record.user_id, embedding_from_json(record.embedding)))
 
-        match = match_best(probe_embedding=probe, candidates=candidates)
+        match = match_best(probe_embedding=probe, candidates=candidates, threshold=float(policy.face_match_threshold))
         if match is None:
             raise ValueError("No matched user (below threshold)")
 
@@ -103,13 +104,17 @@ class AttendanceService:
         return out
 
     def daily_report(self, db: Session, *, day: date) -> list[DailyComputed]:
+        policy = self._policy.get_or_create(db)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
         start = datetime.combine(day, time(0, 0, 0))
-        end = start + timedelta(days=1)
+        end = start + (timedelta(days=2) if overnight else timedelta(days=1))
         logs = self._logs.list_in_range(db, start=start, end=end)
         users = {u.id: u.name for u in self._users.list(db, limit=10000, offset=0)}
 
         by_user: dict[int, dict[str, datetime]] = {}
         for log in logs:
+            if _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end) != day:
+                continue
             bucket = by_user.setdefault(log.user_id, {})
             if log.type == "checkin":
                 prev = bucket.get("checkin")
@@ -120,7 +125,6 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        policy = self._policy.get_or_create(db)
         shift_start = _parse_hhmm(policy.shift_start)
         late_cutoff = datetime.combine(day, shift_start) + timedelta(minutes=int(policy.late_grace_minutes))
 
@@ -155,16 +159,20 @@ class AttendanceService:
             next_month = date(year + 1, 1, 1)
         else:
             next_month = date(year, month + 1, 1)
+        policy = self._policy.get_or_create(db)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
         start = datetime.combine(month_start, time(0, 0, 0))
-        end = datetime.combine(next_month, time(0, 0, 0))
+        end = datetime.combine(next_month, time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
 
         logs = self._logs.list_in_range(db, start=start, end=end)
         users = {u.id: u.name for u in self._users.list(db, limit=10000, offset=0)}
 
-        # First check-in + last check-out per user per day
+        # First check-in + last check-out per user per attendance day
         per_user_day: dict[tuple[int, date], dict[str, datetime]] = {}
         for log in logs:
-            d = log.timestamp.date()
+            d = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
+            if d < month_start or d >= next_month:
+                continue
             key = (log.user_id, d)
             bucket = per_user_day.setdefault(key, {})
             if log.type == "checkin":
@@ -176,7 +184,6 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        policy = self._policy.get_or_create(db)
         shift_start = _parse_hhmm(policy.shift_start)
         grace = timedelta(minutes=int(policy.late_grace_minutes))
         days_in_month = (next_month - month_start).days
@@ -230,6 +237,9 @@ class AttendanceService:
             raise ValueError("to_date must be >= from_date")
         start = datetime.combine(from_day, time(0, 0, 0))
         end = datetime.combine(to_day_inclusive + timedelta(days=1), time(0, 0, 0))
+        policy = self._policy.get_or_create(db)
+        if _is_overnight_shift(policy.shift_start, policy.shift_end):
+            end = end + timedelta(days=1)
 
         logs = self._logs.list_in_range(db, start=start, end=end)
         users = self._users.list(db, limit=10000, offset=0)
@@ -244,12 +254,12 @@ class AttendanceService:
 
         users_by_id = {u.id: u for u in users_f}
 
-        # First check-in + last check-out per user per day
+        # First check-in + last check-out per user per attendance day
         per_user_day: dict[tuple[int, date], dict[str, datetime]] = {}
         for log in logs:
             if log.user_id not in users_by_id:
                 continue
-            d = log.timestamp.date()
+            d = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
             key = (log.user_id, d)
             bucket = per_user_day.setdefault(key, {})
             if log.type == "checkin":
@@ -261,7 +271,6 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        policy = self._policy.get_or_create(db)
         shift_start = _parse_hhmm(policy.shift_start)
         grace = timedelta(minutes=int(policy.late_grace_minutes))
 
@@ -329,12 +338,21 @@ class AttendanceService:
         start = datetime.combine(day, time(0, 0, 0))
         end = start + timedelta(days=1)
 
-        # Clear existing logs in that day for this user, then recreate from payload.
-        self._logs.delete_in_range(db, start=start, end=end, user_id=user_id)
-        if checkin_time is not None and checkin_time.date() != day:
-            raise ValueError("checkin_time phải cùng ngày với day")
-        if checkout_time is not None and checkout_time.date() != day:
-            raise ValueError("checkout_time phải cùng ngày với day")
+        policy = self._policy.get_or_create(db)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+
+        # Clear existing logs in the window that maps to this attendance day.
+        clear_end = end + (timedelta(days=1) if overnight else timedelta(days=0))
+        self._logs.delete_in_range(db, start=start, end=clear_end, user_id=user_id)
+
+        if checkin_time is not None:
+            mapped = _attendance_day_for_ts(checkin_time, shift_start=policy.shift_start, shift_end=policy.shift_end)
+            if mapped != day:
+                raise ValueError("checkin_time không thuộc ngày công (theo policy) của day")
+        if checkout_time is not None:
+            mapped = _attendance_day_for_ts(checkout_time, shift_start=policy.shift_start, shift_end=policy.shift_end)
+            if mapped != day:
+                raise ValueError("checkout_time không thuộc ngày công (theo policy) của day")
         if checkin_time is not None and checkout_time is not None and checkout_time < checkin_time:
             raise ValueError("checkout_time phải >= checkin_time")
 
@@ -349,7 +367,6 @@ class AttendanceService:
         cin = checkin_time
         cout = checkout_time
 
-        policy = self._policy.get_or_create(db)
         shift_start = _parse_hhmm(policy.shift_start)
         grace = timedelta(minutes=int(policy.late_grace_minutes))
         late_cutoff = datetime.combine(day, shift_start) + grace
@@ -388,10 +405,12 @@ class AttendanceService:
             raise ValueError("to_date must be >= from_date")
         start = datetime.combine(from_day, time(0, 0, 0))
         end = datetime.combine(to_day_inclusive + timedelta(days=1), time(0, 0, 0))
+        policy = self._policy.get_or_create(db)
+        if _is_overnight_shift(policy.shift_start, policy.shift_end):
+            end = end + timedelta(days=1)
         logs = self._logs.list_in_range(db, start=start, end=end)
         users = self._users.list(db, limit=10000, offset=0)
 
-        policy = self._policy.get_or_create(db)
         shift_start = _parse_hhmm(policy.shift_start)
         grace = timedelta(minutes=int(policy.late_grace_minutes))
 
@@ -399,7 +418,9 @@ class AttendanceService:
         for log in logs:
             if log.type != "checkin":
                 continue
-            d = log.timestamp.date()
+            d = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
+            if d < from_day or d > to_day_inclusive:
+                continue
             if log.timestamp > (datetime.combine(d, shift_start) + grace):
                 late_count += 1
 
@@ -422,8 +443,37 @@ def _enforce_time_window(now: datetime, start_hhmm: str, end_hhmm: str, *, label
     start_t = _parse_hhmm(start_hhmm)
     end_t = _parse_hhmm(end_hhmm)
     now_t = now.time().replace(microsecond=0)
-    if now_t < start_t or now_t > end_t:
+    # Normal window: start <= end (same day)
+    if start_t <= end_t:
+        if now_t < start_t or now_t > end_t:
+            raise ValueError(f"Ngoài khung giờ cho phép {label} ({start_hhmm}–{end_hhmm})")
+        return
+    # Overnight window (wrap): allow if time >= start OR time <= end
+    if not (now_t >= start_t or now_t <= end_t):
         raise ValueError(f"Ngoài khung giờ cho phép {label} ({start_hhmm}–{end_hhmm})")
+
+
+def _now_in_policy_tz(tz_name: str) -> datetime:
+    tz = ZoneInfo(tz_name)
+    return datetime.now(tz).replace(tzinfo=None)
+
+
+def _is_overnight_shift(shift_start: str, shift_end: str) -> bool:
+    return _parse_hhmm(shift_end) < _parse_hhmm(shift_start)
+
+
+def _attendance_day_for_ts(ts: datetime, *, shift_start: str, shift_end: str) -> date:
+    """
+    Map a timestamp to an "attendance day" (ngày công) based on shift boundaries.
+    - Non-overnight: attendance day = calendar date.
+    - Overnight: early-morning times (before shift_end) belong to previous day.
+    """
+    if not _is_overnight_shift(shift_start, shift_end):
+        return ts.date()
+    end_t = _parse_hhmm(shift_end)
+    if ts.time() < end_t:
+        return ts.date() - timedelta(days=1)
+    return ts.date()
 
 
 def _enforce_min_interval(

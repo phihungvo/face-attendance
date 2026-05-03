@@ -89,7 +89,7 @@
 }
 
 .active {
-  background: #e8f4ff;
+  background: var(--info-bg);
   color: var(--primary);
 }
 
@@ -177,4 +177,3 @@
   font-size: 14px;
   color: var(--text3);
 }
-

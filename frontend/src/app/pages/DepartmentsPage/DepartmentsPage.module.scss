@@ -36,12 +36,12 @@
 }
 
 .infoBox {
-  background: #e3f0ff;
+  background: var(--info-bg);
   border-radius: 10px;
   padding: 12px 14px;
   border-left: 3px solid var(--primary);
   font-size: 13px;
-  color: #0050aa;
+  color: var(--info-text);
 }
 
 .btnGhost {
@@ -56,7 +56,7 @@
 }
 
 .btnGhost:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
 .btnGhost:disabled {
@@ -129,9 +129,9 @@
 }
 
 .error {
-  background: #ffe9e9;
-  border: 1px solid rgba(255, 59, 48, 0.25);
-  color: #b42318;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 13px;
@@ -220,13 +220,13 @@
 }
 
 .del:hover {
-  background: #ffe9e9;
+  background: var(--danger-bg);
   color: var(--danger);
   border-color: var(--danger);
 }
 
 .edit:hover {
-  background: #e3f0ff;
+  background: var(--info-bg);
   color: var(--primary);
   border-color: var(--primary);
 }
