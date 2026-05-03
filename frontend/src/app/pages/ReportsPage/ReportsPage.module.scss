@@ -66,7 +66,7 @@
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: #e8f4ff;
+  background: var(--info-bg);
   color: var(--primary);
   flex-shrink: 0;
   font-size: 16px;
@@ -118,21 +118,21 @@
 }
 
 .good {
-  background: #e9fbef;
-  border-color: rgba(48, 209, 88, 0.35);
-  color: #1a7f37;
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .warn {
-  background: #fff3e0;
-  border-color: rgba(255, 159, 10, 0.25);
-  color: #a85a00;
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-text);
 }
 
 .bad {
-  background: #ffe9e9;
-  border-color: rgba(255, 59, 48, 0.35);
-  color: #b42318;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
 }
 
 @media (max-width: 1100px) {
@@ -146,4 +146,3 @@
     grid-template-columns: 1fr;
   }
 }
-

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_account
+from app.api.deps import require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -20,7 +20,7 @@ async def enroll_user(
     name: str = Form(...),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[EnrollResponse]:
     """
     Enroll a new user with a single face image.
@@ -39,7 +39,7 @@ async def enroll_face_for_user(
     user_id: int,
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         image_bytes = await image.read()
@@ -55,7 +55,7 @@ def list_users(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[list[UserOut]]:
     return ok(service.list_users(db, limit=limit, offset=offset, q=q.strip() if q else None))
 
@@ -64,7 +64,7 @@ def list_users(
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[UserOut]:
     try:
         return ok(service.get_user(db, user_id=user_id))
@@ -76,7 +76,7 @@ def get_user(
 def create_user(
     payload: UserCreateRequest,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[UserOut]:
     try:
         user = service.create_user(
@@ -98,7 +98,7 @@ def update_user(
     user_id: int,
     payload: UserUpdateRequest,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[UserOut]:
     try:
         user = service.update_user(
@@ -120,7 +120,7 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _: object = Depends(get_current_account),
+    _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         service.delete_user(db, user_id=user_id)

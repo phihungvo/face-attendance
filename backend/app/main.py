@@ -10,8 +10,10 @@ from app.core.exception_handlers import register_exception_handlers
 from app.core.settings import settings
 from app.db.session import engine
 from app.db.migrate import run_lightweight_migrations
+from app.db.seed import seed_rbac
 from app.models.base import Base
 import app.models  # noqa: F401  # ensure models are registered
+from app.db.session import SessionLocal
 
 
 def create_app() -> FastAPI:
@@ -38,6 +40,13 @@ def create_app() -> FastAPI:
                 Base.metadata.create_all(bind=engine)
                 # Best-effort lightweight migrations for dev/local upgrades.
                 run_lightweight_migrations(engine, schema=settings.MYSQL_DB)
+                # Seed RBAC defaults if needed.
+                db = SessionLocal()
+                try:
+                    seed_rbac(db)
+                    db.commit()
+                finally:
+                    db.close()
                 return
             except Exception as e:  # pragma: no cover
                 last_err = e

@@ -1,0 +1,50 @@
+services:
+  mysql:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DB:-face_attendance}
+      MYSQL_USER: ${MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-app_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/REPLACE_OWNER/face-attendance-backend}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ml:
+        condition: service_started
+    expose:
+      - "8000"
+
+  ml:
+    image: ${ML_IMAGE:-ghcr.io/REPLACE_OWNER/face-attendance-ml}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    expose:
+      - "8001"
+    volumes:
+      - insightface_cache:/root/.insightface
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/REPLACE_OWNER/face-attendance-frontend}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+volumes:
+  mysql_data:
+  insightface_cache:
+

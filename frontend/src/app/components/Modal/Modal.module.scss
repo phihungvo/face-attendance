@@ -42,7 +42,7 @@
 }
 
 .close:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
 .body {
@@ -56,4 +56,3 @@
   justify-content: flex-end;
   gap: 10px;
 }
-

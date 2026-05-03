@@ -52,9 +52,9 @@
 }
 
 .error {
-  background: #ffe9e9;
-  border: 1px solid rgba(255, 59, 48, 0.25);
-  color: #b42318;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 13px;
@@ -118,6 +118,32 @@
 }
 
 .secondaryBtn:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
+.formRow {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text2);
+}
+
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 800;
+}

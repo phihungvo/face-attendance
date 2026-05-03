@@ -139,7 +139,7 @@
 }
 
 .btnGhost:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
 .panel {
@@ -191,8 +191,8 @@
 
 .active {
   color: var(--primary);
-  border-color: rgba(10, 132, 255, 0.35);
-  background: #e8f4ff;
+  border-color: var(--info-border);
+  background: var(--info-bg);
 }
 
 .formLabel {
@@ -217,22 +217,22 @@
 
 .infoBox {
   margin-top: 12px;
-  background: #e3f0ff;
+  background: var(--info-bg);
   border-radius: 10px;
   padding: 12px 14px;
   border-left: 3px solid var(--primary);
   font-size: 13px;
-  color: #0050aa;
+  color: var(--info-text);
 }
 
 .errorBox {
   margin-top: 12px;
-  background: #ffe9e9;
+  background: var(--danger-bg);
   border-radius: 10px;
   padding: 12px 14px;
   border-left: 3px solid var(--danger);
   font-size: 13px;
-  color: #b42318;
+  color: var(--danger-text);
   font-weight: 800;
 }
 
@@ -276,12 +276,12 @@
 }
 
 .warningBox {
-  background: #fff3e0;
+  background: var(--warning-bg);
   border-radius: 10px;
   padding: 12px 14px;
   border-left: 3px solid var(--warning);
   font-size: 13px;
-  color: #a85a00;
+  color: var(--warning-text);
 }
 
 .empCell {
@@ -330,15 +330,15 @@
 }
 
 .good {
-  background: #e9fbef;
-  border-color: rgba(48, 209, 88, 0.35);
-  color: #1a7f37;
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .bad {
-  background: #ffe9e9;
-  border-color: rgba(255, 59, 48, 0.35);
-  color: #b42318;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
 }
 
 @media (max-width: 1050px) {

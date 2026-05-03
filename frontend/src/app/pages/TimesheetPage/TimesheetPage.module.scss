@@ -76,7 +76,7 @@
   color: var(--text);
 }
 .btnGhost:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
 .chips {
@@ -163,11 +163,11 @@
 }
 
 .badgeOrange {
-  color: #b26b00;
+  color: var(--warning-text);
 }
 
 .badgeRed {
-  color: #b42318;
+  color: var(--danger-text);
 }
 
 .rowActions {
@@ -186,7 +186,7 @@
   transition: all 0.15s;
 }
 .rowBtn:hover {
-  background: #e5e5ea;
+  background: var(--muted-bg);
 }
 
 .rowBtnEdit {
@@ -200,9 +200,9 @@
 .errorBox {
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255, 59, 48, 0.08);
-  border: 1px solid rgba(255, 59, 48, 0.18);
-  color: #b42318;
+  background: var(--danger-bg-soft);
+  border: 1px solid var(--danger-border-soft);
+  color: var(--danger-text);
   font-weight: 800;
   margin-bottom: 10px;
 }

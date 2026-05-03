@@ -1,75 +1,412 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/Card/Card";
 import { mockSettings } from "../../../shared/mock/mockData";
+import { getAttendancePolicy, updateAttendancePolicy } from "../../../shared/api/settings";
+import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { useTheme } from "../../../shared/theme/theme";
 import styles from "./SettingsPage.module.scss";
 
+function Toggle({
+  checked,
+  onChange,
+  label
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      className={checked ? `${styles.toggle} ${styles.toggleOn}` : styles.toggle}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+    />
+  );
+}
+
 export default function SettingsPage() {
-  const [values, setValues] = useState(() => mockSettings.values);
+  const [company, setCompany] = useState(() => mockSettings.values.company);
+  const [language, setLanguage] = useState<"vi" | "en">("vi");
+  const [dailyEmailReport, setDailyEmailReport] = useState(true);
+  const [twoFactor, setTwoFactor] = useState(true);
+  const { mode, resolvedTheme, setMode } = useTheme();
+
+  const [defaultCamera, setDefaultCamera] = useState<"front" | "back" | "external">("front");
+  const [liveness, setLiveness] = useState(true);
+
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policySaving, setPolicySaving] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+
+  const [timezone, setTimezone] = useState(() => mockSettings.values.timezone);
+  const [faceThresholdPct, setFaceThresholdPct] = useState(95);
+  const [shiftStart, setShiftStart] = useState("09:00");
+  const [shiftEnd, setShiftEnd] = useState("18:00");
+  const [lateGraceMins, setLateGraceMins] = useState(0);
+  const [earlyLeaveGraceMins, setEarlyLeaveGraceMins] = useState(0);
+  const [checkinFrom, setCheckinFrom] = useState("06:00");
+  const [checkinTo, setCheckinTo] = useState("12:00");
+  const [checkoutFrom, setCheckoutFrom] = useState("12:00");
+  const [checkoutTo, setCheckoutTo] = useState("23:00");
+  const [minMinutesBetween, setMinMinutesBetween] = useState(2);
+
+  const [policyLoadedOnce, setPolicyLoadedOnce] = useState(false);
+
+  const [notifLate, setNotifLate] = useState(true);
+  const [notifAbsent, setNotifAbsent] = useState(true);
+  const [notifNewLeave, setNotifNewLeave] = useState(true);
+  const [notifDailyReport, setNotifDailyReport] = useState(false);
+  const [notifOvertime, setNotifOvertime] = useState(true);
+
+  const languageLabel = useMemo(() => (language === "vi" ? "Tiếng Việt" : "English"), [language]);
+  const themeLabel = useMemo(() => {
+    if (mode === "system") return resolvedTheme === "dark" ? "Theo hệ thống (đang tối)" : "Theo hệ thống (đang sáng)";
+    return mode === "dark" ? "Tối" : "Sáng";
+  }, [mode, resolvedTheme]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setPolicyLoading(true);
+        setPolicyError(null);
+        const p = await getAttendancePolicy();
+        setTimezone(p.timezone);
+        setFaceThresholdPct(Math.round((p.face_match_threshold ?? 0.5) * 100));
+        setShiftStart(p.shift_start);
+        setShiftEnd(p.shift_end);
+        setLateGraceMins(p.late_grace_minutes);
+        setEarlyLeaveGraceMins(p.early_leave_grace_minutes);
+        setCheckinFrom(p.checkin_from);
+        setCheckinTo(p.checkin_to);
+        setCheckoutFrom(p.checkout_from);
+        setCheckoutTo(p.checkout_to);
+        setMinMinutesBetween(p.min_minutes_between_same_type);
+        setPolicyLoadedOnce(true);
+      } catch (e) {
+        setPolicyError(getApiErrorMessage(e));
+      } finally {
+        setPolicyLoading(false);
+      }
+    })();
+  }, []);
 
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
-        <Card title="⚙️ Cài đặt hệ thống" sub="Mock data – UI mẫu">
-          <div className={styles.form}>
-            <div className={styles.row}>
-              <div className={styles.label}>Tên công ty</div>
-              <input className={styles.input} value={values.company} onChange={(e) => setValues({ ...values, company: e.target.value })} />
-            </div>
-            <div className={styles.row}>
-              <div className={styles.label}>Múi giờ</div>
-              <select className={styles.input} value={values.timezone} onChange={(e) => setValues({ ...values, timezone: e.target.value })}>
-                {mockSettings.timezones.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.row}>
-              <div className={styles.label}>Ngưỡng tin cậy</div>
-              <input
-                className={styles.input}
-                type="number"
-                step="0.01"
-                value={values.confidence}
-                onChange={(e) => setValues({ ...values, confidence: e.target.value })}
-              />
-            </div>
-            <div className={styles.row}>
-              <div className={styles.label}>Ghi log</div>
-              <label className={styles.switch}>
-                <input
-                  type="checkbox"
-                  checked={values.audit}
-                  onChange={(e) => setValues({ ...values, audit: e.target.checked })}
-                />
-                <span className={styles.slider} />
-              </label>
-            </div>
-
-            <div className={styles.actions}>
-              <button className={styles.btnPrimary} type="button">
-                Lưu
-              </button>
-              <button className={styles.btnGhost} type="button">
-                Khôi phục
-              </button>
-            </div>
-          </div>
-        </Card>
-
-        <Card title="🧪 Trạng thái dịch vụ" sub="Mock status">
-          <div className={styles.statusList}>
-            {mockSettings.services.map((s) => (
-              <div key={s.name} className={styles.statusItem}>
-                <div className={styles.statusName}>{s.name}</div>
-                <div className={s.tone === "ok" ? `${styles.statusTag} ${styles.ok}` : `${styles.statusTag} ${styles.warn}`}>{s.status}</div>
+        <div className={styles.col}>
+          <Card title="⚙️ Cài đặt chung" sub="Tuỳ chỉnh hệ thống">
+            <div className={styles.form}>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Tên công ty</div>
+                <input className={styles.input} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Tên công ty" />
               </div>
-            ))}
-          </div>
-        </Card>
+            </div>
+
+            <div className={styles.divider} />
+
+            <div className={styles.settingsList}>
+              <div className={styles.settingsItem}>
+                <div className={`${styles.settingsIcon} ${styles.iconInfo}`}>
+                  🌍
+                </div>
+                <div className={styles.settingsInfo}>
+                  <div className={styles.settingsLabel}>Ngôn ngữ</div>
+                  <div className={styles.settingsDesc}>{languageLabel}</div>
+                </div>
+                <select className={styles.selectCompact} value={language} onChange={(e) => setLanguage(e.target.value as "vi" | "en")} aria-label="Ngôn ngữ">
+                  <option value="vi">Tiếng Việt</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+
+              <div className={styles.settingsItem}>
+                <div className={`${styles.settingsIcon} ${styles.iconPurple}`}>
+                  🌙
+                </div>
+                <div className={styles.settingsInfo}>
+                  <div className={styles.settingsLabel}>Giao diện</div>
+                  <div className={styles.settingsDesc}>{themeLabel}</div>
+                </div>
+                <select className={styles.selectCompact} value={mode} onChange={(e) => setMode(e.target.value as "system" | "light" | "dark")} aria-label="Giao diện">
+                  <option value="system">Theo hệ thống</option>
+                  <option value="light">Sáng</option>
+                  <option value="dark">Tối</option>
+                </select>
+              </div>
+
+              <div className={styles.settingsItem}>
+                <div className={`${styles.settingsIcon} ${styles.iconSuccess}`}>
+                  📧
+                </div>
+                <div className={styles.settingsInfo}>
+                  <div className={styles.settingsLabel}>Email thông báo</div>
+                  <div className={styles.settingsDesc}>Gửi report hàng ngày</div>
+                </div>
+                <Toggle checked={dailyEmailReport} onChange={setDailyEmailReport} label="Email thông báo" />
+              </div>
+
+              <div className={styles.settingsItem}>
+                <div className={`${styles.settingsIcon} ${styles.iconDanger}`}>
+                  🔐
+                </div>
+                <div className={styles.settingsInfo}>
+                  <div className={styles.settingsLabel}>Bảo mật 2 lớp</div>
+                  <div className={styles.settingsDesc}>Xác thực 2 yếu tố</div>
+                </div>
+                <Toggle checked={twoFactor} onChange={setTwoFactor} label="Bảo mật 2 lớp" />
+              </div>
+            </div>
+          </Card>
+
+          <Card title="📷 Cài đặt nhận diện khuôn mặt" sub="Ngưỡng + camera + chống giả mạo">
+            <div className={styles.form}>
+              <div className={styles.formGroup}>
+                <div className={styles.formLabelInline}>Ngưỡng nhận diện (%)</div>
+                <input
+                  className={styles.range}
+                  type="range"
+                  min={70}
+                  max={99}
+                  value={faceThresholdPct}
+                  onChange={(e) => setFaceThresholdPct(Number(e.target.value))}
+                  aria-label="Ngưỡng nhận diện"
+                />
+                <div className={styles.rangeValue}>{faceThresholdPct}%</div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <div className={styles.formLabelInline}>Camera mặc định</div>
+                <select
+                  className={styles.input}
+                  value={defaultCamera}
+                  onChange={(e) => setDefaultCamera(e.target.value as "front" | "back" | "external")}
+                  aria-label="Camera mặc định"
+                >
+                  <option value="front">Camera trước</option>
+                  <option value="back">Camera sau</option>
+                  <option value="external">Camera ngoài</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroupRow}>
+                <div className={styles.formLabelInline}>Chống giả mạo (liveness detection)</div>
+                <div className={styles.rowRight}>
+                  <Toggle checked={liveness} onChange={setLiveness} label="Chống giả mạo" />
+                  <div className={styles.hintInline}>{liveness ? "Bật" : "Tắt"}</div>
+                </div>
+              </div>
+
+              <div className={styles.actions}>
+                <button
+                  className={styles.btnPrimary}
+                  type="button"
+                  disabled={!policyLoadedOnce || policyLoading || policySaving}
+                  onClick={async () => {
+                    try {
+                      setPolicySaving(true);
+                      setPolicyError(null);
+                      const next = await updateAttendancePolicy({
+                        timezone,
+                        face_match_threshold: faceThresholdPct / 100,
+                        shift_start: shiftStart,
+                        shift_end: shiftEnd,
+                        late_grace_minutes: lateGraceMins,
+                        early_leave_grace_minutes: earlyLeaveGraceMins,
+                        checkin_from: checkinFrom,
+                        checkin_to: checkinTo,
+                        checkout_from: checkoutFrom,
+                        checkout_to: checkoutTo,
+                        min_minutes_between_same_type: minMinutesBetween
+                      });
+                      setTimezone(next.timezone);
+                      setFaceThresholdPct(Math.round(next.face_match_threshold * 100));
+                      setShiftStart(next.shift_start);
+                      setShiftEnd(next.shift_end);
+                      setLateGraceMins(next.late_grace_minutes);
+                      setEarlyLeaveGraceMins(next.early_leave_grace_minutes);
+                      setCheckinFrom(next.checkin_from);
+                      setCheckinTo(next.checkin_to);
+                      setCheckoutFrom(next.checkout_from);
+                      setCheckoutTo(next.checkout_to);
+                      setMinMinutesBetween(next.min_minutes_between_same_type);
+                    } catch (e) {
+                      setPolicyError(getApiErrorMessage(e));
+                    } finally {
+                      setPolicySaving(false);
+                    }
+                  }}
+                >
+                  {policySaving ? "Đang lưu..." : "💾 Lưu cài đặt"}
+                </button>
+                <button className={styles.btnGhost} type="button" disabled={!policyLoadedOnce || policyLoading || policySaving}>
+                  Khôi phục
+                </button>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className={styles.col}>
+          <Card title="⏰ Quy định giờ làm" sub="Áp dụng cho chấm công khuôn mặt + báo cáo">
+            {policyError ? <div className={styles.errorBox}>{policyError}</div> : null}
+            <div className={styles.form}>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Giờ vào chuẩn</div>
+                <input className={styles.input} type="time" value={shiftStart} onChange={(e) => setShiftStart(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Giờ ra chuẩn</div>
+                <input className={styles.input} type="time" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Cho phép đến muộn (phút)</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  value={lateGraceMins}
+                  onChange={(e) => setLateGraceMins(Number(e.target.value))}
+                  disabled={!policyLoadedOnce || policyLoading}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Cho phép về sớm (phút)</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  value={earlyLeaveGraceMins}
+                  onChange={(e) => setEarlyLeaveGraceMins(Number(e.target.value))}
+                  disabled={!policyLoadedOnce || policyLoading}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Múi giờ</div>
+                <select className={styles.input} value={timezone} onChange={(e) => setTimezone(e.target.value)} disabled={!policyLoadedOnce || policyLoading}>
+                  {mockSettings.timezones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.divider} />
+
+              <div className={styles.rangeGrid}>
+                <div className={styles.rangeTitle}>Cửa sổ check-in</div>
+                <div className={styles.rangeInputs}>
+                  <input className={styles.input} type="time" value={checkinFrom} onChange={(e) => setCheckinFrom(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+                  <span className={styles.rangeSep}>→</span>
+                  <input className={styles.input} type="time" value={checkinTo} onChange={(e) => setCheckinTo(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+                </div>
+              </div>
+
+              <div className={styles.rangeGrid}>
+                <div className={styles.rangeTitle}>Cửa sổ check-out</div>
+                <div className={styles.rangeInputs}>
+                  <input className={styles.input} type="time" value={checkoutFrom} onChange={(e) => setCheckoutFrom(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+                  <span className={styles.rangeSep}>→</span>
+                  <input className={styles.input} type="time" value={checkoutTo} onChange={(e) => setCheckoutTo(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Chống spam (phút)</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  value={minMinutesBetween}
+                  onChange={(e) => setMinMinutesBetween(Number(e.target.value))}
+                  disabled={!policyLoadedOnce || policyLoading}
+                />
+              </div>
+
+              <button
+                className={styles.btnPrimaryFull}
+                type="button"
+                disabled={!policyLoadedOnce || policyLoading || policySaving}
+                onClick={async () => {
+                  try {
+                    setPolicySaving(true);
+                    setPolicyError(null);
+                    const next = await updateAttendancePolicy({
+                      timezone,
+                      face_match_threshold: faceThresholdPct / 100,
+                      shift_start: shiftStart,
+                      shift_end: shiftEnd,
+                      late_grace_minutes: lateGraceMins,
+                      early_leave_grace_minutes: earlyLeaveGraceMins,
+                      checkin_from: checkinFrom,
+                      checkin_to: checkinTo,
+                      checkout_from: checkoutFrom,
+                      checkout_to: checkoutTo,
+                      min_minutes_between_same_type: minMinutesBetween
+                    });
+                    setTimezone(next.timezone);
+                    setFaceThresholdPct(Math.round(next.face_match_threshold * 100));
+                    setShiftStart(next.shift_start);
+                    setShiftEnd(next.shift_end);
+                    setLateGraceMins(next.late_grace_minutes);
+                    setEarlyLeaveGraceMins(next.early_leave_grace_minutes);
+                    setCheckinFrom(next.checkin_from);
+                    setCheckinTo(next.checkin_to);
+                    setCheckoutFrom(next.checkout_from);
+                    setCheckoutTo(next.checkout_to);
+                    setMinMinutesBetween(next.min_minutes_between_same_type);
+                  } catch (e) {
+                    setPolicyError(getApiErrorMessage(e));
+                  } finally {
+                    setPolicySaving(false);
+                  }
+                }}
+              >
+                {policySaving ? "Đang lưu..." : "💾 Lưu cài đặt"}
+              </button>
+            </div>
+          </Card>
+
+          <Card title="📱 Thông báo" sub="Bật/tắt các loại cảnh báo">
+            <div className={styles.simpleList}>
+              <div className={styles.simpleRow}>
+                <div className={styles.simpleLabel}>Cảnh báo đi muộn</div>
+                <Toggle checked={notifLate} onChange={setNotifLate} label="Cảnh báo đi muộn" />
+              </div>
+              <div className={styles.simpleRow}>
+                <div className={styles.simpleLabel}>Thông báo vắng mặt</div>
+                <Toggle checked={notifAbsent} onChange={setNotifAbsent} label="Thông báo vắng mặt" />
+              </div>
+              <div className={styles.simpleRow}>
+                <div className={styles.simpleLabel}>Đơn nghỉ phép mới</div>
+                <Toggle checked={notifNewLeave} onChange={setNotifNewLeave} label="Đơn nghỉ phép mới" />
+              </div>
+              <div className={styles.simpleRow}>
+                <div className={styles.simpleLabel}>Báo cáo cuối ngày</div>
+                <Toggle checked={notifDailyReport} onChange={setNotifDailyReport} label="Báo cáo cuối ngày" />
+              </div>
+              <div className={`${styles.simpleRow} ${styles.simpleRowLast}`}>
+                <div className={styles.simpleLabel}>Nhắc nhở tăng ca</div>
+                <Toggle checked={notifOvertime} onChange={setNotifOvertime} label="Nhắc nhở tăng ca" />
+              </div>
+            </div>
+          </Card>
+
+          <Card title="🧪 Trạng thái dịch vụ" sub="Mock status">
+            <div className={styles.statusList}>
+              {mockSettings.services.map((s) => (
+                <div key={s.name} className={styles.statusItem}>
+                  <div className={styles.statusName}>{s.name}</div>
+                  <div className={s.tone === "ok" ? `${styles.statusTag} ${styles.ok}` : `${styles.statusTag} ${styles.warn}`}>{s.status}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
-

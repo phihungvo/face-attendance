@@ -12,6 +12,9 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Auth fields (IAM). Nullable so employee records don't necessarily have login access.
+    username: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     code: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
@@ -23,3 +26,6 @@ class User(Base):
     department = relationship("Department", back_populates="users")
     face_embeddings = relationship("FaceEmbedding", back_populates="user", cascade="all, delete-orphan")
     attendance_logs = relationship("AttendanceLog", back_populates="user", cascade="all, delete-orphan")
+
+    roles = relationship("Role", secondary="user_roles", back_populates="users")
+    permissions = relationship("Permission", secondary="user_permissions", back_populates="users")

@@ -6,6 +6,8 @@
   --danger: #ff3b30;
   --warning: #ff9f0a;
   --purple: #bf5af2;
+
+  /* Semantic surfaces (light theme defaults) */
   --bg: #f2f2f7;
   --surface: #ffffff;
   --surface2: #f9f9fb;
@@ -15,6 +17,36 @@
   --text2: #3c3c43;
   --text3: #8e8e93;
   --text4: #c7c7cc;
+
+  /* UI states */
+  --hover: rgba(0, 0, 0, 0.06);
+  --focus-ring: rgba(10, 132, 255, 0.35);
+
+  /* Tones (subtle backgrounds) */
+  --info-bg: #e8f4ff;
+  --info-border: rgba(10, 132, 255, 0.22);
+  --info-text: #0050aa;
+
+  --success-bg: #e9fbef;
+  --success-border: rgba(48, 209, 88, 0.35);
+  --success-text: #1a7f37;
+
+  --warning-bg: #fff3e0;
+  --warning-border: rgba(255, 159, 10, 0.25);
+  --warning-text: #a85a00;
+
+  --danger-bg: #ffe9e9;
+  --danger-border: rgba(255, 59, 48, 0.25);
+  --danger-text: #b42318;
+  --danger-bg-soft: rgba(255, 59, 48, 0.08);
+  --danger-border-soft: rgba(255, 59, 48, 0.18);
+
+  --purple-bg: #f5eaff;
+
+  --muted-bg: #e5e5ea;
+  --table-head-bg: #f3f7ff;
+  --table-row-bg: #fafafe;
+
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
@@ -25,6 +57,55 @@
   --header-h: 64px;
   --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b0d10;
+  --surface: #14161a;
+  --surface2: #101217;
+  --border: rgba(255, 255, 255, 0.09);
+  --border2: rgba(255, 255, 255, 0.14);
+  --text: #f2f2f7;
+  --text2: rgba(235, 235, 245, 0.82);
+  --text3: rgba(235, 235, 245, 0.6);
+  --text4: rgba(235, 235, 245, 0.35);
+
+  --hover: rgba(255, 255, 255, 0.08);
+  --focus-ring: rgba(10, 132, 255, 0.55);
+
+  --info-bg: rgba(10, 132, 255, 0.18);
+  --info-border: rgba(10, 132, 255, 0.28);
+  --info-text: #7fb7ff;
+
+  --success-bg: rgba(48, 209, 88, 0.16);
+  --success-border: rgba(48, 209, 88, 0.28);
+  --success-text: #7ee2a8;
+
+  --warning-bg: rgba(255, 159, 10, 0.16);
+  --warning-border: rgba(255, 159, 10, 0.26);
+  --warning-text: #ffd59a;
+
+  --danger-bg: rgba(255, 59, 48, 0.16);
+  --danger-border: rgba(255, 59, 48, 0.28);
+  --danger-text: #ffb4ad;
+  --danger-bg-soft: rgba(255, 59, 48, 0.18);
+  --danger-border-soft: rgba(255, 59, 48, 0.28);
+
+  --purple-bg: rgba(191, 90, 242, 0.18);
+
+  --muted-bg: rgba(235, 235, 245, 0.14);
+  --table-head-bg: rgba(10, 132, 255, 0.12);
+  --table-row-bg: rgba(235, 235, 245, 0.06);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55);
+  --shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.65);
 }
 
 * {
@@ -48,4 +129,3 @@ body {
 a {
   color: inherit;
 }
-

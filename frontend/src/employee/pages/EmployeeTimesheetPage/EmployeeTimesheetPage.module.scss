@@ -1,0 +1,112 @@
+.page {
+  background: var(--paper);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.topBar {
+  background: var(--surface);
+  padding: 54px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 900;
+  margin-bottom: 12px;
+}
+
+.monthRow {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.monthTab {
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+
+.monthTabActive {
+  border-color: var(--indigo);
+  background: var(--indigo-light);
+  color: var(--indigo);
+}
+
+.content {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.histRow {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 14px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--border);
+}
+
+.dateBox {
+  width: 54px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dateDay {
+  font-size: 13px;
+  font-weight: 900;
+}
+.dateDow {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink3);
+}
+
+.main {
+  flex: 1;
+}
+.mainTitle {
+  font-size: 14px;
+  font-weight: 800;
+}
+.mainSub {
+  font-size: 12.5px;
+  color: var(--ink3);
+  margin-top: 3px;
+  font-family: "Nunito Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.right {
+  text-align: right;
+}
+.hours {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--indigo);
+}
+.ot {
+  font-size: 11px;
+  color: var(--ink3);
+  margin-top: 3px;
+}

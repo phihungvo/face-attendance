@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { formatDateVi } from "../../../shared/lib/date";
 import { useClock } from "../../../shared/hooks/useClock";
+import { useTheme } from "../../../shared/theme/theme";
 import styles from "./Topbar.module.scss";
 import { pageMetaByPath } from "./pageMeta";
 
@@ -10,6 +11,7 @@ export default function Topbar() {
   const meta = pageMetaByPath[pathname] ?? { title: "FaceTime HR", sub: "Hệ thống chấm công" };
   const { now } = useClock(1000);
   const [query, setQuery] = useState("");
+  const { resolvedTheme, toggle } = useTheme();
 
   const todayLabel = useMemo(() => formatDateVi(now), [now]);
 
@@ -34,6 +36,9 @@ export default function Topbar() {
         <button className={styles.iconBtn} type="button" title="Trợ giúp">
           ❓
         </button>
+        <button className={styles.iconBtn} type="button" title="Đổi giao diện" onClick={toggle} aria-label="Đổi giao diện">
+          {resolvedTheme === "dark" ? "🌙" : "☀️"}
+        </button>
 
         {meta.actionLabel ? (
           <Link className={`${styles.btn} ${styles.btnPrimary}`} to={meta.actionTo ?? pathname}>
@@ -44,4 +49,3 @@ export default function Topbar() {
     </header>
   );
 }
-

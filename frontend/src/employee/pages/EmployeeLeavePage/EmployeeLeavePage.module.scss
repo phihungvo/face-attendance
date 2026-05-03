@@ -1,0 +1,157 @@
+.page {
+  background: var(--paper);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.screenHeader {
+  background: var(--surface);
+  padding: 54px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.backBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.screenHeaderTitle {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.leaveForm {
+  padding: 20px;
+}
+
+.leaveTypeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.leaveTypeCard {
+  padding: 16px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  font: inherit;
+}
+
+.leaveTypeCardSelected {
+  border-color: var(--indigo);
+  background: var(--indigo-light);
+}
+
+.leaveTypeIcon {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+.leaveTypeName {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.leaveTypeDays {
+  font-size: 11px;
+  color: var(--ink3);
+  margin-top: 2px;
+}
+
+.formLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink2);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  padding: 13px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  margin-bottom: 16px;
+}
+
+.dateRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.formTextarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  resize: vertical;
+  min-height: 90px;
+  margin-bottom: 20px;
+}
+
+.infoBox {
+  background: var(--indigo-light);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--indigo);
+  font-family: "Nunito Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 13px;
+}
+
+.btnSubmit {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--indigo), var(--indigo-mid));
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(91, 79, 232, 0.35);
+}
+
+.okToast {
+  margin: 0 20px;
+  margin-top: 12px;
+  background: var(--green-light);
+  border: 1.5px solid rgba(52, 200, 119, 0.25);
+  color: #1a9e5a;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 800;
+  font-size: 13px;
+}

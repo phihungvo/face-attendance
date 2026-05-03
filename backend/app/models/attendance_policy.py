@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -14,8 +14,14 @@ class AttendancePolicy(Base):
     # singleton row (id=1)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False, default=1)
 
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Ho_Chi_Minh")
+
+    face_match_threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+
     shift_start: Mapped[str] = mapped_column(String(5), nullable=False, default="09:00")  # HH:MM
+    shift_end: Mapped[str] = mapped_column(String(5), nullable=False, default="18:00")  # HH:MM
     late_grace_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    early_leave_grace_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     checkin_from: Mapped[str] = mapped_column(String(5), nullable=False, default="06:00")
     checkin_to: Mapped[str] = mapped_column(String(5), nullable=False, default="12:00")
@@ -31,4 +37,3 @@ class AttendancePolicy(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-

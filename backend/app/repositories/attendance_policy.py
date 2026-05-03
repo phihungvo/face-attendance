@@ -16,8 +16,12 @@ class AttendancePolicyRepository:
 
         policy = AttendancePolicy(
             id=self.SINGLETON_ID,
+            timezone=getattr(settings, "ATTENDANCE_TIMEZONE", "Asia/Ho_Chi_Minh"),
+            face_match_threshold=float(getattr(settings, "FACE_MATCH_THRESHOLD", 0.5)),
             shift_start=settings.SHIFT_START,
+            shift_end=getattr(settings, "SHIFT_END", "18:00"),
             late_grace_minutes=int(settings.LATE_GRACE_MINUTES),
+            early_leave_grace_minutes=int(getattr(settings, "EARLY_LEAVE_GRACE_MINUTES", 0)),
         )
         db.add(policy)
         db.flush()
@@ -31,4 +35,3 @@ class AttendancePolicyRepository:
         db.add(policy)
         db.flush()
         return policy
-

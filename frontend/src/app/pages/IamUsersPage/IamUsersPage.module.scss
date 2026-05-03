@@ -1,0 +1,180 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.denied {
+  padding: 18px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-radius: 14px;
+  font-weight: 900;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--text3);
+  font-weight: 800;
+}
+
+.good,
+.bad {
+  font-size: 11px;
+  font-weight: 1000;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+}
+
+.good {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.bad {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btnGhost,
+.btnPrimary,
+.btnDanger {
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-weight: 1000;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.btnGhost:hover {
+  background: var(--muted-bg);
+}
+
+.btnPrimary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.btnPrimary:hover {
+  background: var(--primary-dark);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btnDanger {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-color: var(--danger-border);
+}
+
+.btnDanger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.rolesCell {
+  color: var(--text2);
+  font-weight: 700;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 1000;
+  color: var(--text3);
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
+.blockTitle {
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  padding: 6px 10px;
+  font-weight: 1000;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.pill:hover {
+  background: var(--muted-bg);
+}
+
+.pillOn {
+  border-color: var(--info-border);
+  background: var(--info-bg);
+  color: var(--primary);
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+  color: var(--text2);
+}
+

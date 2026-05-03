@@ -21,7 +21,10 @@ class Settings(BaseSettings):
 
     # Attendance rules
     SHIFT_START: str = "09:00"  # HH:MM
+    SHIFT_END: str = "18:00"  # HH:MM
     LATE_GRACE_MINUTES: int = 0
+    EARLY_LEAVE_GRACE_MINUTES: int = 0
+    ATTENDANCE_TIMEZONE: str = "Asia/Ho_Chi_Minh"
 
     # JWT Auth
     JWT_SECRET: str = "change_me"
