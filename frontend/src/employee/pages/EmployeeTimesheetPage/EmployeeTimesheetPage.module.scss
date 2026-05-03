@@ -7,14 +7,24 @@
 
 .topBar {
   background: var(--surface);
-  padding: 54px 20px 16px;
+  padding: 20px 20px 16px;
   border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 900px) {
+  .topBar {
+    padding: 22px 24px 16px;
+  }
+
+  .content {
+    padding: 18px 24px;
+  }
 }
 
 .title {
   font-size: 20px;
   font-weight: 900;
-  margin-bottom: 12px;
+  margin: 15px 0;
 }
 
 .monthRow {
@@ -47,6 +57,28 @@
   padding: 16px 20px;
   overflow-y: auto;
   flex: 1;
+  padding-bottom: var(--bottom-safe);
+  scroll-padding-bottom: var(--bottom-safe);
+}
+
+.errorBox {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--rose-light);
+  border: 1.5px solid var(--rose);
+  color: var(--ink);
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.loading {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  color: var(--ink2);
+  font-weight: 800;
+  margin-bottom: 10px;
 }
 
 .histRow {

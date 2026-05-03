@@ -4,6 +4,7 @@ import AppLayout from "./layout/AppLayout/AppLayout";
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import DashboardPage from "./pages/DashboardPage/DashboardPage";
 import LoginPage from "./pages/LoginPage/LoginPage";
+import ActivatePage from "./pages/ActivatePage/ActivatePage";
 import TimesheetPage from "./pages/TimesheetPage/TimesheetPage";
 import EmployeesPage from "./pages/EmployeesPage/EmployeesPage";
 import DepartmentsPage from "./pages/DepartmentsPage/DepartmentsPage";
@@ -144,7 +145,10 @@ function PrivateRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <PrivateRoutes />
+      <Routes>
+        <Route path="/activate" element={<ActivatePage />} />
+        <Route path="/*" element={<PrivateRoutes />} />
+      </Routes>
     </AuthProvider>
   );
 }

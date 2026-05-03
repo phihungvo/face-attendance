@@ -11,6 +11,12 @@
   text-align: center;
 }
 
+@media (min-width: 900px) {
+  .profileHeader {
+    padding: 32px 24px 86px;
+  }
+}
+
 .profileAvatar {
   width: 92px;
   height: 92px;
@@ -140,4 +146,94 @@
 
 .clickable {
   cursor: pointer;
+}
+
+.faceCard {
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--border);
+  padding: 14px;
+}
+
+.faceCamera {
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  height: 220px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.facePlaceholder {
+  color: var(--ink3);
+  font-weight: 900;
+}
+
+.faceVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.faceWarn,
+.faceErr,
+.faceInfo {
+  margin-top: 10px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+}
+
+.faceWarn {
+  border-left: 3px solid var(--amber);
+}
+
+.faceErr {
+  border-left: 3px solid var(--rose);
+}
+
+.faceInfo {
+  border-left: 3px solid var(--indigo);
+}
+
+.faceActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.faceBtnPrimary {
+  border: none;
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 13px;
+  background: linear-gradient(145deg, #5b4fe8, #7b6ff0);
+  color: #fff;
+}
+
+.faceBtnGhost {
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.faceHint {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink3);
 }

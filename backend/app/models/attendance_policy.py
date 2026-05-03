@@ -23,6 +23,13 @@ class AttendancePolicy(Base):
     late_grace_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     early_leave_grace_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    break_start: Mapped[str] = mapped_column(String(5), nullable=False, default="12:00")  # HH:MM
+    break_end: Mapped[str] = mapped_column(String(5), nullable=False, default="13:00")  # HH:MM
+    break_duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    break_threshold_hours: Mapped[float] = mapped_column(Float, nullable=False, default=6.0)
+
+    auto_checkout_time: Mapped[str] = mapped_column(String(5), nullable=False, default="23:59")  # HH:MM
+
     checkin_from: Mapped[str] = mapped_column(String(5), nullable=False, default="06:00")
     checkin_to: Mapped[str] = mapped_column(String(5), nullable=False, default="12:00")
 

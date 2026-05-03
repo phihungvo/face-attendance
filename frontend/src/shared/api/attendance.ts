@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from "../lib/apiClient";
 
 export type CheckResult = { user_name: string; confidence: number; time: string };
+export type ScanResult = { user_name: string; confidence: number; time: string; action: "checkin" | "checkout" };
 export type AttendanceLog = {
   id: number;
   user_id: number;
@@ -47,6 +48,36 @@ export async function checkOutFromImage(blob: Blob) {
   });
   if (!res.data.result) throw new Error("Check-out thất bại");
   return res.data.result;
+}
+
+export async function scanAttendanceFromImage(blob: Blob) {
+  const form = new FormData();
+  form.append("image", fileFromBlob(blob, "scan.jpg"));
+  const res = await api.post<ApiResponse<ScanResult>>("/attendance/scan", form, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  if (!res.data.result) throw new Error("Quét chấm công thất bại");
+  return res.data.result;
+}
+
+export async function scanMyAttendanceFromImage(blob: Blob) {
+  const form = new FormData();
+  form.append("image", fileFromBlob(blob, "scan.jpg"));
+  const res = await api.post<ApiResponse<ScanResult>>("/attendance/me/scan", form, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  if (!res.data.result) throw new Error("Quét chấm công thất bại");
+  return res.data.result;
+}
+
+export async function listMyAttendanceLogs(params?: { limit?: number; offset?: number }) {
+  const res = await api.get<ApiResponse<AttendanceLog[]>>("/attendance/me/logs", { params });
+  return res.data.result ?? [];
+}
+
+export async function listMyTimelog(params: { from_date: string; to_date: string }) {
+  const res = await api.get<ApiResponse<TimelogRow[]>>("/attendance/me/timelog", { params });
+  return res.data.result ?? [];
 }
 
 export async function listAttendanceLogs() {

@@ -47,6 +47,11 @@ export default function SettingsPage() {
   const [shiftEnd, setShiftEnd] = useState("18:00");
   const [lateGraceMins, setLateGraceMins] = useState(0);
   const [earlyLeaveGraceMins, setEarlyLeaveGraceMins] = useState(0);
+  const [breakStart, setBreakStart] = useState("12:00");
+  const [breakEnd, setBreakEnd] = useState("13:00");
+  const [breakDurationMinutes, setBreakDurationMinutes] = useState(60);
+  const [breakThresholdHours, setBreakThresholdHours] = useState(6);
+  const [autoCheckoutTime, setAutoCheckoutTime] = useState("23:59");
   const [checkinFrom, setCheckinFrom] = useState("06:00");
   const [checkinTo, setCheckinTo] = useState("12:00");
   const [checkoutFrom, setCheckoutFrom] = useState("12:00");
@@ -79,6 +84,11 @@ export default function SettingsPage() {
         setShiftEnd(p.shift_end);
         setLateGraceMins(p.late_grace_minutes);
         setEarlyLeaveGraceMins(p.early_leave_grace_minutes);
+        setBreakStart(p.break_start ?? "12:00");
+        setBreakEnd(p.break_end ?? "13:00");
+        setBreakDurationMinutes(Number(p.break_duration_minutes ?? 60));
+        setBreakThresholdHours(Number(p.break_threshold_hours ?? 6));
+        setAutoCheckoutTime(p.auto_checkout_time ?? "23:59");
         setCheckinFrom(p.checkin_from);
         setCheckinTo(p.checkin_to);
         setCheckoutFrom(p.checkout_from);
@@ -215,6 +225,11 @@ export default function SettingsPage() {
                         shift_end: shiftEnd,
                         late_grace_minutes: lateGraceMins,
                         early_leave_grace_minutes: earlyLeaveGraceMins,
+                        break_start: breakStart,
+                        break_end: breakEnd,
+                        break_duration_minutes: breakDurationMinutes,
+                        break_threshold_hours: breakThresholdHours,
+                        auto_checkout_time: autoCheckoutTime,
                         checkin_from: checkinFrom,
                         checkin_to: checkinTo,
                         checkout_from: checkoutFrom,
@@ -227,6 +242,11 @@ export default function SettingsPage() {
                       setShiftEnd(next.shift_end);
                       setLateGraceMins(next.late_grace_minutes);
                       setEarlyLeaveGraceMins(next.early_leave_grace_minutes);
+                      setBreakStart(next.break_start ?? breakStart);
+                      setBreakEnd(next.break_end ?? breakEnd);
+                      setBreakDurationMinutes(Number(next.break_duration_minutes ?? breakDurationMinutes));
+                      setBreakThresholdHours(Number(next.break_threshold_hours ?? breakThresholdHours));
+                      setAutoCheckoutTime(next.auto_checkout_time ?? autoCheckoutTime);
                       setCheckinFrom(next.checkin_from);
                       setCheckinTo(next.checkin_to);
                       setCheckoutFrom(next.checkout_from);
@@ -282,6 +302,43 @@ export default function SettingsPage() {
                   onChange={(e) => setEarlyLeaveGraceMins(Number(e.target.value))}
                   disabled={!policyLoadedOnce || policyLoading}
                 />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Giờ nghỉ trưa</div>
+                <div className={styles.rangeInputs}>
+                  <input className={styles.input} type="time" value={breakStart} onChange={(e) => setBreakStart(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+                  <span className={styles.rangeSep}>→</span>
+                  <input className={styles.input} type="time" value={breakEnd} onChange={(e) => setBreakEnd(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
+                </div>
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Trừ nghỉ tối đa (phút)</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={240}
+                  value={breakDurationMinutes}
+                  onChange={(e) => setBreakDurationMinutes(Number(e.target.value))}
+                  disabled={!policyLoadedOnce || policyLoading}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Ngưỡng trừ nghỉ (giờ)</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={24}
+                  step={0.5}
+                  value={breakThresholdHours}
+                  onChange={(e) => setBreakThresholdHours(Number(e.target.value))}
+                  disabled={!policyLoadedOnce || policyLoading}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Auto check-out</div>
+                <input className={styles.input} type="time" value={autoCheckoutTime} onChange={(e) => setAutoCheckoutTime(e.target.value)} disabled={!policyLoadedOnce || policyLoading} />
               </div>
               <div className={styles.formRow}>
                 <div className={styles.formLabel}>Múi giờ</div>
@@ -341,6 +398,11 @@ export default function SettingsPage() {
                       shift_end: shiftEnd,
                       late_grace_minutes: lateGraceMins,
                       early_leave_grace_minutes: earlyLeaveGraceMins,
+                      break_start: breakStart,
+                      break_end: breakEnd,
+                      break_duration_minutes: breakDurationMinutes,
+                      break_threshold_hours: breakThresholdHours,
+                      auto_checkout_time: autoCheckoutTime,
                       checkin_from: checkinFrom,
                       checkin_to: checkinTo,
                       checkout_from: checkoutFrom,
@@ -353,6 +415,11 @@ export default function SettingsPage() {
                     setShiftEnd(next.shift_end);
                     setLateGraceMins(next.late_grace_minutes);
                     setEarlyLeaveGraceMins(next.early_leave_grace_minutes);
+                    setBreakStart(next.break_start ?? breakStart);
+                    setBreakEnd(next.break_end ?? breakEnd);
+                    setBreakDurationMinutes(Number(next.break_duration_minutes ?? breakDurationMinutes));
+                    setBreakThresholdHours(Number(next.break_threshold_hours ?? breakThresholdHours));
+                    setAutoCheckoutTime(next.auto_checkout_time ?? autoCheckoutTime);
                     setCheckinFrom(next.checkin_from);
                     setCheckinTo(next.checkin_to);
                     setCheckoutFrom(next.checkout_from);

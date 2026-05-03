@@ -9,7 +9,7 @@ export default function DashboardPage() {
     <div className={styles.page}>
       <div className={styles.statsGrid}>
         {mockDashboard.stats.map((s) => (
-          <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} delta={s.delta} />
+          <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} delta={s.delta} variant={s.variant} />
         ))}
       </div>
 
@@ -110,4 +110,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

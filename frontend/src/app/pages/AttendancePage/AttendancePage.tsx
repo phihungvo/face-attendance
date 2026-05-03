@@ -3,19 +3,16 @@ import Card from "../../components/Card/Card";
 import Table from "../../components/Table/Table";
 import { useClock } from "../../../shared/hooks/useClock";
 import { formatDateTimeVi } from "../../../shared/lib/date";
-import { checkInFromImage, checkOutFromImage, listAttendanceLogs, type AttendanceLog } from "../../../shared/api/attendance";
+import { listAttendanceLogs, scanAttendanceFromImage, type AttendanceLog } from "../../../shared/api/attendance";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import styles from "./AttendancePage.module.scss";
 
-type Mode = "in" | "out" | "break";
-
 export default function AttendancePage() {
   const { now } = useClock(1000);
-  const [mode, setMode] = useState<Mode>("in");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ user: string; confidence: number; time: string } | null>(null);
+  const [result, setResult] = useState<{ user: string; confidence: number; time: string; action: "checkin" | "checkout" } | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const cam = useCamera();
   const liveClock = useMemo(() => now.toLocaleTimeString("vi-VN"), [now]);
@@ -78,43 +75,28 @@ export default function AttendancePage() {
             <div className={styles.dateStr}>{liveDate}</div>
           </div>
 
-          <div className={styles.modeTabs}>
-            <button className={mode === "in" ? `${styles.modeTab} ${styles.active}` : styles.modeTab} type="button" onClick={() => setMode("in")}>
-              🟢 Vào ca
-            </button>
-            <button className={mode === "out" ? `${styles.modeTab} ${styles.active}` : styles.modeTab} type="button" onClick={() => setMode("out")}>
-              🔴 Ra ca
-            </button>
-            <button
-              className={mode === "break" ? `${styles.modeTab} ${styles.active}` : styles.modeTab}
-              type="button"
-              onClick={() => setMode("break")}
-            >
-              ⏸ Nghỉ giải lao
-            </button>
-          </div>
-
           {cam.state.error ? <div className={styles.warningBox}>{cam.state.error}</div> : null}
           {error ? <div className={styles.errorBox}>{error}</div> : null}
           {result ? (
             <div className={styles.infoBox}>
-              ✅ <b>{result.user}</b> • {mode === "out" ? "Checkout" : "Checkin"} • conf={result.confidence.toFixed(3)} • {new Date(result.time).toLocaleString("vi-VN")}
+              ✅ <b>{result.user}</b> • {result.action === "checkout" ? "Checkout" : "Checkin"} • conf={result.confidence.toFixed(3)} •{" "}
+              {new Date(result.time).toLocaleString("vi-VN")}
             </div>
           ) : (
-            <div className={styles.infoBox}>Bật camera → chọn mode → bấm “Quét” để nhận diện.</div>
+            <div className={styles.infoBox}>Bật camera → đứng trước camera → bấm “Quét” để hệ thống tự check-in/check-out.</div>
           )}
 
           <button
             className={`${styles.btn} ${styles.btnPrimary}`}
             type="button"
-            disabled={!cam.state.ready || busy || mode === "break"}
+            disabled={!cam.state.ready || busy}
             onClick={async () => {
               try {
                 setBusy(true);
                 setError(null);
                 const blob = await cam.capture({ quality: 0.9, type: "image/jpeg" });
-                const res = mode === "out" ? await checkOutFromImage(blob) : await checkInFromImage(blob);
-                setResult({ user: res.user_name, confidence: res.confidence, time: res.time });
+                const res = await scanAttendanceFromImage(blob);
+                setResult({ user: res.user_name, confidence: res.confidence, time: res.time, action: res.action });
                 await refreshLogs();
               } catch (e) {
                 setError(getApiErrorMessage(e));
@@ -123,7 +105,7 @@ export default function AttendancePage() {
               }
             }}
           >
-            {busy ? "Đang quét..." : mode === "out" ? "🔴 Quét ra ca" : "🟢 Quét vào ca"}
+            {busy ? "Đang quét..." : "📷 Quét chấm công"}
           </button>
         </div>
       </div>

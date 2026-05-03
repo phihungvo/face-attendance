@@ -177,92 +177,109 @@ export default function TimesheetPage() {
 
       <Card title="📄 Bảng chấm công" sub={`${rows.length} bản ghi`}>
         {error ? <div className={styles.errorBox}>{error}</div> : null}
-        <Table>
-          <thead>
-            <tr>
-              <th>Mã NV</th>
-              <th>Nhân viên</th>
-              <th>Phòng ban</th>
-              <th>Ngày</th>
-              <th>Giờ vào</th>
-              <th>Giờ ra</th>
-              <th>Giờ làm</th>
-              <th>Tăng ca</th>
-              <th>Trạng thái</th>
-              <th>Phương thức</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const statusKey = r.absent ? "absent" : r.late ? "late" : "on-time";
-              const statusLabel = r.absent ? "✗ Vắng mặt" : r.late ? "⚠ Muộn" : "✓ Đúng giờ";
-              const initials = r.user_name
-                .split(" ")
-                .filter(Boolean)
-                .slice(-2)
-                .map((x) => x[0])
-                .join("")
-                .toUpperCase();
-              return (
-                <tr key={`${r.user_id}-${r.date}`}>
-                  <td className={styles.mono}>{r.user_code || `#${r.user_id}`}</td>
-                  <td className={styles.empCell}>
-                    <span className={styles.empAvatar}>{initials || "??"}</span>
-                    <span className={styles.empName}>{r.user_name}</span>
-                  </td>
-                  <td>{r.department_name || "—"}</td>
-                  <td className={styles.mono}>{r.date}</td>
-                  <td className={styles.good}>{toHm(r.checkin_time) || "—"}</td>
-                  <td className={styles.bad}>{toHm(r.checkout_time) || "—"}</td>
-                  <td>{Number.isFinite(r.work_hours) ? r.work_hours.toFixed(2) : "0.00"}</td>
-                  <td className={styles.warn}>0.0</td>
-                  <td>
-                    <span className={`${styles.badge} ${statusKey === "on-time" ? styles.badgeGreen : statusKey === "late" ? styles.badgeOrange : styles.badgeRed}`}>
-                      {statusLabel}
-                    </span>
-                  </td>
-                  <td className={styles.note}>{r.method || "—"}</td>
-                  <td>
-                    <div className={styles.rowActions}>
-                      <button
-                        className={`${styles.rowBtn} ${styles.rowBtnEdit}`}
-                        type="button"
-                        onClick={() => {
-                          setEditing(r);
-                          setEditCheckin(toHm(r.checkin_time));
-                          setEditCheckout(toHm(r.checkout_time));
-                          setEditOpen(true);
-                        }}
+        <div className={styles.timelogTable}>
+          <Table>
+            <thead>
+              <tr>
+                <th>Mã NV</th>
+                <th>Nhân viên</th>
+                {/* <th>Tên nhân viên</th> */}
+                <th>Phòng ban</th>
+                <th>Ngày</th>
+                <th>Giờ vào</th>
+                <th>Giờ ra</th>
+                <th>Giờ làm</th>
+                <th>Tăng ca</th>
+                <th>Trạng thái</th>
+                <th>Phương thức</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const statusKey = r.absent ? "absent" : r.late ? "late" : "on-time";
+                const statusLabel = r.absent ? "✗ Vắng mặt" : r.late ? "⚠ Đi muộn" : "✓ Đúng giờ";
+                const initials = r.user_name
+                  .split(" ")
+                  .filter(Boolean)
+                  .slice(-2)
+                  .map((x) => x[0])
+                  .join("")
+                  .toUpperCase();
+
+                const checkinHm = toHm(r.checkin_time);
+                const checkoutHm = toHm(r.checkout_time);
+                const workMin = Number.isFinite(r.work_hours) ? Math.max(0, Math.round((r.work_hours ?? 0) * 60)) : 0;
+                const workLabel = `${Math.floor(workMin / 60)}h ${String(workMin % 60).padStart(2, "0")}m`;
+                const otMin = 0;
+                const otLabel = `${Math.floor(otMin / 60)}h ${String(otMin % 60).padStart(2, "0")}m`;
+
+                return (
+                  <tr key={`${r.user_id}-${r.date}`}>
+                    <td className={`${styles.mono} ${styles.colCode}`}>{r.user_code || `#${r.user_id}`}</td>
+                    <td className={styles.colName}>
+                      <span className={styles.empCell}>
+                        <span className={styles.empAvatar}>{initials || "??"}</span>
+                        <span className={styles.empName}>{r.user_name}</span>
+                      </span>
+                    </td>
+                    <td>{r.department_name || "—"}</td>
+                    <td className={styles.mono}>{r.date}</td>
+                    <td className={styles.timeIn}>{checkinHm || "—"}</td>
+                    <td className={styles.timeOut}>{checkoutHm || "—"}</td>
+                    <td className={styles.timeWork}>{workLabel}</td>
+                    <td className={styles.timeOt}>{otLabel}</td>
+                    <td>
+                      <span
+                        className={`${styles.badge} ${
+                          statusKey === "on-time" ? styles.badgeGreen : statusKey === "late" ? styles.badgeOrange : styles.badgeRed
+                        }`}
                       >
-                        ✏️
-                      </button>
-                      <button
-                        className={`${styles.rowBtn} ${styles.rowBtnDel}`}
-                        type="button"
-                        onClick={async () => {
-                          if (!window.confirm(`Xoá giờ công ngày ${r.date} của ${r.user_name}?`)) return;
-                          try {
-                            setBusy(true);
-                            setError(null);
-                            await deleteTimelogDay({ user_id: r.user_id, day: r.date });
-                            setRows((prev) => prev.filter((x) => !(x.user_id === r.user_id && x.date === r.date)));
-                          } catch (e) {
-                            setError(getApiErrorMessage(e));
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
+                        {statusLabel}
+                      </span>
+                    </td>
+                    <td className={styles.note}>{r.method || "—"}</td>
+                    <td className={styles.colActions}>
+                      <div className={styles.rowActions}>
+                        <button
+                          className={`${styles.rowBtn} ${styles.rowBtnEdit}`}
+                          type="button"
+                          onClick={() => {
+                            setEditing(r);
+                            setEditCheckin(toHm(r.checkin_time));
+                            setEditCheckout(toHm(r.checkout_time));
+                            setEditOpen(true);
+                          }}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className={`${styles.rowBtn} ${styles.rowBtnDel}`}
+                          type="button"
+                          onClick={async () => {
+                            if (!window.confirm(`Xoá giờ công ngày ${r.date} của ${r.user_name}?`)) return;
+                            try {
+                              setBusy(true);
+                              setError(null);
+                              await deleteTimelogDay({ user_id: r.user_id, day: r.date });
+                              setRows((prev) => prev.filter((x) => !(x.user_id === r.user_id && x.date === r.date)));
+                            } catch (e) {
+                              setError(getApiErrorMessage(e));
+                            } finally {
+                              setBusy(false);
+                            }
+                          }}
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
       </Card>
 
       <Modal
@@ -325,4 +342,3 @@ export default function TimesheetPage() {
     </div>
   );
 }
-

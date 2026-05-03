@@ -171,24 +171,6 @@
   font-weight: 700;
 }
 
-.modeTabs {
-  display: flex;
-  gap: 8px;
-  margin: 12px 0 12px;
-}
-
-.modeTab {
-  flex: 1;
-  padding: 9px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border2);
-  background: var(--bg);
-  color: var(--text2);
-  cursor: pointer;
-  font-weight: 800;
-  font-size: 12.5px;
-}
-
 .active {
   color: var(--primary);
   border-color: var(--info-border);

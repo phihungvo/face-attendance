@@ -7,6 +7,11 @@ export type AttendancePolicy = {
   shift_end: string; // HH:MM
   late_grace_minutes: number;
   early_leave_grace_minutes: number;
+  break_start: string; // HH:MM
+  break_end: string; // HH:MM
+  break_duration_minutes: number;
+  break_threshold_hours: number;
+  auto_checkout_time: string; // HH:MM
   checkin_from: string; // HH:MM
   checkin_to: string; // HH:MM
   checkout_from: string; // HH:MM

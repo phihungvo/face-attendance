@@ -28,6 +28,13 @@ class CheckOutResponse(BaseModel):
     time: datetime
 
 
+class ScanResponse(BaseModel):
+    user_name: str
+    confidence: float
+    time: datetime
+    action: str  # "checkin" | "checkout"
+
+
 class DailyAttendanceRow(BaseModel):
     user_id: int
     user_name: str
@@ -60,6 +67,12 @@ class TimelogRow(BaseModel):
     work_hours: float
     late: bool
     absent: bool
+    break_minutes: int | None = None
+    working_minutes: int | None = None
+    late_minutes: int | None = None
+    early_leave_minutes: int | None = None
+    overtime_minutes: int | None = None
+    auto_checkout_applied: bool | None = None
     method: str = "Face"
 
 

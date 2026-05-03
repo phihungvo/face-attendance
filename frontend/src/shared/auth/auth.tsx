@@ -8,8 +8,9 @@ type AuthContextValue = {
   roleKeys: string[];
   permissionKeys: string[];
   meLoading: boolean;
-  login(username: string, password: string): Promise<void>;
+  login(identifier: string, password: string): Promise<void>;
   register(username: string, password: string, role: "employee" | "manager"): Promise<void>;
+  acceptInvite(token: string, password: string): Promise<void>;
   refreshMe(): Promise<void>;
   logout(): void;
 };
@@ -59,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       roleKeys,
       permissionKeys,
       meLoading,
-      async login(username, password) {
-        const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/login", { username, password });
+      async login(identifier, password) {
+        const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/login", { identifier, password });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
         setToken(t);
@@ -69,6 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async register(username, password, role) {
         const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/register", { username, password, role });
+        const t = res.data.result?.access_token;
+        if (!t) throw new Error("Không nhận được token từ server");
+        setToken(t);
+        setTokenState(t);
+        await refreshMe();
+      },
+      async acceptInvite(token, password) {
+        const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/activate", { token, password });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
         setToken(t);

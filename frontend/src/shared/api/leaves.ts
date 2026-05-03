@@ -59,3 +59,22 @@ export async function rejectLeave(leaveId: number) {
   return res.data.result;
 }
 
+export async function listMyLeaves(params?: { status?: LeaveStatus; from_date?: string; to_date?: string; limit?: number; offset?: number }) {
+  const res = await api.get<ApiResponse<LeaveListResponse>>("/leaves/me", { params });
+  return res.data.result ?? { items: [], total: 0 };
+}
+
+export async function createMyLeave(payload: { type: string; start_date: string; end_date: string; reason?: string | null }) {
+  const res = await api.post<ApiResponse<LeaveRequest>>("/leaves/me", payload);
+  if (!res.data.result) throw new Error("Không tạo được đơn nghỉ phép");
+  return res.data.result;
+}
+
+export type LeaveBalanceType = { type: string; allowance_days: number; used_days: number; remaining_days: number };
+export type LeaveBalance = { year: number; items: LeaveBalanceType[] };
+
+export async function getMyLeaveBalance(params?: { year?: number }) {
+  const res = await api.get<ApiResponse<LeaveBalance>>("/leaves/me/balance", { params });
+  if (!res.data.result) throw new Error("Không lấy được số ngày phép");
+  return res.data.result;
+}

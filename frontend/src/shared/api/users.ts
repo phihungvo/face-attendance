@@ -13,6 +13,7 @@ export async function createUser(payload: {
   role?: string | null;
   status?: string | null;
   department_id?: number | null;
+  create_login?: boolean;
 }) {
   const res = await api.post<ApiResponse<User>>("/users", payload);
   if (!res.data.result) throw new Error("Không tạo được nhân viên");
@@ -39,3 +40,8 @@ export async function deleteUser(userId: number) {
   await api.delete(`/users/${userId}`);
 }
 
+export async function getMyProfile() {
+  const res = await api.get<ApiResponse<User & { department_name?: string | null }>>("/users/me");
+  if (!res.data.result) throw new Error("Không lấy được thông tin nhân viên");
+  return res.data.result;
+}

@@ -3,16 +3,18 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import get_current_user, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
-from app.schemas.users import EnrollResponse, UserCreateRequest, UserOut, UserUpdateRequest
+from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateRequest, UserMeOut, UserOut, UserUpdateRequest
 from app.schemas.common import ApiResponse
 from app.services.users import UserService
+from app.services.auth import AuthService
 
 router = APIRouter()
 service = UserService()
+auth_service = AuthService()
 
 
 @router.post("/enroll", response_model=ApiResponse[EnrollResponse])
@@ -47,6 +49,46 @@ async def enroll_face_for_user(
         return ok({"enrolled": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể đăng ký khuôn mặt: {e}")
+
+
+@router.get("/me/face-status", response_model=ApiResponse[FaceEnrollStatusOut])
+def my_face_status(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[FaceEnrollStatusOut]:
+    try:
+        data = service.get_face_enroll_status(db, user_id=int(user.id))
+        return ok(FaceEnrollStatusOut(**data))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.post("/me/enroll-face", response_model=ApiResponse[dict[str, object]])
+async def enroll_my_face(
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[dict[str, object]]:
+    try:
+        image_bytes = await image.read()
+        data = service.enroll_face_self(db, user_id=int(user.id), image_bytes=image_bytes)
+        return ok(data)
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=f"Không thể đăng ký khuôn mặt: {e}")
+
+
+@router.get("/me", response_model=ApiResponse[UserMeOut])
+def my_profile(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[UserMeOut]:
+    u = service.get_user(db, user_id=int(user.id))
+    dept_name = None
+    dept = getattr(u, "department", None)
+    if dept is not None:
+        dept_name = getattr(dept, "name", None)
+    base = UserOut.model_validate(u).model_dump()
+    return ok(UserMeOut(**{**base, "department_name": dept_name}))
 
 
 @router.get("", response_model=ApiResponse[list[UserOut]])
@@ -87,6 +129,7 @@ def create_user(
             role=payload.role,
             status=payload.status,
             department_id=payload.department_id,
+            create_login=payload.create_login,
         )
         return ok(user)
     except ValueError as e:
@@ -125,5 +168,18 @@ def delete_user(
     try:
         service.delete_user(db, user_id=user_id)
         return ok({"deleted": True})
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.post("/{user_id}/resend-invite", response_model=ApiResponse[dict[str, object]])
+def resend_invite(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("employees.read")),
+) -> ApiResponse[dict[str, object]]:
+    try:
+        auth_service.invite_pending_user(db, user_id=user_id)
+        return ok({"sent": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

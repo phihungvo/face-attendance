@@ -8,7 +8,7 @@ export default function LoginPage() {
   const auth = useAuth();
   const nav = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [username, setUsername] = useState("admin");
+  const [identifier, setIdentifier] = useState("admin");
   const [password, setPassword] = useState("admin123");
   const [role, setRole] = useState<"employee" | "manager">("employee");
   const [loading, setLoading] = useState(false);
@@ -30,8 +30,8 @@ export default function LoginPage() {
         <h1 className={styles.h1}>{title}</h1>
         {error ? <div className={styles.error}>{error}</div> : null}
 
-        <label className={styles.label}>Username</label>
-        <input className={styles.input} value={username} onChange={(e) => setUsername(e.target.value)} />
+        <label className={styles.label}>Tài khoản (username/email/mã NV)</label>
+        <input className={styles.input} value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
         <label className={styles.label}>Password</label>
         <input className={styles.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
 
@@ -42,8 +42,8 @@ export default function LoginPage() {
             try {
               setLoading(true);
               setError(null);
-              if (mode === "login") await auth.login(username, password);
-              else await auth.register(username, password, role);
+              if (mode === "login") await auth.login(identifier, password);
+              else await auth.register(identifier, password, role);
               nav("/", { replace: true });
             } catch (e) {
               setError(formatAuthError(e));

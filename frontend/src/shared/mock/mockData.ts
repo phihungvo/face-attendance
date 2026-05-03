@@ -1,9 +1,9 @@
 export const mockDashboard = {
   stats: [
-    { icon: "👥", label: "Nhân viên", value: 128, delta: { label: "+8 tuần này", tone: "green" as const } },
-    { icon: "🟢", label: "Có mặt hôm nay", value: 112, delta: { label: "87.5%", tone: "neutral" as const } },
-    { icon: "🟡", label: "Đi trễ", value: 6, delta: { label: "+2", tone: "red" as const } },
-    { icon: "🔴", label: "Vắng", value: 10, delta: { label: "-1", tone: "green" as const } }
+    { icon: "👥", label: "Tổng nhân viên", value: 128, variant: "blue" as const, delta: { label: "↑ +8 tháng này", tone: "green" as const } },
+    { icon: "✅", label: "Đang làm việc hôm nay", value: 112, variant: "green" as const, delta: { label: "↑ 87.5% tỉ lệ", tone: "neutral" as const } },
+    { icon: "⏰", label: "Đến muộn hôm nay", value: 6, variant: "orange" as const, delta: { label: "↓ giảm 2 so với tuần trước", tone: "red" as const } },
+    { icon: "❌", label: "Vắng mặt hôm nay", value: 10, variant: "red" as const, delta: { label: "↑ tăng 2", tone: "green" as const } }
   ],
   attendance7d: [
     { label: "T2", value: 78 },
@@ -74,10 +74,10 @@ export const mockTimesheet = {
 export const mockEmployees = {
   departments: ["Kỹ thuật", "Kế toán", "Nhân sự", "Sản xuất"],
   stats: [
-    { icon: "👥", label: "Tổng nhân viên", value: 128, delta: { label: "+8", tone: "green" as const } },
-    { icon: "🟢", label: "Đang hoạt động", value: 120, delta: { label: "93.8%", tone: "neutral" as const } },
-    { icon: "🆕", label: "Mới tháng này", value: 5, delta: { label: "+2 tuần này", tone: "green" as const } },
-    { icon: "⛔", label: "Tạm nghỉ", value: 8, delta: { label: "-1", tone: "green" as const } }
+    { icon: "👥", label: "Tổng nhân viên", value: 128, variant: "blue" as const, delta: { label: "↑ +8", tone: "green" as const } },
+    { icon: "✅", label: "Đang hoạt động", value: 120, variant: "green" as const, delta: { label: "↑ 93.8%", tone: "neutral" as const } },
+    { icon: "🆕", label: "Mới tháng này", value: 5, variant: "orange" as const, delta: { label: "↑ +2 tuần này", tone: "green" as const } },
+    { icon: "⛔", label: "Tạm nghỉ", value: 8, variant: "red" as const, delta: { label: "↓ -1", tone: "red" as const } }
   ],
   rows: [
     { initials: "NA", name: "Nguyễn Văn An", code: "NV001", dept: "Kỹ thuật", role: "Engineer", email: "an.nguyen@company.vn", shift: "Ca sáng", status: "Active", statusTone: "active" as const },
@@ -117,10 +117,10 @@ export const mockLeave = {
 
 export const mockReports = {
   stats: [
-    { icon: "📌", label: "Tỉ lệ đúng giờ", value: "87.5%", delta: { label: "+1.2%", tone: "green" as const } },
-    { icon: "🟡", label: "Đi trễ (7 ngày)", value: 34, delta: { label: "+6", tone: "red" as const } },
-    { icon: "🔴", label: "Vắng (tháng)", value: 12, delta: { label: "-2", tone: "green" as const } },
-    { icon: "⏱", label: "Giờ công", value: "19,876", delta: { label: "+3.1%", tone: "green" as const } }
+    { icon: "📌", label: "Tỉ lệ đúng giờ", value: "87.5%", variant: "blue" as const, delta: { label: "↑ +1.2%", tone: "green" as const } },
+    { icon: "🕐", label: "Đi trễ (7 ngày)", value: 34, variant: "orange" as const, delta: { label: "↓ +6", tone: "red" as const } },
+    { icon: "🔴", label: "Vắng (tháng)", value: 12, variant: "red" as const, delta: { label: "↑ -2", tone: "green" as const } },
+    { icon: "⏱", label: "Giờ công", value: "19,876", variant: "green" as const, delta: { label: "↑ +3.1%", tone: "green" as const } }
   ],
   lateTrend7d: [
     { label: "T2", value: 30 },

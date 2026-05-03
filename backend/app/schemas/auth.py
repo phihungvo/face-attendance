@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AliasChoices
 
 
 class RegisterRequest(BaseModel):
@@ -10,7 +10,14 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=64)
+    # Allow login by username/email/employee code.
+    # Accept both legacy `username` and new `identifier` keys.
+    identifier: str = Field(validation_alias=AliasChoices("identifier", "username"), min_length=3, max_length=255)
+    password: str = Field(min_length=6, max_length=128)
+
+
+class ActivateRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=512)
     password: str = Field(min_length=6, max_length=128)
 
 
