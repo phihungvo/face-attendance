@@ -39,3 +39,9 @@ export async function updateUser(
 export async function deleteUser(userId: number) {
   await api.delete(`/users/${userId}`);
 }
+
+export async function getMyProfile() {
+  const res = await api.get<ApiResponse<User & { department_name?: string | null }>>("/users/me");
+  if (!res.data.result) throw new Error("Không lấy được thông tin nhân viên");
+  return res.data.result;
+}

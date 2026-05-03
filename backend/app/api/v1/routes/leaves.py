@@ -5,16 +5,65 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import get_current_user, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
-from app.schemas.leaves import LeaveCreateRequest, LeaveListResponse, LeaveOut, LeaveUpdateRequest
+from app.schemas.leaves import LeaveBalanceOut, LeaveCreateRequest, LeaveListResponse, LeaveMeCreateRequest, LeaveOut, LeaveUpdateRequest
 from app.services.leaves import LeaveService
 
 router = APIRouter()
 service = LeaveService()
+
+@router.get("/me", response_model=ApiResponse[LeaveListResponse])
+def list_my_leaves(
+    status: str | None = Query(default=None, description="pending|approved|rejected"),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[LeaveListResponse]:
+    if status and status not in {"pending", "approved", "rejected"}:
+        raise AppException(BAD_REQUEST, detail="Invalid status")
+    result = service.list(db, limit=limit, offset=offset, user_id=int(user.id), status=status, from_date=from_date, to_date=to_date)
+    return ok(LeaveListResponse(**result))
+
+
+@router.post("/me", response_model=ApiResponse[LeaveOut])
+def create_my_leave(
+    payload: LeaveMeCreateRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[LeaveOut]:
+    """
+    Employee self-service: always uses current user.
+    """
+    try:
+        item = service.create(
+            db,
+            user_id=int(user.id),
+            type=payload.type,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            reason=payload.reason,
+        )
+        return ok(LeaveOut(**item))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.get("/me/balance", response_model=ApiResponse[LeaveBalanceOut])
+def my_leave_balance(
+    year: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[LeaveBalanceOut]:
+    y = year or date.today().year
+    data = service.my_balance(db, user_id=int(user.id), year=int(y))
+    return ok(LeaveBalanceOut(**data))
 
 
 @router.get("", response_model=ApiResponse[LeaveListResponse])

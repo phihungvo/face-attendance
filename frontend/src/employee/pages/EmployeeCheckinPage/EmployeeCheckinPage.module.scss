@@ -7,7 +7,7 @@
 
 .screenHeader {
   background: var(--surface);
-  padding: 54px 20px 16px;
+  padding: 20px 20px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -34,6 +34,18 @@
 
 .content {
   padding: 20px;
+  padding-bottom: var(--bottom-safe);
+  scroll-padding-bottom: var(--bottom-safe);
+}
+
+@media (min-width: 900px) {
+  .screenHeader {
+    padding: 22px 24px 16px;
+  }
+
+  .content {
+    padding: 24px;
+  }
 }
 
 .statusRow {

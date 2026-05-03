@@ -169,3 +169,30 @@ class LeaveService:
         db.refresh(leave)
         return self.get(db, leave_id=leave.id)
 
+    def my_balance(self, db: Session, *, user_id: int, year: int) -> dict[str, object]:
+        """
+        Basic leave balance: annual/sick allowances minus APPROVED days in the given year.
+        (WFH/other are excluded from balance.)
+        """
+        # Default allowances (can be made configurable later).
+        allowances = {"annual": 12, "sick": 8}
+
+        # Fetch approved leaves for the year.
+        from_date = date(year, 1, 1)
+        to_date = date(year, 12, 31)
+        rows = self._leaves.list(db, limit=5000, offset=0, user_id=user_id, status="approved", from_date=from_date, to_date=to_date)
+
+        used: dict[str, int] = {k: 0 for k in allowances}
+        for leave, _user in rows:
+            t = (leave.type or "").strip()
+            if t not in allowances:
+                continue
+            days = (leave.end_date - leave.start_date).days + 1
+            used[t] += max(0, int(days))
+
+        items = []
+        for t, allow in allowances.items():
+            u = int(used.get(t, 0))
+            rem = max(0, int(allow) - u)
+            items.append({"type": t, "allowance_days": int(allow), "used_days": u, "remaining_days": rem})
+        return {"year": year, "items": items}

@@ -7,11 +7,21 @@
 
 .screenHeader {
   background: var(--surface);
-  padding: 54px 20px 16px;
+  padding: 42px 20px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .screenHeader {
+    padding: 22px 24px 16px;
+  }
+
+  .leaveForm {
+    padding: 24px;
+  }
 }
 
 .backBtn {
@@ -34,6 +44,8 @@
 
 .leaveForm {
   padding: 20px;
+  padding-bottom: var(--bottom-safe);
+  scroll-padding-bottom: var(--bottom-safe);
 }
 
 .leaveTypeGrid {
@@ -154,4 +166,27 @@
   padding: 12px 14px;
   font-weight: 800;
   font-size: 13px;
+}
+
+.errToast {
+  margin: 0 20px;
+  margin-top: 12px;
+  background: var(--rose-light);
+  border: 1.5px solid rgba(242, 92, 122, 0.35);
+  color: #c02050;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.balanceHint {
+  margin-bottom: 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink2);
 }

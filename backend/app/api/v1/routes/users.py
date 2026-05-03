@@ -7,7 +7,7 @@ from app.api.deps import get_current_user, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
-from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateRequest, UserOut, UserUpdateRequest
+from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateRequest, UserMeOut, UserOut, UserUpdateRequest
 from app.schemas.common import ApiResponse
 from app.services.users import UserService
 from app.services.auth import AuthService
@@ -75,6 +75,20 @@ async def enroll_my_face(
         return ok(data)
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể đăng ký khuôn mặt: {e}")
+
+
+@router.get("/me", response_model=ApiResponse[UserMeOut])
+def my_profile(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[UserMeOut]:
+    u = service.get_user(db, user_id=int(user.id))
+    dept_name = None
+    dept = getattr(u, "department", None)
+    if dept is not None:
+        dept_name = getattr(dept, "name", None)
+    base = UserOut.model_validate(u).model_dump()
+    return ok(UserMeOut(**{**base, "department_name": dept_name}))
 
 
 @router.get("", response_model=ApiResponse[list[UserOut]])

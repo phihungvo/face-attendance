@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styles from "./EmployeeLeavePage.module.scss";
 import { useNavigate } from "react-router-dom";
+import { createMyLeave, getMyLeaveBalance } from "../../../shared/api/leaves";
+import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 
 const types = [
   { key: "annual", label: "Nghỉ phép", icon: "🌴", days: "12 ngày" },
@@ -12,10 +14,33 @@ const types = [
 export default function EmployeeLeavePage() {
   const nav = useNavigate();
   const [type, setType] = useState<(typeof types)[number]["key"]>("annual");
-  const [from, setFrom] = useState("2026-05-03");
-  const [to, setTo] = useState("2026-05-03");
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
   const [reason, setReason] = useState("");
   const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [balanceHint, setBalanceHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const b = await getMyLeaveBalance();
+        const annual = b.items.find((x) => x.type === "annual");
+        const sick = b.items.find((x) => x.type === "sick");
+        const hint = [
+          annual ? `Phép năm còn: ${annual.remaining_days}/${annual.allowance_days}` : null,
+          sick ? `Phép ốm còn: ${sick.remaining_days}/${sick.allowance_days}` : null
+        ]
+          .filter(Boolean)
+          .join(" • ");
+        setBalanceHint(hint || null);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   return (
     <div className={styles.page}>
@@ -26,9 +51,11 @@ export default function EmployeeLeavePage() {
         <div className={styles.screenHeaderTitle}>Xin nghỉ</div>
       </div>
 
-      {sent ? <div className={styles.okToast}>✅ Đã gửi đơn (mock)</div> : null}
+      {sent ? <div className={styles.okToast}>✅ Đã gửi đơn</div> : null}
+      {error ? <div className={styles.errToast}>⚠️ {error}</div> : null}
 
       <div className={styles.leaveForm}>
+        {balanceHint ? <div className={styles.balanceHint}>ℹ️ {balanceHint}</div> : null}
         <label className={styles.formLabel}>Loại nghỉ</label>
         <div className={styles.leaveTypeGrid}>
           {types.map((t) => {
@@ -67,15 +94,22 @@ export default function EmployeeLeavePage() {
         <button
           type="button"
           className={styles.btnSubmit}
-          onClick={() => {
-            void type;
-            void from;
-            void to;
-            void reason;
-            setSent(true);
+          disabled={busy}
+          onClick={async () => {
+            try {
+              setBusy(true);
+              setError(null);
+              setSent(false);
+              await createMyLeave({ type, start_date: from, end_date: to, reason: reason.trim() || null });
+              setSent(true);
+            } catch (e) {
+              setError(getApiErrorMessage(e));
+            } finally {
+              setBusy(false);
+            }
           }}
         >
-          📤 Gửi đơn nghỉ phép
+          {busy ? "Đang gửi..." : "📤 Gửi đơn nghỉ phép"}
         </button>
       </div>
     </div>

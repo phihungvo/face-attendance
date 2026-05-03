@@ -31,6 +31,13 @@ class LeaveCreateRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=2000)
 
 
+class LeaveMeCreateRequest(BaseModel):
+    type: str = Field(..., min_length=1, max_length=32)
+    start_date: date
+    end_date: date
+    reason: str | None = Field(default=None, max_length=2000)
+
+
 class LeaveUpdateRequest(BaseModel):
     user_id: int
     type: str = Field(..., min_length=1, max_length=32)
@@ -44,3 +51,14 @@ class LeaveListResponse(BaseModel):
     items: list[LeaveOut]
     total: int
 
+
+class LeaveBalanceTypeOut(BaseModel):
+    type: str
+    allowance_days: int
+    used_days: int
+    remaining_days: int
+
+
+class LeaveBalanceOut(BaseModel):
+    year: int
+    items: list[LeaveBalanceTypeOut]

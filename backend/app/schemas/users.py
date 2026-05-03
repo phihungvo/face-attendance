@@ -22,6 +22,10 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class UserMeOut(UserOut):
+    department_name: str | None = None
+
+
 class UserUpdateRequest(BaseModel):
     code: str | None = Field(default=None, max_length=32)
     name: str = Field(..., min_length=1, max_length=255)

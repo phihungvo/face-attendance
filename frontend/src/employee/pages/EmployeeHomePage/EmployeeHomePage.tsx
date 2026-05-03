@@ -1,15 +1,145 @@
-import { employeeMock } from "../../mock/employeeMock";
 import styles from "./EmployeeHomePage.module.scss";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { getMyProfile } from "../../../shared/api/users";
+import { listMyTimelog } from "../../../shared/api/attendance";
+import { getMyLeaveBalance } from "../../../shared/api/leaves";
 
 export default function EmployeeHomePage() {
-  const me = employeeMock.me;
+  const [me, setMe] = useState<{ name: string; code?: string | null; department_name?: string | null } | null>(null);
+  const [today, setToday] = useState<{ checkin: string; checkout: string; worked: string; status: "in" | "idle" }>({
+    checkin: "—",
+    checkout: "—",
+    worked: "—",
+    status: "idle"
+  });
+  const [monthStats, setMonthStats] = useState<{ days: number; late: number; leaveRemaining: number }>({ days: 0, late: 0, leaveRemaining: 0 });
+  const [leaveBalance, setLeaveBalance] = useState<{ annual: { remaining: number; percent: number }; sick: { remaining: number; percent: number } } | null>(null);
+  const [recentLogs, setRecentLogs] = useState<Array<{ id: string; day: string; dow: string; checkin: string; checkout: string; hours: string; status: "ok" | "late" }>>([]);
+  const [streak, setStreak] = useState<{
+    title: string;
+    countLabel: string;
+    weekSummary: string;
+    days: Array<{ label: string; state: "done" | "late" | "today" | "miss" }>;
+  }>({ title: "Chuỗi chuyên cần", countLabel: "—", weekSummary: "—", days: [] });
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const prof = await getMyProfile();
+        setMe(prof);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const d = new Date();
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const from = `${ym}-01`;
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        const to = `${ym}-${String(lastDay).padStart(2, "0")}`;
+        const rows: any[] = await listMyTimelog({ from_date: from, to_date: to });
+
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayRow = rows.find((r) => r.date === todayKey);
+        const fmtTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—");
+        const minutes = (r: any) => (typeof r.working_minutes === "number" ? r.working_minutes : Math.round((r.work_hours ?? 0) * 60));
+        const workedMin = todayRow ? minutes(todayRow) : 0;
+        const workedLabel = todayRow && !todayRow.absent ? `${Math.floor(workedMin / 60)}h ${String(workedMin % 60).padStart(2, "0")}m` : "—";
+        setToday({
+          checkin: todayRow?.checkin_time ? fmtTime(todayRow.checkin_time) : "—",
+          checkout: todayRow?.checkout_time ? fmtTime(todayRow.checkout_time) : "—",
+          worked: workedLabel,
+          status: todayRow?.checkin_time && !todayRow?.checkout_time ? "in" : "idle"
+        });
+
+        const days = rows.filter((r) => !r.absent).length;
+        const late = rows.filter((r) => !!r.late).length;
+        setMonthStats((s) => ({ ...s, days, late }));
+
+        const rec = rows
+          .slice()
+          .filter((r) => !r.absent)
+          .sort((a, b) => (a.date < b.date ? 1 : -1))
+          .slice(0, 5)
+          .map((r) => {
+            const dt = new Date(`${r.date}T00:00:00`);
+            const checkin = r.checkin_time ? fmtTime(r.checkin_time) : "—";
+            const checkout = r.checkout_time ? fmtTime(r.checkout_time) : "—";
+            const mins = minutes(r);
+            const hrs = `${Math.round((mins / 60) * 10) / 10}`;
+            return {
+              id: r.date,
+              day: String(dt.getDate()),
+              dow: dt.toLocaleDateString("vi-VN", { weekday: "short" }),
+              checkin,
+              checkout,
+              hours: hrs,
+              status: r.late ? ("late" as const) : ("ok" as const)
+            };
+          });
+        setRecentLogs(rec);
+
+        // streak: last 7 days
+        const last7: Array<{ label: string; state: "done" | "late" | "today" | "miss" }> = [];
+        let doneCount = 0;
+        for (let i = 6; i >= 0; i--) {
+          const x = new Date();
+          x.setDate(x.getDate() - i);
+          const key = x.toISOString().slice(0, 10);
+          const r = rows.find((z) => z.date === key);
+          const label = x.toLocaleDateString("vi-VN", { weekday: "short" }).replace(".", "");
+          if (i === 0) {
+            last7.push({ label, state: r && !r.absent ? "today" : "today" });
+          } else if (!r || r.absent) {
+            last7.push({ label, state: "miss" });
+          } else if (r.late) {
+            last7.push({ label, state: "late" });
+            doneCount++;
+          } else {
+            last7.push({ label, state: "done" });
+            doneCount++;
+          }
+        }
+        setStreak({
+          title: "Chuỗi chuyên cần",
+          countLabel: `${doneCount}/7`,
+          weekSummary: `${days} ngày công • ${late} lần muộn`,
+          days: last7
+        });
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const b = await getMyLeaveBalance();
+        const annual = b.items.find((x) => x.type === "annual");
+        const sick = b.items.find((x) => x.type === "sick");
+        if (annual && sick) {
+          setLeaveBalance({
+            annual: { remaining: annual.remaining_days, percent: Math.round((annual.remaining_days / Math.max(1, annual.allowance_days)) * 100) },
+            sick: { remaining: sick.remaining_days, percent: Math.round((sick.remaining_days / Math.max(1, sick.allowance_days)) * 100) }
+          });
+          setMonthStats((s) => ({ ...s, leaveRemaining: annual.remaining_days }));
+        }
+      } catch {
+        // ignore
+      }
+    })();
   }, []);
 
   const clock = useMemo(() => {
@@ -28,7 +158,7 @@ export default function EmployeeHomePage() {
     return `${days[now.getDay()]}, ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}`;
   }, [now]);
 
-  const initials = me.name
+  const initials = (me?.name || "ME")
     .split(" ")
     .filter(Boolean)
     .slice(-2)
@@ -42,7 +172,7 @@ export default function EmployeeHomePage() {
         <div className={`${styles.headerOrb} ${styles.ho2}`} />
         <div className={styles.headerTop}>
           <div>
-            <div className={styles.greetingName}>Xin chào, {me.name.split(" ").slice(-1)[0]}! 👋</div>
+            <div className={styles.greetingName}>Xin chào, {(me?.name || "Bạn").split(" ").slice(-1)[0]}! 👋</div>
             <div className={styles.greetingSub}>{greetingSub}</div>
           </div>
           <Link to="/employee/profile" className={styles.headerAvatar} aria-label="Hồ sơ">
@@ -58,24 +188,26 @@ export default function EmployeeHomePage() {
             <div className={styles.checkinFloatTime}>{clock}</div>
             <div className={styles.checkinFloatDate}>{dateLabel}</div>
           </div>
-          <div className={`${styles.statusChip} ${styles.statusIn}`}>Đang làm việc</div>
+          <div className={`${styles.statusChip} ${today.status === "in" ? styles.statusIn : styles.statusIdle}`}>
+            {today.status === "in" ? "Đang làm việc" : "Chưa vào ca"}
+          </div>
         </div>
 
         <div className={styles.checkinTimes}>
           <div className={styles.timeBlock}>
             <div className={styles.timeBlockLabel}>Vào ca</div>
-            <div className={`${styles.timeBlockVal} ${styles.green}`}>{employeeMock.today.checkin}</div>
+            <div className={`${styles.timeBlockVal} ${styles.green}`}>{today.checkin}</div>
             <div className={styles.timeBlockSub}>Đúng giờ ✓</div>
           </div>
           <div className={styles.timeBlock}>
             <div className={styles.timeBlockLabel}>Ra ca</div>
-            <div className={`${styles.timeBlockVal} ${styles.gray}`}>{employeeMock.today.checkout}</div>
+            <div className={`${styles.timeBlockVal} ${styles.gray}`}>{today.checkout}</div>
             <div className={styles.timeBlockSub}>Chưa kết thúc</div>
           </div>
           <div className={styles.timeBlock}>
             <div className={styles.timeBlockLabel}>Đã làm</div>
             <div className={styles.timeBlockVal} style={{ color: "var(--indigo)" }}>
-              {employeeMock.today.worked}
+              {today.worked}
             </div>
             <div className={styles.timeBlockSub}>Hôm nay</div>
           </div>
@@ -102,23 +234,17 @@ export default function EmployeeHomePage() {
         <div className={styles.statsRow}>
           <div className={styles.statPill}>
             <div className={styles.statPillIcon}>📅</div>
-            <div className={styles.statPillVal} style={{ color: "var(--indigo)" }}>
-              {employeeMock.month.days}
-            </div>
+            <div className={styles.statPillVal} style={{ color: "var(--indigo)" }}>{monthStats.days}</div>
             <div className={styles.statPillLbl}>Ngày công</div>
           </div>
           <div className={styles.statPill}>
             <div className={styles.statPillIcon}>⏰</div>
-            <div className={styles.statPillVal} style={{ color: "var(--amber)" }}>
-              {employeeMock.month.late}
-            </div>
+            <div className={styles.statPillVal} style={{ color: "var(--amber)" }}>{monthStats.late}</div>
             <div className={styles.statPillLbl}>Muộn</div>
           </div>
           <div className={styles.statPill}>
             <div className={styles.statPillIcon}>🌴</div>
-            <div className={styles.statPillVal} style={{ color: "var(--green)" }}>
-              {employeeMock.month.leaveRemaining}
-            </div>
+            <div className={styles.statPillVal} style={{ color: "var(--green)" }}>{monthStats.leaveRemaining}</div>
             <div className={styles.statPillLbl}>Phép còn</div>
           </div>
         </div>
@@ -126,17 +252,17 @@ export default function EmployeeHomePage() {
         <div className={styles.streakCard}>
           <div className={styles.streakTop}>
             <div>
-              <div className={styles.streakLabel}>{employeeMock.streak.title}</div>
-              <div className={styles.streakCount}>{employeeMock.streak.countLabel}</div>
+              <div className={styles.streakLabel}>{streak.title}</div>
+              <div className={styles.streakCount}>{streak.countLabel}</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>Tuần này</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginTop: 3 }}>{employeeMock.streak.weekSummary}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginTop: 3 }}>{streak.weekSummary}</div>
             </div>
           </div>
 
           <div className={styles.streakDays}>
-            {employeeMock.streak.days.map((d) => {
+            {streak.days.map((d) => {
               const dotClass =
                 d.state === "done"
                   ? styles.streakDotDone
@@ -196,21 +322,21 @@ export default function EmployeeHomePage() {
           <div className={styles.leavePill}>
             <div className={styles.leavePillIcon}>🌴</div>
             <div className={styles.leavePillVal} style={{ color: "var(--indigo)" }}>
-              {employeeMock.leaveBalance.annual.remaining}
+              {leaveBalance?.annual.remaining ?? 0}
             </div>
             <div className={styles.leavePillLbl}>Phép năm còn lại</div>
             <div className={styles.leaveBar}>
-              <div className={styles.leaveFill} style={{ width: `${employeeMock.leaveBalance.annual.percent}%`, background: "var(--indigo)" }} />
+              <div className={styles.leaveFill} style={{ width: `${leaveBalance?.annual.percent ?? 0}%`, background: "var(--indigo)" }} />
             </div>
           </div>
           <div className={styles.leavePill}>
             <div className={styles.leavePillIcon}>🤒</div>
             <div className={styles.leavePillVal} style={{ color: "var(--rose)" }}>
-              {employeeMock.leaveBalance.sick.remaining}
+              {leaveBalance?.sick.remaining ?? 0}
             </div>
             <div className={styles.leavePillLbl}>Phép ốm còn lại</div>
             <div className={styles.leaveBar}>
-              <div className={styles.leaveFill} style={{ width: `${employeeMock.leaveBalance.sick.percent}%`, background: "var(--rose)" }} />
+              <div className={styles.leaveFill} style={{ width: `${leaveBalance?.sick.percent ?? 0}%`, background: "var(--rose)" }} />
             </div>
           </div>
         </div>
@@ -222,7 +348,7 @@ export default function EmployeeHomePage() {
           </Link>
         </div>
 
-        {employeeMock.recentLogs.map((l) => {
+        {recentLogs.map((l) => {
           const isLate = l.status === "late";
           return (
             <div key={l.id} className={styles.logItem}>
