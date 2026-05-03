@@ -3,7 +3,7 @@
 Chạy production cơ bản bằng Docker Compose.
 
 ## Yêu cầu
-- Docker + Docker Compose
+- Docker + Docker Compose 
 
 ## Chạy nhanh
 ```bash
