@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.response import ok
 from app.db.session import get_db
-from app.schemas.auth import LoginRequest, MeResponse, RegisterRequest, TokenResponse
+from app.schemas.auth import ActivateRequest, LoginRequest, MeResponse, RegisterRequest, TokenResponse
 from app.schemas.common import ApiResponse
 from app.services.auth import AuthService
 from app.api.deps import get_current_user
@@ -22,7 +22,12 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> ApiResp
 
 @router.post("/login", response_model=ApiResponse[TokenResponse])
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> ApiResponse[TokenResponse]:
-    token = service.login(db, username=payload.username, password=payload.password)
+    token = service.login(db, identifier=payload.identifier, password=payload.password)
+    return ok(TokenResponse(access_token=token))
+
+@router.post("/activate", response_model=ApiResponse[TokenResponse])
+def activate(payload: ActivateRequest, db: Session = Depends(get_db)) -> ApiResponse[TokenResponse]:
+    token = service.activate_with_token(db, token=payload.token, password=payload.password)
     return ok(TokenResponse(access_token=token))
 
 

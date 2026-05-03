@@ -38,8 +38,20 @@ export function useCamera() {
       try {
         setError(null);
         stop();
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("Trình duyệt không hỗ trợ camera (getUserMedia)");
+        }
+        if (!window.isSecureContext) {
+          throw new Error("Camera bị chặn do trang chưa chạy ở secure context (HTTPS hoặc localhost)");
+        }
         const constraints: MediaStreamConstraints = {
-          video: opts?.deviceId ? { deviceId: { exact: opts.deviceId } } : { facingMode: "user" },
+          video: opts?.deviceId
+            ? { deviceId: { exact: opts.deviceId } }
+            : {
+                facingMode: "user",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              },
           audio: false
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -55,7 +67,16 @@ export function useCamera() {
         setReady(true);
         await refreshDevices();
       } catch (e: any) {
-        setError(e?.message || "Không thể bật camera");
+        const name = String(e?.name || "");
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setError("Permission denied: vui lòng cấp quyền camera cho website trong trình duyệt và thử lại.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setError("Không tìm thấy camera. Hãy kiểm tra thiết bị hoặc kết nối camera ngoài.");
+        } else if (name === "NotReadableError" || name === "TrackStartError") {
+          setError("Không thể mở camera (đang bị ứng dụng khác sử dụng hoặc bị OS chặn).");
+        } else {
+          setError(e?.message || "Không thể bật camera");
+        }
       }
     },
     [refreshDevices, stop]
@@ -105,4 +126,3 @@ export function useCamera() {
 
   return { videoRef, state, start, stop, switchCamera, capture };
 }
-

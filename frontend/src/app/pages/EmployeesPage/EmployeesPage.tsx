@@ -108,10 +108,10 @@ export default function EmployeesPage() {
 
   const stats = useMemo(() => {
     return [
-      { icon: "👥", label: "Tổng nhân viên", value: users.length, delta: { label: "DB", tone: "neutral" as const } },
-      { icon: "🧾", label: "Bản ghi", value: users.length, delta: { label: "users", tone: "neutral" as const } },
-      { icon: "🆕", label: "Mới hôm nay", value: 0, delta: { label: "—", tone: "neutral" as const } },
-      { icon: "⚙️", label: "Nguồn", value: "API", delta: { label: "/api/v1/users", tone: "neutral" as const } }
+      { icon: "👥", label: "Tổng nhân viên", value: users.length, variant: "blue" as const, delta: { label: "↑ DB", tone: "neutral" as const } },
+      { icon: "🧾", label: "Bản ghi", value: users.length, variant: "green" as const, delta: { label: "↑ users", tone: "neutral" as const } },
+      { icon: "🆕", label: "Mới hôm nay", value: 0, variant: "orange" as const, delta: { label: "—", tone: "neutral" as const } },
+      { icon: "⚙️", label: "Nguồn", value: "API", variant: "red" as const, delta: { label: "/api/v1/users", tone: "neutral" as const } }
     ];
   }, [users.length]);
 
@@ -154,7 +154,7 @@ export default function EmployeesPage() {
     <div className={styles.page}>
       <div className={styles.statsGrid}>
         {stats.map((s) => (
-          <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} delta={s.delta} />
+          <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} delta={s.delta} variant={s.variant} />
         ))}
       </div>
 
@@ -437,7 +437,7 @@ export default function EmployeesPage() {
             <button
               className={styles.btnPrimary}
               type="button"
-              disabled={loading || !name.trim()}
+              disabled={loading || !name.trim() || (!editing && !email.trim())}
               onClick={async () => {
                 try {
                   setLoading(true);
@@ -448,7 +448,8 @@ export default function EmployeesPage() {
                     email: email.trim() || null,
                     role: role.trim() || null,
                     status: editing ? (editing.status as any) : "active",
-                    department_id: departmentId ? Number(departmentId) : null
+                    department_id: departmentId ? Number(departmentId) : null,
+                    ...(editing ? {} : { create_login: true })
                   };
                   if (editing) await updateUser(editing.id, payload);
                   else await createUser(payload);
@@ -486,8 +487,11 @@ export default function EmployeesPage() {
           </div>
 
           <div className={styles.formGroup}>
-            <div className={styles.formLabelTop}>Email</div>
+            <div className={styles.formLabelTop}>
+              Email {!editing ? <span className={styles.req}>*</span> : null}
+            </div>
             <input className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="VD: a@company.vn" />
+            {!editing ? <div className={styles.fieldHint}>Bắt buộc để gửi link kích hoạt tài khoản.</div> : null}
           </div>
 
           <div className={styles.formGroup}>

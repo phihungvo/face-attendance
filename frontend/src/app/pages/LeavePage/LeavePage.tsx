@@ -172,10 +172,10 @@ export default function LeavePage() {
 
         <div className={styles.toolbar}>
           <select className={styles.select} value={status} onChange={(e) => setStatus(e.target.value as any)} aria-label="Trạng thái">
+          <option value="all">Tất cả</option>
             <option value="pending">Chờ duyệt</option>
             <option value="approved">Đã duyệt</option>
             <option value="rejected">Từ chối</option>
-            <option value="all">Tất cả</option>
           </select>
 
           <div className={styles.searchBox}>

@@ -46,6 +46,16 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
         _exec(engine, "ALTER TABLE users ADD COLUMN username VARCHAR(64) NULL, ADD UNIQUE KEY uq_users_username (username), ADD KEY ix_users_username (username)")
     if not _column_exists(engine, table="users", column="password_hash", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL")
+    if not _column_exists(engine, table="users", column="auth_status", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN auth_status VARCHAR(16) NOT NULL DEFAULT 'active'")
+    if not _column_exists(engine, table="users", column="invite_token_hash", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN invite_token_hash VARCHAR(255) NULL")
+    if not _column_exists(engine, table="users", column="invite_token_expires_at", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN invite_token_expires_at DATETIME NULL")
+    if not _column_exists(engine, table="users", column="invite_sent_at", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN invite_sent_at DATETIME NULL")
+    if not _column_exists(engine, table="users", column="invite_accepted_at", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN invite_accepted_at DATETIME NULL")
     if not _column_exists(engine, table="users", column="code", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN code VARCHAR(32) NULL, ADD UNIQUE KEY uq_users_code (code)")
     if not _column_exists(engine, table="users", column="email", schema=schema):
@@ -142,6 +152,20 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
         _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN shift_end VARCHAR(5) NOT NULL DEFAULT '18:00'")
     if not _column_exists(engine, table="attendance_policies", column="early_leave_grace_minutes", schema=schema):
         _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN early_leave_grace_minutes INT NOT NULL DEFAULT 0")
+    if not _column_exists(engine, table="attendance_policies", column="break_start", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN break_start VARCHAR(5) NOT NULL DEFAULT '12:00'")
+    if not _column_exists(engine, table="attendance_policies", column="break_end", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN break_end VARCHAR(5) NOT NULL DEFAULT '13:00'")
+    if not _column_exists(engine, table="attendance_policies", column="break_duration_minutes", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN break_duration_minutes INT NOT NULL DEFAULT 60")
+    if not _column_exists(engine, table="attendance_policies", column="break_threshold_hours", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN break_threshold_hours DOUBLE NOT NULL DEFAULT 6.0")
+    if not _column_exists(engine, table="attendance_policies", column="auto_checkout_time", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN auto_checkout_time VARCHAR(5) NOT NULL DEFAULT '23:59'")
+
+    # users table extensions
+    if not _column_exists(engine, table="users", column="face_enrolled_at", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN face_enrolled_at DATETIME NULL")
 
     # leave_requests table (added later)
     # Keep migration best-effort: if table does not exist, skip.

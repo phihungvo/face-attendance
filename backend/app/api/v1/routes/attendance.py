@@ -14,6 +14,7 @@ from app.schemas.attendance import (
     AttendanceStats,
     CheckInResponse,
     CheckOutResponse,
+    ScanResponse,
     DailyAttendanceRow,
     MonthlyReportRow,
     TimelogRow,
@@ -58,6 +59,64 @@ async def checkout(
         return ok(CheckOutResponse(user_name=user_name, confidence=confidence, time=ts))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể check-out: {e}")
+
+
+@router.post("/scan", response_model=ApiResponse[ScanResponse])
+async def scan(
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("attendance.manage")),
+) -> ApiResponse[ScanResponse]:
+    """
+    One-shot scan: auto decide check-in/check-out.
+    """
+    try:
+        image_bytes = await image.read()
+        user_name, confidence, ts, action = service.scan(db, image_bytes=image_bytes)
+        return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")
+
+
+@router.post("/me/scan", response_model=ApiResponse[ScanResponse])
+async def scan_me(
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("employee.portal")),
+) -> ApiResponse[ScanResponse]:
+    """
+    Employee self-service scan (must match face with current account).
+    """
+    try:
+        image_bytes = await image.read()
+        user_name, confidence, ts, action = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes)
+        return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")
+
+
+@router.get("/me/logs", response_model=ApiResponse[list[AttendanceLogOut]])
+def list_my_logs(
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("employee.portal")),
+) -> ApiResponse[list[AttendanceLogOut]]:
+    return ok(service.list_logs_for_user(db, user_id=int(user.id), limit=limit, offset=offset))
+
+
+@router.get("/me/timelog", response_model=ApiResponse[list[TimelogRow]])
+def my_timelog_range(
+    from_date: date,
+    to_date: date,
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("employee.portal")),
+) -> ApiResponse[list[TimelogRow]]:
+    try:
+        rows = service.timelog_range_for_user(db, user_id=int(user.id), from_day=from_date, to_day_inclusive=to_date)
+        return ok([TimelogRow(**r) for r in rows])
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
 
 
 @router.get("/logs", response_model=ApiResponse[list[AttendanceLogOut]])

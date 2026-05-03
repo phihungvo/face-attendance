@@ -13,6 +13,7 @@ export async function createUser(payload: {
   role?: string | null;
   status?: string | null;
   department_id?: number | null;
+  create_login?: boolean;
 }) {
   const res = await api.post<ApiResponse<User>>("/users", payload);
   if (!res.data.result) throw new Error("Không tạo được nhân viên");
@@ -38,4 +39,3 @@ export async function updateUser(
 export async function deleteUser(userId: number) {
   await api.delete(`/users/${userId}`);
 }
-

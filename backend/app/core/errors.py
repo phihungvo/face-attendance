@@ -29,6 +29,9 @@ DB_ERROR = ErrorCode(code=1200, message="Lỗi cơ sở dữ liệu", http_statu
 
 AUTH_USERNAME_TAKEN = ErrorCode(code=2001, message="Tên đăng nhập đã tồn tại", http_status=400)
 AUTH_INVALID_CREDENTIALS = ErrorCode(code=2002, message="Tên đăng nhập hoặc mật khẩu không đúng", http_status=401)
+AUTH_ACCOUNT_PENDING = ErrorCode(code=2003, message="Tài khoản chưa được kích hoạt", http_status=403)
+AUTH_INVITE_INVALID = ErrorCode(code=2004, message="Link kích hoạt không hợp lệ", http_status=400)
+AUTH_INVITE_EXPIRED = ErrorCode(code=2005, message="Link kích hoạt đã hết hạn", http_status=400)
 
 ML_NOT_READY = ErrorCode(
     code=3001,

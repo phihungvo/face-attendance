@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from app.clients.ml_client import MlClient
+from app.core.attendance_engine import AttendanceConfig, compute_attendance, decide_scan_action
 from app.repositories.attendance_logs import AttendanceLogRepository
 from app.repositories.attendance_policy import AttendancePolicyRepository
 from app.repositories.departments import DepartmentRepository
@@ -40,46 +41,20 @@ class AttendanceService:
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkin_from, policy.checkin_to, label="check-in")
 
-        # Probe embedding from ML service
-        probe = self._ml.extract_embedding(image_bytes=image_bytes)
-
-        # Build candidate list (user_id, embedding)
-        candidates: list[tuple[int, list[float]]] = []
-        for record in self._embeddings.list_all(db):
-            candidates.append((record.user_id, embedding_from_json(record.embedding)))
-
-        match = match_best(probe_embedding=probe, candidates=candidates, threshold=float(policy.face_match_threshold))
-        if match is None:
-            raise ValueError("No matched user (below threshold)")
-
-        user = self._users.get(db, match.user_id)
-        if user is None:
-            raise ValueError("Matched user not found")
+        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
 
         _enforce_min_interval(db, self._logs, user_id=user.id, log_type="checkin", now=now, min_minutes=policy.min_minutes_between_same_type)
-        log = self._logs.create(db, user_id=user.id, log_type="checkin", confidence=match.confidence, timestamp=now)
+        log = self._logs.create(db, user_id=user.id, log_type="checkin", confidence=confidence, timestamp=now)
         db.commit()
         db.refresh(log)
-        return (user.name, match.confidence, log.timestamp)
+        return (user.name, confidence, log.timestamp)
 
     def checkout(self, db: Session, *, image_bytes: bytes) -> tuple[str, float, object]:
         policy = self._policy.get_or_create(db)
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkout_from, policy.checkout_to, label="check-out")
 
-        probe = self._ml.extract_embedding(image_bytes=image_bytes)
-
-        candidates: list[tuple[int, list[float]]] = []
-        for record in self._embeddings.list_all(db):
-            candidates.append((record.user_id, embedding_from_json(record.embedding)))
-
-        match = match_best(probe_embedding=probe, candidates=candidates, threshold=float(policy.face_match_threshold))
-        if match is None:
-            raise ValueError("No matched user (below threshold)")
-
-        user = self._users.get(db, match.user_id)
-        if user is None:
-            raise ValueError("Matched user not found")
+        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
 
         _enforce_min_interval(
             db,
@@ -89,10 +64,209 @@ class AttendanceService:
             now=now,
             min_minutes=policy.min_minutes_between_same_type,
         )
-        log = self._logs.create(db, user_id=user.id, log_type="checkout", confidence=match.confidence, timestamp=now)
+        log = self._logs.create(db, user_id=user.id, log_type="checkout", confidence=confidence, timestamp=now)
         db.commit()
         db.refresh(log)
-        return (user.name, match.confidence, log.timestamp)
+        return (user.name, confidence, log.timestamp)
+
+    def scan(self, db: Session, *, image_bytes: bytes) -> tuple[str, float, object, str]:
+        """
+        One-shot scan: auto decide check-in/check-out based on policy windows and existing logs.
+        """
+        policy = self._policy.get_or_create(db)
+        now = _now_in_policy_tz(policy.timezone)
+
+        in_checkin = _in_time_window(now, policy.checkin_from, policy.checkin_to)
+        in_checkout = _in_time_window(now, policy.checkout_from, policy.checkout_to)
+        if not in_checkin and not in_checkout:
+            raise ValueError("Ngoài khung giờ check-in/check-out")
+
+        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+
+        day = _attendance_day_for_ts(now, shift_start=policy.shift_start, shift_end=policy.shift_end)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        start = datetime.combine(day, time(0, 0, 0))
+        end = start + (timedelta(days=2) if overnight else timedelta(days=1))
+        logs = self._logs.list_in_range(db, start=start, end=end, user_id=user.id)
+
+        first_checkin: datetime | None = None
+        last_checkout: datetime | None = None
+        for l in logs:
+            if _attendance_day_for_ts(l.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end) != day:
+                continue
+            if l.type == "checkin":
+                if first_checkin is None or l.timestamp < first_checkin:
+                    first_checkin = l.timestamp
+            else:
+                if last_checkout is None or l.timestamp > last_checkout:
+                    last_checkout = l.timestamp
+
+        action = decide_scan_action(
+            in_checkin_window=in_checkin,
+            in_checkout_window=in_checkout,
+            has_checkin=first_checkin is not None,
+            has_checkout=last_checkout is not None,
+        )
+
+        _enforce_min_interval(db, self._logs, user_id=user.id, log_type=action, now=now, min_minutes=policy.min_minutes_between_same_type)
+        log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now)
+        db.commit()
+        db.refresh(log)
+        return (user.name, confidence, log.timestamp, action)
+
+    def scan_for_user(self, db: Session, *, user_id: int, image_bytes: bytes) -> tuple[str, float, object, str]:
+        """
+        Employee self-service scan: match face, then enforce matched user == current user.
+        """
+        policy = self._policy.get_or_create(db)
+        now = _now_in_policy_tz(policy.timezone)
+
+        in_checkin = _in_time_window(now, policy.checkin_from, policy.checkin_to)
+        in_checkout = _in_time_window(now, policy.checkout_from, policy.checkout_to)
+
+        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        if int(getattr(user, "id")) != int(user_id):
+            raise ValueError("Khuôn mặt không khớp tài khoản đang đăng nhập")
+
+        day = _attendance_day_for_ts(now, shift_start=policy.shift_start, shift_end=policy.shift_end)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        start = datetime.combine(day, time(0, 0, 0))
+        end = start + (timedelta(days=2) if overnight else timedelta(days=1))
+        logs = self._logs.list_in_range(db, start=start, end=end, user_id=user.id)
+
+        first_checkin: datetime | None = None
+        last_checkout: datetime | None = None
+        for l in logs:
+            if _attendance_day_for_ts(l.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end) != day:
+                continue
+            if l.type == "checkin":
+                if first_checkin is None or l.timestamp < first_checkin:
+                    first_checkin = l.timestamp
+            else:
+                if last_checkout is None or l.timestamp > last_checkout:
+                    last_checkout = l.timestamp
+
+        action = decide_scan_action(
+            in_checkin_window=in_checkin,
+            in_checkout_window=in_checkout,
+            has_checkin=first_checkin is not None,
+            has_checkout=last_checkout is not None,
+        )
+
+        _enforce_min_interval(db, self._logs, user_id=user.id, log_type=action, now=now, min_minutes=policy.min_minutes_between_same_type)
+        log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now)
+        db.commit()
+        db.refresh(log)
+        return (user.name, confidence, log.timestamp, action)
+
+    def list_logs_for_user(self, db: Session, *, user_id: int, limit: int = 50, offset: int = 0):
+        pairs = self._logs.list_with_user_for_user(db, user_id=user_id, limit=limit, offset=offset)
+        out = []
+        for log, user_name in pairs:
+            setattr(log, "user_name", user_name)
+            out.append(log)
+        return out
+
+    def timelog_range_for_user(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        from_day: date,
+        to_day_inclusive: date,
+    ) -> list[dict[str, object]]:
+        if to_day_inclusive < from_day:
+            raise ValueError("to_date must be >= from_date")
+
+        policy = self._policy.get_or_create(db)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        start = datetime.combine(from_day, time(0, 0, 0))
+        end = datetime.combine(to_day_inclusive + timedelta(days=1), time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
+
+        user = self._users.get(db, user_id)
+        if user is None:
+            raise ValueError("User not found")
+
+        logs = self._logs.list_in_range(db, start=start, end=end, user_id=user_id)
+
+        per_day: dict[date, dict[str, datetime]] = {}
+        for log in logs:
+            d = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
+            if d < from_day or d > to_day_inclusive:
+                continue
+            bucket = per_day.setdefault(d, {})
+            if log.type == "checkin":
+                prev = bucket.get("checkin")
+                if prev is None or log.timestamp < prev:
+                    bucket["checkin"] = log.timestamp
+            else:
+                prev = bucket.get("checkout")
+                if prev is None or log.timestamp > prev:
+                    bucket["checkout"] = log.timestamp
+
+        cfg = AttendanceConfig(
+            shift_start=policy.shift_start,
+            shift_end=policy.shift_end,
+            late_grace_minutes=int(policy.late_grace_minutes),
+            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
+            break_start=policy.break_start,
+            break_end=policy.break_end,
+            break_duration_minutes=int(policy.break_duration_minutes),
+            break_threshold_hours=float(policy.break_threshold_hours),
+            auto_checkout_time=policy.auto_checkout_time,
+        )
+
+        rows: list[dict[str, object]] = []
+        day_cursor = from_day
+        while day_cursor <= to_day_inclusive:
+            times = per_day.get(day_cursor, {})
+            cin = times.get("checkin")
+            cout = times.get("checkout")
+            absent = cin is None
+            computed = compute_attendance(day=day_cursor, checkin_time=cin, checkout_time=cout, cfg=cfg)
+            late = (cin is not None) and (computed.late_minutes > 0)
+            rows.append(
+                {
+                    "user_id": user.id,
+                    "user_name": user.name,
+                    "user_code": user.code,
+                    "department_id": user.department_id,
+                    "department_name": None,
+                    "date": day_cursor.isoformat(),
+                    "checkin_time": cin,
+                    "checkout_time": cout,
+                    "work_hours": round(computed.working_minutes / 60.0, 3),
+                    "late": late,
+                    "absent": absent,
+                    "break_minutes": computed.break_minutes if cin is not None else 0,
+                    "working_minutes": computed.working_minutes if cin is not None else 0,
+                    "late_minutes": computed.late_minutes if cin is not None else 0,
+                    "early_leave_minutes": computed.early_leave_minutes if cin is not None else 0,
+                    "overtime_minutes": computed.overtime_minutes if cin is not None else 0,
+                    "auto_checkout_applied": computed.auto_checkout_applied if cin is not None else False,
+                    "method": "Face",
+                }
+            )
+            day_cursor = day_cursor + timedelta(days=1)
+        return rows
+
+    def _match_user(self, db: Session, *, image_bytes: bytes, threshold: float) -> tuple[object, float]:
+        # Probe embedding from ML service
+        probe = self._ml.extract_embedding(image_bytes=image_bytes)
+
+        # Build candidate list (user_id, embedding)
+        candidates: list[tuple[int, list[float]]] = []
+        for record in self._embeddings.list_all(db):
+            candidates.append((record.user_id, embedding_from_json(record.embedding)))
+
+        match = match_best(probe_embedding=probe, candidates=candidates, threshold=float(threshold))
+        if match is None:
+            raise ValueError("No matched user (below threshold)")
+
+        user = self._users.get(db, match.user_id)
+        if user is None:
+            raise ValueError("Matched user not found")
+        return (user, float(match.confidence))
 
     def list_logs(self, db: Session, *, limit: int = 200, offset: int = 0):
         pairs = self._logs.list_with_user(db, limit=limit, offset=offset)
@@ -125,8 +299,17 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        shift_start = _parse_hhmm(policy.shift_start)
-        late_cutoff = datetime.combine(day, shift_start) + timedelta(minutes=int(policy.late_grace_minutes))
+        cfg = AttendanceConfig(
+            shift_start=policy.shift_start,
+            shift_end=policy.shift_end,
+            late_grace_minutes=int(policy.late_grace_minutes),
+            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
+            break_start=policy.break_start,
+            break_end=policy.break_end,
+            break_duration_minutes=int(policy.break_duration_minutes),
+            break_threshold_hours=float(policy.break_threshold_hours),
+            auto_checkout_time=policy.auto_checkout_time,
+        )
 
         rows: list[DailyComputed] = []
         for user_id, user_name in users.items():
@@ -134,10 +317,12 @@ class AttendanceService:
             cin = times.get("checkin")
             cout = times.get("checkout")
             absent = cin is None
-            late = (cin is not None) and (cin > late_cutoff)
+            late = False
             work_hours = 0.0
-            if cin is not None and cout is not None and cout > cin:
-                work_hours = (cout - cin).total_seconds() / 3600.0
+            if cin is not None:
+                computed = compute_attendance(day=day, checkin_time=cin, checkout_time=cout, cfg=cfg)
+                late = computed.late_minutes > 0
+                work_hours = computed.working_minutes / 60.0
             rows.append(
                 DailyComputed(
                     user_id=user_id,
@@ -184,8 +369,17 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        shift_start = _parse_hhmm(policy.shift_start)
-        grace = timedelta(minutes=int(policy.late_grace_minutes))
+        cfg = AttendanceConfig(
+            shift_start=policy.shift_start,
+            shift_end=policy.shift_end,
+            late_grace_minutes=int(policy.late_grace_minutes),
+            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
+            break_start=policy.break_start,
+            break_end=policy.break_end,
+            break_duration_minutes=int(policy.break_duration_minutes),
+            break_threshold_hours=float(policy.break_threshold_hours),
+            auto_checkout_time=policy.auto_checkout_time,
+        )
         days_in_month = (next_month - month_start).days
 
         # Aggregate per user
@@ -198,13 +392,10 @@ class AttendanceService:
             if cin is None:
                 continue
             totals[uid]["present_days"] = int(totals[uid]["present_days"]) + 1
-            late_cutoff = datetime.combine(d, shift_start) + grace
-            if cin > late_cutoff:
+            computed = compute_attendance(day=d, checkin_time=cin, checkout_time=cout, cfg=cfg)
+            if computed.late_minutes > 0:
                 totals[uid]["late_days"] = int(totals[uid]["late_days"]) + 1
-            if cout is not None and cout > cin:
-                totals[uid]["total_work_hours"] = float(totals[uid]["total_work_hours"]) + (
-                    (cout - cin).total_seconds() / 3600.0
-                )
+            totals[uid]["total_work_hours"] = float(totals[uid]["total_work_hours"]) + (computed.working_minutes / 60.0)
 
         rows: list[dict[str, object]] = []
         for uid, name in users.items():
@@ -271,8 +462,17 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        shift_start = _parse_hhmm(policy.shift_start)
-        grace = timedelta(minutes=int(policy.late_grace_minutes))
+        cfg = AttendanceConfig(
+            shift_start=policy.shift_start,
+            shift_end=policy.shift_end,
+            late_grace_minutes=int(policy.late_grace_minutes),
+            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
+            break_start=policy.break_start,
+            break_end=policy.break_end,
+            break_duration_minutes=int(policy.break_duration_minutes),
+            break_threshold_hours=float(policy.break_threshold_hours),
+            auto_checkout_time=policy.auto_checkout_time,
+        )
 
         def _match_status(*, late: bool, absent: bool) -> bool:
             if status is None:
@@ -295,13 +495,11 @@ class AttendanceService:
                 if not include_absent and cin is None and cout is None:
                     continue
                 absent = cin is None
-                late_cutoff = datetime.combine(day_cursor, shift_start) + grace
-                late = (cin is not None) and (cin > late_cutoff)
+                computed = compute_attendance(day=day_cursor, checkin_time=cin, checkout_time=cout, cfg=cfg)
+                late = (cin is not None) and (computed.late_minutes > 0)
                 if not _match_status(late=late, absent=absent):
                     continue
-                work_hours = 0.0
-                if cin is not None and cout is not None and cout > cin:
-                    work_hours = (cout - cin).total_seconds() / 3600.0
+                work_hours = computed.working_minutes / 60.0
                 dept = depts.get(u.department_id) if u.department_id is not None else None
                 rows.append(
                     {
@@ -316,6 +514,12 @@ class AttendanceService:
                         "work_hours": round(work_hours, 3),
                         "late": late,
                         "absent": absent,
+                        "break_minutes": computed.break_minutes if cin is not None else 0,
+                        "working_minutes": computed.working_minutes if cin is not None else 0,
+                        "late_minutes": computed.late_minutes if cin is not None else 0,
+                        "early_leave_minutes": computed.early_leave_minutes if cin is not None else 0,
+                        "overtime_minutes": computed.overtime_minutes if cin is not None else 0,
+                        "auto_checkout_applied": computed.auto_checkout_applied if cin is not None else False,
                         "method": "Face",
                     }
                 )
@@ -367,14 +571,22 @@ class AttendanceService:
         cin = checkin_time
         cout = checkout_time
 
-        shift_start = _parse_hhmm(policy.shift_start)
-        grace = timedelta(minutes=int(policy.late_grace_minutes))
-        late_cutoff = datetime.combine(day, shift_start) + grace
+        cfg = AttendanceConfig(
+            shift_start=policy.shift_start,
+            shift_end=policy.shift_end,
+            late_grace_minutes=int(policy.late_grace_minutes),
+            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
+            break_start=policy.break_start,
+            break_end=policy.break_end,
+            break_duration_minutes=int(policy.break_duration_minutes),
+            break_threshold_hours=float(policy.break_threshold_hours),
+            auto_checkout_time=policy.auto_checkout_time,
+        )
+
         absent = cin is None
-        late = (cin is not None) and (cin > late_cutoff)
-        work_hours = 0.0
-        if cin is not None and cout is not None and cout > cin:
-            work_hours = (cout - cin).total_seconds() / 3600.0
+        computed = compute_attendance(day=day, checkin_time=cin, checkout_time=cout, cfg=cfg)
+        late = (cin is not None) and (computed.late_minutes > 0)
+        work_hours = computed.working_minutes / 60.0
 
         return {
             "user_id": user.id,
@@ -388,6 +600,12 @@ class AttendanceService:
             "work_hours": round(work_hours, 3),
             "late": late,
             "absent": absent,
+            "break_minutes": computed.break_minutes if cin is not None else 0,
+            "working_minutes": computed.working_minutes if cin is not None else 0,
+            "late_minutes": computed.late_minutes if cin is not None else 0,
+            "early_leave_minutes": computed.early_leave_minutes if cin is not None else 0,
+            "overtime_minutes": computed.overtime_minutes if cin is not None else 0,
+            "auto_checkout_applied": computed.auto_checkout_applied if cin is not None else False,
             "method": "Manual",
         }
 
@@ -451,6 +669,15 @@ def _enforce_time_window(now: datetime, start_hhmm: str, end_hhmm: str, *, label
     # Overnight window (wrap): allow if time >= start OR time <= end
     if not (now_t >= start_t or now_t <= end_t):
         raise ValueError(f"Ngoài khung giờ cho phép {label} ({start_hhmm}–{end_hhmm})")
+
+
+def _in_time_window(now: datetime, start_hhmm: str, end_hhmm: str) -> bool:
+    start_t = _parse_hhmm(start_hhmm)
+    end_t = _parse_hhmm(end_hhmm)
+    now_t = now.time().replace(microsecond=0)
+    if start_t <= end_t:
+        return not (now_t < start_t or now_t > end_t)
+    return bool(now_t >= start_t or now_t <= end_t)
 
 
 def _now_in_policy_tz(tz_name: str) -> datetime:

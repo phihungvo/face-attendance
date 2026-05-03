@@ -103,6 +103,13 @@
   font-weight: 900;
 }
 
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -130,4 +137,77 @@
   background: linear-gradient(135deg, var(--rose), #e03060);
   color: #fff;
   box-shadow: 0 4px 18px rgba(242, 92, 122, 0.35);
+}
+
+.warnBox,
+.errBox,
+.infoBox {
+  margin-top: 12px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.warnBox {
+  border-left: 3px solid var(--warning);
+}
+
+.errBox {
+  border-left: 3px solid var(--danger);
+}
+
+.infoBox {
+  border-left: 3px solid var(--primary);
+}
+
+.sectionTitle {
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.logList {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.logRow {
+  display: grid;
+  grid-template-columns: 90px 1fr 70px;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.logRow:last-child {
+  border-bottom: none;
+}
+
+.logType {
+  font-weight: 900;
+}
+
+.logTime {
+  color: var(--ink2);
+  font-weight: 700;
+}
+
+.logConf {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+}
+
+.empty {
+  padding: 14px;
+  color: var(--ink3);
+  font-weight: 800;
 }

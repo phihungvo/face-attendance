@@ -105,21 +105,97 @@
 }
 
 .empAvatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  font-weight: 900;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
   color: #fff;
   background: linear-gradient(135deg, var(--primary), var(--purple));
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .empName {
   font-weight: 800;
   color: var(--text);
+}
+
+.timelogTable {
+  --sticky-left-1: 96px; /* code */
+  --sticky-left-2: 300px; /* employee */
+}
+
+.timelogTable :global(th),
+.timelogTable :global(td) {
+  white-space: nowrap;
+}
+
+.timelogTable :global(th:nth-child(1)),
+.timelogTable :global(td:nth-child(1)) {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--surface);
+  width: var(--sticky-left-1);
+}
+
+.timelogTable :global(th:nth-child(2)),
+.timelogTable :global(td:nth-child(2)) {
+  position: sticky;
+  left: var(--sticky-left-1);
+  z-index: 3;
+  background: var(--surface);
+  width: var(--sticky-left-2);
+}
+
+.timelogTable :global(th:last-child),
+.timelogTable :global(td:last-child) {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: var(--surface);
+}
+
+.timelogTable :global(th:nth-child(1)),
+.timelogTable :global(th:nth-child(2)),
+.timelogTable :global(th:last-child) {
+  z-index: 4;
+  background: var(--surface2);
+}
+
+.colCode {
+  width: var(--sticky-left-1);
+}
+
+.colName {
+  width: var(--sticky-left-2);
+}
+
+.colActions {
+  width: 96px;
+}
+
+.timeIn {
+  font-weight: 900;
+  color: var(--accent);
+}
+
+.timeOut {
+  font-weight: 900;
+  color: var(--danger);
+}
+
+.timeWork {
+  font-weight: 900;
+  color: var(--primary);
+}
+
+.timeOt {
+  font-weight: 900;
+  color: var(--warning-text);
 }
 
 .mono {
@@ -150,24 +226,46 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  gap: 6px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  border: 1px solid var(--border2);
-  background: var(--bg);
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
 }
 
 .badgeGreen {
-  color: var(--accent-dark);
+  background: #e3f9ec;
+  color: #1a6b35;
+}
+
+.badgeGreen::before {
+  background: var(--accent);
 }
 
 .badgeOrange {
-  color: var(--warning-text);
+  background: #fff3e0;
+  color: #a85a00;
+}
+
+.badgeOrange::before {
+  background: var(--warning);
 }
 
 .badgeRed {
-  color: var(--danger-text);
+  background: #ffe9e9;
+  color: #cc1b1b;
+}
+
+.badgeRed::before {
+  background: var(--danger);
 }
 
 .rowActions {

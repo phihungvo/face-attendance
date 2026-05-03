@@ -49,6 +49,26 @@
   flex: 1;
 }
 
+.errorBox {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--rose-light);
+  border: 1.5px solid var(--rose);
+  color: var(--ink);
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.loading {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  color: var(--ink2);
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
 .histRow {
   background: var(--surface);
   border-radius: 16px;

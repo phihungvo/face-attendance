@@ -31,6 +31,20 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
 
+    # Frontend URL (used for invite activation links)
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+
+    # Invite / activation
+    INVITE_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 3  # 3 days
+
+    # SMTP (invite emails)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "Face Attendance <no-reply@example.com>"
+    SMTP_USE_STARTTLS: bool = True
+
     # ML Service (internal)
     ML_SERVICE_URL: str = "http://ml:8001"
     ML_SERVICE_TIMEOUT_SECONDS: float = 15.0

@@ -22,6 +22,11 @@ class AttendancePolicyRepository:
             shift_end=getattr(settings, "SHIFT_END", "18:00"),
             late_grace_minutes=int(settings.LATE_GRACE_MINUTES),
             early_leave_grace_minutes=int(getattr(settings, "EARLY_LEAVE_GRACE_MINUTES", 0)),
+            break_start=str(getattr(settings, "BREAK_START", "12:00")),
+            break_end=str(getattr(settings, "BREAK_END", "13:00")),
+            break_duration_minutes=int(getattr(settings, "BREAK_DURATION_MINUTES", 60)),
+            break_threshold_hours=float(getattr(settings, "BREAK_THRESHOLD_HOURS", 6.0)),
+            auto_checkout_time=str(getattr(settings, "AUTO_CHECKOUT_TIME", "23:59")),
         )
         db.add(policy)
         db.flush()

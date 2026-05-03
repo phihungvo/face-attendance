@@ -40,6 +40,17 @@ class AttendanceLogRepository:
         )
         return list(db.execute(stmt).all())
 
+    def list_with_user_for_user(self, db: Session, *, user_id: int, limit: int = 200, offset: int = 0) -> list[tuple[AttendanceLog, str]]:
+        stmt: Select = (
+            select(AttendanceLog, User.name)
+            .join(User, User.id == AttendanceLog.user_id)
+            .where(AttendanceLog.user_id == user_id)
+            .order_by(AttendanceLog.timestamp.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(db.execute(stmt).all())
+
     def list_in_range(
         self,
         db: Session,
