@@ -10,7 +10,7 @@ Chạy production cơ bản bằng Docker Compose.
 cd face-attendance
 docker compose up --build
 ```
-
+ 
 ## Dev mode (hot reload)
 Chạy 1 lần và tự reload khi sửa code (frontend Vite HMR + backend uvicorn `--reload`):
 ```bash
