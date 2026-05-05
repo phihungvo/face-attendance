@@ -50,6 +50,33 @@ docker compose -f docker-compose.prod.yml logs -f --tail=200
 
 ## HTTPS (tuỳ chọn)
 
-Hiện compose expose `frontend` ra port 80. Nếu muốn domain + TLS, nên đặt Nginx/Caddy/Traefik phía trước,
-hoặc mở rộng compose thêm reverse-proxy. Nếu bạn cho mình domain + lựa chọn proxy, mình cấu hình tiếp.
+Hiện compose expose `frontend` ra port 80 (HTTP). **Lưu ý:** tính năng camera (`getUserMedia`) trên Chrome/Edge
+chỉ hoạt động ở **secure context** (HTTPS hoặc `localhost`). Vì vậy nếu deploy VPS mà truy cập bằng `http://...`
+thì sẽ gặp lỗi kiểu “Trình duyệt không hỗ trợ camera (getUserMedia)” hoặc “Camera bị chặn do trang chưa chạy ở secure context”.
 
+Nếu muốn domain + TLS, nên đặt Nginx/Caddy/Traefik phía trước hoặc mở rộng compose thêm reverse-proxy.
+
+### Ví dụ nhanh với Caddy (khuyến nghị vì cấu hình gọn)
+
+1) Trỏ domain về VPS.
+2) Mở firewall port `80/443`.
+3) Chạy Caddy trên VPS (host-level) hoặc chạy Caddy bằng Docker.
+
+Ví dụ Caddyfile:
+```caddyfile
+your-domain.com {
+  encode zstd gzip
+
+  # Frontend (Vite build) đang listen ở port 80 trong container.
+  reverse_proxy 127.0.0.1:8080
+
+  # Nếu bạn muốn gọi backend trực tiếp từ browser (không qua nginx của frontend),
+  # có thể thêm route /api -> backend:
+  # handle_path /api/* {
+  #   reverse_proxy 127.0.0.1:8000
+  # }
+}
+```
+
+Gợi ý mapping port khi chạy container frontend:
+- Đổi `FRONTEND_PORT=8080` (thay vì 80) và để Caddy nghe `:443` ngoài host.

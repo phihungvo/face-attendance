@@ -31,9 +31,17 @@ function PrivateRoutes() {
     );
   }
 
+  // Route by role first (more stable than using a single permission heuristic).
+  // Reason: an employee may accidentally be granted `dashboard.read` (direct permission / role misconfig),
+  // which would otherwise force them into the manager UI.
+  const isManager = auth.roleKeys.includes("manager");
+  const isEmployee = auth.roleKeys.includes("employee");
+
+  if (isEmployee && !isManager) return <EmployeeApp />;
+
+  // Back-compat fallback for accounts that only have permissions (no roles).
   const canManager = auth.permissionKeys.includes("dashboard.read");
   const canEmployee = auth.permissionKeys.includes("employee.portal");
-
   if (canEmployee && !canManager) return <EmployeeApp />;
 
   return (

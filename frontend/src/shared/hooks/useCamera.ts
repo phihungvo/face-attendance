@@ -38,11 +38,18 @@ export function useCamera() {
       try {
         setError(null);
         stop();
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error("Trình duyệt không hỗ trợ camera (getUserMedia)");
-        }
         if (!window.isSecureContext) {
-          throw new Error("Camera bị chặn do trang chưa chạy ở secure context (HTTPS hoặc localhost)");
+          const proto = typeof window !== "undefined" ? window.location.protocol : "";
+          const host = typeof window !== "undefined" ? window.location.host : "";
+          throw new Error(
+            `Camera bị chặn do trang chưa chạy ở secure context (HTTPS hoặc localhost). Hiện tại: ${proto}//${host}`
+          );
+        }
+        if (!navigator.mediaDevices) {
+          throw new Error("Trình duyệt không hỗ trợ camera (navigator.mediaDevices không tồn tại)");
+        }
+        if (!navigator.mediaDevices.getUserMedia) {
+          throw new Error("Trình duyệt không hỗ trợ camera (getUserMedia)");
         }
         const constraints: MediaStreamConstraints = {
           video: opts?.deviceId
