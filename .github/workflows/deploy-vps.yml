@@ -128,7 +128,20 @@ jobs:
             export ML_IMAGE="${ML_IMAGE}"
             export FRONTEND_PORT="${FRONTEND_PORT:-80}"
 
-            docker compose -f docker-compose.prod.yml pull
+            # GHCR pulls can occasionally fail on some VPS networks (connection reset).
+            # Retry pull with limited parallelism to improve stability.
+            export COMPOSE_PARALLEL_LIMIT=1
+            for i in 1 2 3 4 5; do
+              echo "docker compose pull (attempt ${i}/5)..."
+              if docker compose -f docker-compose.prod.yml pull; then
+                break
+              fi
+              if [ "${i}" -eq 5 ]; then
+                echo "docker compose pull failed after 5 attempts" >&2
+                exit 1
+              fi
+              sleep $((i * 10))
+            done
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
             docker image prune -f || true
