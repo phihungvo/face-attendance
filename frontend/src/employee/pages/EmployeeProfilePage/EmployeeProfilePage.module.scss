@@ -85,7 +85,8 @@
 }
 
 .profileScroll {
-  padding: 24px 20px 0;
+  padding: 24px 20px var(--bottom-safe, 120px);
+  padding-bottom: 140px;
 }
 
 .profileSection {

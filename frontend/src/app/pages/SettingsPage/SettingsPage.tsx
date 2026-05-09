@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/Card/Card";
 import { mockSettings } from "../../../shared/mock/mockData";
 import { getAttendancePolicy, updateAttendancePolicy } from "../../../shared/api/settings";
+import { getMyCompany, updateMyCompany } from "../../../shared/api/companies";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useTheme } from "../../../shared/theme/theme";
+import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
 import styles from "./SettingsPage.module.scss";
 
 function Toggle({
@@ -28,7 +30,13 @@ function Toggle({
 }
 
 export default function SettingsPage() {
-  const [company, setCompany] = useState(() => mockSettings.values.company);
+  const [company, setCompany] = useState<string>("");
+  const [companyAddr, setCompanyAddr] = useState<string>("");
+  const [companyLat, setCompanyLat] = useState<string>("");
+  const [companyLng, setCompanyLng] = useState<string>("");
+  const [companyRadius, setCompanyRadius] = useState<number>(250);
+  const [companySaving, setCompanySaving] = useState(false);
+  const [companyError, setCompanyError] = useState<string | null>(null);
   const [language, setLanguage] = useState<"vi" | "en">("vi");
   const [dailyEmailReport, setDailyEmailReport] = useState(true);
   const [twoFactor, setTwoFactor] = useState(true);
@@ -59,6 +67,7 @@ export default function SettingsPage() {
   const [minMinutesBetween, setMinMinutesBetween] = useState(2);
 
   const [policyLoadedOnce, setPolicyLoadedOnce] = useState(false);
+  const geo = useGeoPosition({ watch: false });
 
   const [notifLate, setNotifLate] = useState(true);
   const [notifAbsent, setNotifAbsent] = useState(true);
@@ -103,6 +112,22 @@ export default function SettingsPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const c = await getMyCompany();
+        setCompany(c.name ?? "");
+        setCompanyAddr((c as any).address ?? "");
+        setCompanyLat((c as any).latitude != null ? String((c as any).latitude) : "");
+        setCompanyLng((c as any).longitude != null ? String((c as any).longitude) : "");
+        setCompanyRadius(Number((c as any).geo_radius_meters ?? 250));
+      } catch (e) {
+        setCompanyError(getApiErrorMessage(e));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
@@ -112,6 +137,79 @@ export default function SettingsPage() {
               <div className={styles.formRow}>
                 <div className={styles.formLabel}>Tên công ty</div>
                 <input className={styles.input} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Tên công ty" />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Địa chỉ</div>
+                <input className={styles.input} value={companyAddr} onChange={(e) => setCompanyAddr(e.target.value)} placeholder="Địa chỉ công ty (tuỳ chọn)" />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Vị trí chấm công (GPS)</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <input className={styles.input} value={companyLat} onChange={(e) => setCompanyLat(e.target.value)} placeholder="Latitude" />
+                  <input className={styles.input} value={companyLng} onChange={(e) => setCompanyLng(e.target.value)} placeholder="Longitude" />
+                </div>
+                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 160px", gap: 10, alignItems: "center" }}>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min={0}
+                    value={companyRadius}
+                    onChange={(e) => setCompanyRadius(Number(e.target.value))}
+                    placeholder="Bán kính (m)"
+                  />
+                  <button className={styles.btnGhost} type="button" onClick={() => geo.refresh()}>
+                    📍 Lấy vị trí
+                  </button>
+                </div>
+                {geo.enabled ? (
+                  <div style={{ marginTop: 8, color: "var(--text3)", fontWeight: 700, fontSize: 12.5 }}>
+                    GPS hiện tại: {geo.latitude?.toFixed(6)}, {geo.longitude?.toFixed(6)} (±{Math.round(geo.accuracyMeters ?? 0)}m)
+                    <button
+                      type="button"
+                      className={styles.btnLink}
+                      style={{ marginLeft: 8 }}
+                      onClick={() => {
+                        setCompanyLat(String(geo.latitude ?? ""));
+                        setCompanyLng(String(geo.longitude ?? ""));
+                      }}
+                    >
+                      Dùng vị trí này
+                    </button>
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 8, color: "var(--text3)", fontSize: 12.5 }}>
+                  Khi đã cấu hình GPS + bán kính, hệ thống chỉ cho chấm công nếu vị trí nhân viên nằm trong bán kính này.
+                </div>
+              </div>
+              <div className={styles.actions} style={{ marginTop: 12 }}>
+                <button
+                  className={styles.btnPrimary}
+                  type="button"
+                  disabled={companySaving}
+                  onClick={async () => {
+                    try {
+                      setCompanySaving(true);
+                      setCompanyError(null);
+                      const lat = companyLat.trim() ? Number(companyLat) : null;
+                      const lng = companyLng.trim() ? Number(companyLng) : null;
+                      if ((lat == null) !== (lng == null)) throw new Error("Latitude/Longitude phải đi cùng nhau");
+                      await updateMyCompany({
+                        name: company.trim() || null,
+                        address: companyAddr.trim() || null,
+                        latitude: lat,
+                        longitude: lng,
+                        geo_radius_meters: Number.isFinite(companyRadius) ? companyRadius : 250
+                      });
+                    } catch (e) {
+                      setCompanyError(getApiErrorMessage(e));
+                    } finally {
+                      setCompanySaving(false);
+                    }
+                  }}
+                >
+                  💾 Lưu vị trí công ty
+                </button>
+                {companyError ? <div style={{ marginLeft: 12, color: "var(--danger)", fontWeight: 800 }}>{companyError}</div> : null}
               </div>
             </div>
 

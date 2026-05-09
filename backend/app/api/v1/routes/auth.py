@@ -42,4 +42,14 @@ def me(
             perm_keys.add(p.key)
     for p in getattr(user, "permissions", []):
         perm_keys.add(p.key)
-    return ok(MeResponse(user_id=user.id, username=user.username or "", role_keys=role_keys, permission_keys=sorted(perm_keys)))
+    company = getattr(user, "company", None)
+    return ok(
+        MeResponse(
+            user_id=user.id,
+            username=user.username or "",
+            company_id=getattr(user, "company_id", None),
+            company_name=getattr(company, "name", None) if company is not None else None,
+            role_keys=role_keys,
+            permission_keys=sorted(perm_keys),
+        )
+    )

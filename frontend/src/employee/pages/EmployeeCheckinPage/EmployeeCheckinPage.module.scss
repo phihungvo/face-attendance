@@ -5,6 +5,11 @@
   flex-direction: column;
 }
 
+.page {
+  /* Reduce scroll-jank on iOS when camera is active */
+  overscroll-behavior: none;
+}
+
 .screenHeader {
   background: var(--surface);
   padding: 20px 20px 16px;
@@ -54,6 +59,17 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 14px;
+}
+
+.autoChip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  background: rgba(91, 79, 232, 0.12);
+  border: 1px solid rgba(91, 79, 232, 0.18);
+  color: var(--indigo);
+  white-space: nowrap;
 }
 
 .statusChip {
@@ -108,6 +124,7 @@
   place-items: center;
   overflow: hidden;
   box-shadow: var(--shadow-card);
+  position: relative;
 }
 
 .cameraInner {
@@ -120,6 +137,28 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transform: translateZ(0);
+}
+
+@media (max-width: 599px) {
+  .content {
+    padding: 16px;
+    padding-bottom: var(--bottom-safe);
+  }
+
+  .camera {
+    height: min(62dvh, 420px);
+    border-radius: 20px;
+  }
+
+  .actions {
+    position: sticky;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, rgba(247, 246, 255, 0.92), rgba(247, 246, 255, 0));
+    padding: 10px 0 0;
+    margin-top: 10px;
+    backdrop-filter: blur(8px);
+  }
 }
 
 .actions {

@@ -166,6 +166,26 @@
   background: var(--surface2);
 }
 
+@media (max-width: 599px) {
+  .timelogTable {
+    --sticky-left-1: 0px;
+    --sticky-left-2: 0px;
+  }
+
+  .timelogTable :global(th:nth-child(1)),
+  .timelogTable :global(td:nth-child(1)),
+  .timelogTable :global(th:nth-child(2)),
+  .timelogTable :global(td:nth-child(2)),
+  .timelogTable :global(th:last-child),
+  .timelogTable :global(td:last-child) {
+    position: static;
+    left: auto;
+    right: auto;
+    z-index: auto;
+    background: transparent;
+  }
+}
+
 .colCode {
   width: var(--sticky-left-1);
 }

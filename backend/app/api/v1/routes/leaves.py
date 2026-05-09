@@ -5,7 +5,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_permission
+from app.api.deps import get_company_scope_id, get_current_user, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -77,12 +77,14 @@ def list_leaves(
     limit: int = Query(default=20, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[LeaveListResponse]:
     if status and status not in {"pending", "approved", "rejected"}:
         raise AppException(BAD_REQUEST, detail="Invalid status")
     result = service.list(
         db,
+        company_id=company_id,
         limit=limit,
         offset=offset,
         q=q.strip() if q else None,
@@ -99,10 +101,11 @@ def list_leaves(
 def get_leave(
     leave_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[LeaveOut]:
     try:
-        return ok(LeaveOut(**service.get(db, leave_id=leave_id)))
+        return ok(LeaveOut(**service.get(db, leave_id=leave_id, company_id=company_id)))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -111,11 +114,13 @@ def get_leave(
 def create_leave(
     payload: LeaveCreateRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[LeaveOut]:
     try:
         item = service.create(
             db,
+            company_id=company_id,
             user_id=payload.user_id,
             type=payload.type,
             start_date=payload.start_date,
@@ -132,12 +137,14 @@ def update_leave(
     leave_id: int,
     payload: LeaveUpdateRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[LeaveOut]:
     try:
         item = service.update(
             db,
             leave_id=leave_id,
+            company_id=company_id,
             user_id=payload.user_id,
             type=payload.type,
             start_date=payload.start_date,
@@ -154,10 +161,11 @@ def update_leave(
 def delete_leave(
     leave_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[dict[str, object]]:
     try:
-        service.delete(db, leave_id=leave_id)
+        service.delete(db, leave_id=leave_id, company_id=company_id)
         return ok({"deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -167,10 +175,11 @@ def delete_leave(
 def approve_leave(
     leave_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("leave.approve")),
 ) -> ApiResponse[LeaveOut]:
     try:
-        return ok(LeaveOut(**service.approve(db, leave_id=leave_id)))
+        return ok(LeaveOut(**service.approve(db, leave_id=leave_id, company_id=company_id)))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -179,9 +188,10 @@ def approve_leave(
 def reject_leave(
     leave_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("leave.approve")),
 ) -> ApiResponse[LeaveOut]:
     try:
-        return ok(LeaveOut(**service.reject(db, leave_id=leave_id)))
+        return ok(LeaveOut(**service.reject(db, leave_id=leave_id, company_id=company_id)))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

@@ -16,6 +16,32 @@
   gap: 14px;
 }
 
+.errorBox {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@media (max-width: 899px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ghostBtn {
   background: var(--bg);
   border: 1px solid var(--border2);
@@ -155,6 +181,16 @@
   background: var(--warning-bg);
   border: 1px solid var(--warning-border);
   color: var(--warning-text);
+}
+
+.empty {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border2);
+  background: var(--bg);
+  color: var(--text3);
+  font-weight: 800;
+  font-size: 12.5px;
 }
 
 .calendarGrid {

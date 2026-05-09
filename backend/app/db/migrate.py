@@ -42,6 +42,8 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
     """
 
     # users table extensions (if project was created before these fields existed)
+    if not _column_exists(engine, table="users", column="company_id", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN company_id INT NULL, ADD KEY ix_users_company_id (company_id)")
     if not _column_exists(engine, table="users", column="username", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN username VARCHAR(64) NULL, ADD UNIQUE KEY uq_users_username (username), ADD KEY ix_users_username (username)")
     if not _column_exists(engine, table="users", column="password_hash", schema=schema):
@@ -66,6 +68,21 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
         _exec(engine, "ALTER TABLE users ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'active'")
     if not _column_exists(engine, table="users", column="department_id", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN department_id INT NULL, ADD KEY ix_users_department_id (department_id)")
+
+    # departments table extensions
+    if not _column_exists(engine, table="departments", column="company_id", schema=schema):
+        _exec(engine, "ALTER TABLE departments ADD COLUMN company_id INT NULL, ADD KEY ix_departments_company_id (company_id)")
+
+    # companies table extensions (geo-fence settings)
+    if _table_exists(engine, table="companies", schema=schema):
+        if not _column_exists(engine, table="companies", column="address", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN address VARCHAR(255) NULL")
+        if not _column_exists(engine, table="companies", column="latitude", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN latitude DOUBLE NULL")
+        if not _column_exists(engine, table="companies", column="longitude", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN longitude DOUBLE NULL")
+        if not _column_exists(engine, table="companies", column="geo_radius_meters", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN geo_radius_meters DOUBLE NULL")
 
     # IAM join tables (new): user_roles, user_permissions
     if not _table_exists(engine, table="user_roles", schema=schema):
@@ -166,6 +183,16 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
     # users table extensions
     if not _column_exists(engine, table="users", column="face_enrolled_at", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN face_enrolled_at DATETIME NULL")
+
+    # attendance_logs geo fields
+    if not _column_exists(engine, table="attendance_logs", column="latitude", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_logs ADD COLUMN latitude DOUBLE NULL")
+    if not _column_exists(engine, table="attendance_logs", column="longitude", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_logs ADD COLUMN longitude DOUBLE NULL")
+    if not _column_exists(engine, table="attendance_logs", column="distance_meters", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_logs ADD COLUMN distance_meters DOUBLE NULL")
+    if not _column_exists(engine, table="attendance_logs", column="geo_ok", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_logs ADD COLUMN geo_ok TINYINT(1) NOT NULL DEFAULT 1")
 
     # leave_requests table (added later)
     # Keep migration best-effort: if table does not exist, skip.

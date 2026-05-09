@@ -13,6 +13,10 @@ class AttendanceLogOut(BaseModel):
     user_name: str | None = None
     type: str
     confidence: float
+    latitude: float | None = None
+    longitude: float | None = None
+    distance_meters: float | None = None
+    geo_ok: bool | None = None
     timestamp: datetime
 
 

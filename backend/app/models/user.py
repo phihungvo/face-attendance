@@ -12,6 +12,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id"), nullable=True, index=True)
     # Auth fields (IAM). Nullable so employee records don't necessarily have login access.
     username: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -29,6 +30,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     face_enrolled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    company = relationship("Company", back_populates="users")
     department = relationship("Department", back_populates="users")
     face_embeddings = relationship("FaceEmbedding", back_populates="user", cascade="all, delete-orphan")
     attendance_logs = relationship("AttendanceLog", back_populates="user", cascade="all, delete-orphan")

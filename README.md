@@ -49,3 +49,26 @@ Backend trả format thống nhất kiểu ez_tro:
 - Dev/local: backend có chạy migration nhẹ để tự add cột mới cho bảng `users` khi nâng cấp (file `backend/app/db/migrate.py`). Nếu DB đã có dữ liệu trùng `code/email` thì có thể fail vì unique constraint → nên dọn/chuẩn hóa dữ liệu hoặc recreate DB.
 - Nếu chạy local không dùng Docker (hoặc Python của máy không phù hợp với `onnxruntime`), có thể cài tối thiểu bằng `backend/requirements.lite.txt` để test các endpoint không cần ML (ví dụ dashboard: `GET /api/v1/users`, `GET /api/v1/attendance/logs`).
 - Khi chạy `frontend` local bằng Vite, set `VITE_BACKEND_URL=http://127.0.0.1:8000` để proxy `/api` về backend local (mặc định proxy tới `http://backend:8000` cho môi trường Docker).
+
+## Share link frontend (Cloudflare Tunnel, không cần deploy)
+Mục tiêu: người khác ở nơi khác mở 1 link public và dùng được UI, trong khi app vẫn chạy trên máy bạn.
+
+1) Chạy backend (chọn 1):
+- Docker dev: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build backend mysql ml`
+- Hoặc backend local ở `http://localhost:8000`
+
+2) Chạy frontend dev (Vite) và trỏ API về backend local:
+```bash
+cd frontend
+VITE_BACKEND_URL=http://127.0.0.1:8000 npm run dev
+```
+
+3) Mở public link bằng Cloudflare Tunnel (chọn 1):
+- Cách A (npm script): `cd frontend && npm run tunnel`
+- Cách B (shell script): `./scripts/cloudflare-tunnel-frontend.sh 3000`
+
+Cloudflared sẽ in ra 1 URL dạng `https://...trycloudflare.com` (hoặc domain Cloudflare khác). Gửi URL đó cho người khác truy cập.
+
+Ghi chú:
+- Nếu bạn dùng email “activate account”, set `FRONTEND_BASE_URL=<URL tunnel>` cho backend để link trong email trỏ đúng.
+- Tunnel link dạng “quick” thường là tạm thời; muốn URL cố định thì tạo “Named Tunnel” + gắn domain trong Cloudflare.

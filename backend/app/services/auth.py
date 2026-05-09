@@ -41,7 +41,17 @@ class AuthService:
     def register(self, db: Session, *, username: str, password: str, role_key: str = "employee") -> str:
         if self._users.get_by_username(db, username) is not None:
             raise AppException(AUTH_USERNAME_TAKEN)
-        user = self._users.create(db, username=username, password_hash=hash_password(password))
+        company_id = None
+        try:
+            from sqlalchemy import select
+            from app.models.company import Company
+
+            code = settings.BOOTSTRAP_ADMIN_COMPANY_CODE.strip() or "default"
+            company = db.execute(select(Company).where(Company.code == code)).scalars().first()
+            company_id = getattr(company, "id", None) if company is not None else None
+        except Exception:
+            company_id = None
+        user = self._users.create(db, username=username, password_hash=hash_password(password), company_id=company_id)
         role = self._rbac.get_role_by_key(db, role_key) or self._rbac.get_role_by_key(db, "employee")
         if role is not None:
             user.roles = [role]

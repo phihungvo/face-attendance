@@ -2,6 +2,7 @@ export type PageMeta = { title: string; sub: string; actionLabel?: string; actio
 
 export const pageMetaByPath: Record<string, PageMeta> = {
   "/": { title: "Dashboard", sub: "Chào mừng trở lại, Admin!", actionLabel: "➕ Thêm nhân viên", actionTo: "/employees" },
+  "/companies": { title: "Công Ty", sub: "Quản lý nhiều công ty" },
   "/checkin": { title: "Chấm Công", sub: "Nhận diện khuôn mặt realtime", actionLabel: "📷 Bật camera", actionTo: "/checkin" },
   "/timelog": { title: "Bảng Giờ Công", sub: "Tổng hợp giờ làm theo tháng", actionLabel: "⬇️ Xuất file", actionTo: "/timelog" },
   "/employees": { title: "Nhân Viên", sub: "Danh sách & hồ sơ nhân viên" },

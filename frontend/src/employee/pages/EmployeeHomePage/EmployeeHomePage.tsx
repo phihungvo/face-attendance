@@ -171,7 +171,7 @@ export default function EmployeeHomePage() {
         <div className={`${styles.headerOrb} ${styles.ho1}`} />
         <div className={`${styles.headerOrb} ${styles.ho2}`} />
         <div className={styles.headerTop}>
-          <div>
+          <div className={styles.greetingWrap}>
             <div className={styles.greetingName}>Xin chào, {(me?.name || "Bạn").split(" ").slice(-1)[0]}! 👋</div>
             <div className={styles.greetingSub}>{greetingSub}</div>
           </div>

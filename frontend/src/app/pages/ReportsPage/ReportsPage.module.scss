@@ -16,6 +16,22 @@
   gap: 14px;
 }
 
+@media (max-width: 899px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .chartBars {
   height: 170px;
   display: grid;

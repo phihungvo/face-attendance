@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import get_company_scope_id, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -30,7 +30,10 @@ service = AttendanceService()
 @router.post("/checkin", response_model=ApiResponse[CheckInResponse])
 async def checkin(
     image: UploadFile = File(...),
+    latitude: float | None = Form(default=None),
+    longitude: float | None = Form(default=None),
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[CheckInResponse]:
     """
@@ -38,7 +41,7 @@ async def checkin(
     """
     try:
         image_bytes = await image.read()
-        user_name, confidence, ts = service.checkin(db, image_bytes=image_bytes)
+        user_name, confidence, ts = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         return ok(CheckInResponse(user_name=user_name, confidence=confidence, time=ts))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể check-in: {e}")
@@ -47,7 +50,10 @@ async def checkin(
 @router.post("/checkout", response_model=ApiResponse[CheckOutResponse])
 async def checkout(
     image: UploadFile = File(...),
+    latitude: float | None = Form(default=None),
+    longitude: float | None = Form(default=None),
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[CheckOutResponse]:
     """
@@ -55,7 +61,7 @@ async def checkout(
     """
     try:
         image_bytes = await image.read()
-        user_name, confidence, ts = service.checkout(db, image_bytes=image_bytes)
+        user_name, confidence, ts = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         return ok(CheckOutResponse(user_name=user_name, confidence=confidence, time=ts))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể check-out: {e}")
@@ -64,7 +70,10 @@ async def checkout(
 @router.post("/scan", response_model=ApiResponse[ScanResponse])
 async def scan(
     image: UploadFile = File(...),
+    latitude: float | None = Form(default=None),
+    longitude: float | None = Form(default=None),
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[ScanResponse]:
     """
@@ -72,7 +81,7 @@ async def scan(
     """
     try:
         image_bytes = await image.read()
-        user_name, confidence, ts, action = service.scan(db, image_bytes=image_bytes)
+        user_name, confidence, ts, action = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")
@@ -81,6 +90,8 @@ async def scan(
 @router.post("/me/scan", response_model=ApiResponse[ScanResponse])
 async def scan_me(
     image: UploadFile = File(...),
+    latitude: float | None = Form(default=None),
+    longitude: float | None = Form(default=None),
     db: Session = Depends(get_db),
     user=Depends(require_permission("employee.portal")),
 ) -> ApiResponse[ScanResponse]:
@@ -89,7 +100,7 @@ async def scan_me(
     """
     try:
         image_bytes = await image.read()
-        user_name, confidence, ts, action = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes)
+        user_name, confidence, ts, action = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")
@@ -122,18 +133,20 @@ def my_timelog_range(
 @router.get("/logs", response_model=ApiResponse[list[AttendanceLogOut]])
 def list_logs(
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("attendance.read")),
 ) -> ApiResponse[list[AttendanceLogOut]]:
-    return ok(service.list_logs(db))
+    return ok(service.list_logs(db, company_id=company_id))
 
 
 @router.get("/reports/daily", response_model=ApiResponse[list[DailyAttendanceRow]])
 def daily_attendance(
     day: date,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("timesheet.read")),
 ) -> ApiResponse[list[DailyAttendanceRow]]:
-    rows = service.daily_report(db, day=day)
+    rows = service.daily_report(db, company_id=company_id, day=day)
     out: list[DailyAttendanceRow] = []
     for r in rows:
         out.append(
@@ -155,6 +168,7 @@ def daily_attendance(
 def monthly_report(
     month: str,  # YYYY-MM
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("timesheet.read")),
 ) -> ApiResponse[list[MonthlyReportRow]]:
     try:
@@ -166,7 +180,7 @@ def monthly_report(
     except Exception:
         raise AppException(BAD_REQUEST, detail="month phải theo định dạng YYYY-MM")
 
-    rows = service.monthly_report(db, year=year, month=mo)
+    rows = service.monthly_report(db, company_id=company_id, year=year, month=mo)
     return ok([MonthlyReportRow(**r) for r in rows])
 
 
@@ -178,11 +192,13 @@ def timelog_range(
     status: str | None = None,  # "on-time" | "late" | "absent"
     include_absent: bool = False,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("timesheet.read")),
 ) -> ApiResponse[list[TimelogRow]]:
     try:
         rows = service.timelog_range(
             db,
+            company_id=company_id,
             from_day=from_date,
             to_day_inclusive=to_date,
             department_id=department_id,
@@ -200,11 +216,13 @@ def timelog_upsert(
     day: date,
     payload: TimelogUpsertRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[TimelogRow]:
     try:
         row = service.timelog_upsert_day(
             db,
+            company_id=company_id,
             user_id=user_id,
             day=day,
             checkin_time=payload.checkin_time,
@@ -220,10 +238,11 @@ def timelog_delete(
     user_id: int,
     day: date,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[dict[str, object]]:
     try:
-        service.timelog_delete_day(db, user_id=user_id, day=day)
+        service.timelog_delete_day(db, company_id=company_id, user_id=user_id, day=day)
         return ok({"deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -234,10 +253,11 @@ def stats(
     from_date: date,
     to_date: date,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("reports.read")),
 ) -> ApiResponse[AttendanceStats]:
     try:
-        data = service.stats(db, from_day=from_date, to_day_inclusive=to_date)
+        data = service.stats(db, company_id=company_id, from_day=from_date, to_day_inclusive=to_date)
         return ok(AttendanceStats(**data))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

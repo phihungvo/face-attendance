@@ -49,6 +49,18 @@ class Settings(BaseSettings):
     ML_SERVICE_URL: str = "http://ml:8001"
     ML_SERVICE_TIMEOUT_SECONDS: float = 15.0
 
+    # Bootstrap admin (created on first start if missing)
+    BOOTSTRAP_ADMIN_USERNAME: str = "admin"
+    BOOTSTRAP_ADMIN_PASSWORD: str = "admin123"
+    BOOTSTRAP_ADMIN_COMPANY_CODE: str = "default"
+    BOOTSTRAP_ADMIN_COMPANY_NAME: str = "Default Company"
+
+    # Bootstrap test accounts (created on first start if missing)
+    BOOTSTRAP_MANAGER_USERNAME: str = "manager"
+    BOOTSTRAP_MANAGER_PASSWORD: str = "manager123"
+    BOOTSTRAP_EMPLOYEE_USERNAME: str = "employee"
+    BOOTSTRAP_EMPLOYEE_PASSWORD: str = "employee123"
+
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         # Sync engine (simple and robust for starters).

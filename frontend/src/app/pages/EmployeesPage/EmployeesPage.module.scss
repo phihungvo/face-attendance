@@ -22,6 +22,35 @@
   flex-wrap: wrap;
 }
 
+@media (max-width: 899px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 599px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tabGroup {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .select {
+    width: 100%;
+  }
+
+  .searchBoxCompact {
+    width: 100%;
+  }
+}
+
 .tabGroup {
   display: flex;
   gap: 2px;

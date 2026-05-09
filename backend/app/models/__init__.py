@@ -1,3 +1,4 @@
+from app.models.company import Company
 from app.models.user import User
 from app.models.department import Department
 from app.models.face_embedding import FaceEmbedding
@@ -7,6 +8,7 @@ from app.models.leave_request import LeaveRequest
 from app.models.rbac import Permission, Role, RolePermission, UserPermission, UserRole
 
 __all__ = [
+    "Company",
     "User",
     "Department",
     "FaceEmbedding",

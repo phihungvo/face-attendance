@@ -9,6 +9,60 @@
   z-index: 100;
 }
 
+.drawerTop {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100dvh;
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-110%);
+    transition: transform 0.18s ease;
+    z-index: 100;
+  }
+
+  .drawerOpen {
+    transform: translateX(0);
+  }
+
+  .drawerTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .drawerTitle {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--text2);
+    letter-spacing: 0.02em;
+  }
+
+  .drawerClose {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .drawerClose:hover {
+    background: var(--hover);
+  }
+}
+
 .logo {
   padding: 20px 20px 16px;
   display: flex;

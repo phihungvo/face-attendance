@@ -17,6 +17,7 @@ class LeaveService:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         limit: int = 100,
         offset: int = 0,
         q: str | None = None,
@@ -28,6 +29,7 @@ class LeaveService:
     ):
         total = self._leaves.count(
             db,
+            company_id=company_id,
             q=q,
             status=status,
             user_id=user_id,
@@ -37,6 +39,7 @@ class LeaveService:
         )
         rows = self._leaves.list(
             db,
+            company_id=company_id,
             limit=limit,
             offset=offset,
             q=q,
@@ -66,17 +69,17 @@ class LeaveService:
             )
         return {"items": items, "total": total}
 
-    def get(self, db: Session, *, leave_id: int):
-        leave = self._leaves.get(db, leave_id)
-        if leave is None:
+    def get(self, db: Session, *, leave_id: int, company_id: int | None = None):
+        row = self._leaves.get_with_user(db, leave_id, company_id=company_id)
+        if row is None:
             raise ValueError("Leave request not found")
-        user = self._users.get(db, leave.user_id)
+        leave, user = row
         return {
             "id": leave.id,
             "user_id": leave.user_id,
-            "user_name": user.name if user else None,
-            "user_code": user.code if user else None,
-            "department_id": user.department_id if user else None,
+            "user_name": user.name,
+            "user_code": user.code,
+            "department_id": user.department_id,
             "type": leave.type,
             "start_date": leave.start_date,
             "end_date": leave.end_date,
@@ -90,13 +93,14 @@ class LeaveService:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         user_id: int,
         type: str,
         start_date: date,
         end_date: date,
         reason: str | None = None,
     ):
-        if self._users.get(db, user_id) is None:
+        if self._users.get(db, user_id, company_id=company_id) is None:
             raise ValueError("User not found")
         type = type.strip()
         if not type:
@@ -106,13 +110,14 @@ class LeaveService:
         leave = self._leaves.create(db, user_id=user_id, type=type, start_date=start_date, end_date=end_date, reason=reason.strip() if reason else None)
         db.commit()
         db.refresh(leave)
-        return self.get(db, leave_id=leave.id)
+        return self.get(db, leave_id=leave.id, company_id=company_id)
 
     def update(
         self,
         db: Session,
         *,
         leave_id: int,
+        company_id: int | None = None,
         user_id: int,
         type: str,
         start_date: date,
@@ -120,7 +125,7 @@ class LeaveService:
         reason: str | None = None,
         status: str | None = None,
     ):
-        if self._users.get(db, user_id) is None:
+        if self._users.get(db, user_id, company_id=company_id) is None:
             raise ValueError("User not found")
         type = type.strip()
         if not type:
@@ -134,6 +139,7 @@ class LeaveService:
         leave = self._leaves.update_fields(
             db,
             leave_id=leave_id,
+            company_id=company_id,
             user_id=user_id,
             type=type,
             start_date=start_date,
@@ -145,29 +151,29 @@ class LeaveService:
             raise ValueError("Leave request not found")
         db.commit()
         db.refresh(leave)
-        return self.get(db, leave_id=leave.id)
+        return self.get(db, leave_id=leave.id, company_id=company_id)
 
-    def delete(self, db: Session, *, leave_id: int) -> None:
-        ok = self._leaves.delete(db, leave_id=leave_id)
+    def delete(self, db: Session, *, leave_id: int, company_id: int | None = None) -> None:
+        ok = self._leaves.delete(db, leave_id=leave_id, company_id=company_id)
         if not ok:
             raise ValueError("Leave request not found")
         db.commit()
 
-    def approve(self, db: Session, *, leave_id: int):
-        leave = self._leaves.set_status(db, leave_id=leave_id, status="approved")
+    def approve(self, db: Session, *, leave_id: int, company_id: int | None = None):
+        leave = self._leaves.set_status(db, leave_id=leave_id, company_id=company_id, status="approved")
         if leave is None:
             raise ValueError("Leave request not found")
         db.commit()
         db.refresh(leave)
-        return self.get(db, leave_id=leave.id)
+        return self.get(db, leave_id=leave.id, company_id=company_id)
 
-    def reject(self, db: Session, *, leave_id: int):
-        leave = self._leaves.set_status(db, leave_id=leave_id, status="rejected")
+    def reject(self, db: Session, *, leave_id: int, company_id: int | None = None):
+        leave = self._leaves.set_status(db, leave_id=leave_id, company_id=company_id, status="rejected")
         if leave is None:
             raise ValueError("Leave request not found")
         db.commit()
         db.refresh(leave)
-        return self.get(db, leave_id=leave.id)
+        return self.get(db, leave_id=leave.id, company_id=company_id)
 
     def my_balance(self, db: Session, *, user_id: int, year: int) -> dict[str, object]:
         """

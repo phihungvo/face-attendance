@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_permission
-from app.core.errors import BAD_REQUEST, AppException
+from app.api.deps import get_company_scope_id, get_current_user, get_permission_keys, require_permission
+from app.core.errors import BAD_REQUEST, FORBIDDEN, AppException
 from app.core.response import ok
 from app.db.session import get_db
 from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateRequest, UserMeOut, UserOut, UserUpdateRequest
@@ -22,6 +22,7 @@ async def enroll_user(
     name: str = Form(...),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[EnrollResponse]:
     """
@@ -30,20 +31,23 @@ async def enroll_user(
     """
     try:
         image_bytes = await image.read()
-        user_id = service.enroll(db, name=name, image_bytes=image_bytes)
+        user_id = service.enroll(db, company_id=company_id, name=name, image_bytes=image_bytes)
         return ok(EnrollResponse(user_id=user_id, status="enrolled"))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể đăng ký khuôn mặt: {e}")
 
 
-@router.post("/{user_id}/enroll-face", response_model=ApiResponse[dict[str, object]])
+@router.post("/{user_id:int}/enroll-face", response_model=ApiResponse[dict[str, object]])
 async def enroll_face_for_user(
     user_id: int,
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: object = Depends(require_permission("employees.read")),
+    current_user=Depends(get_current_user),
 ) -> ApiResponse[dict[str, object]]:
     try:
+        keys = get_permission_keys(current_user)
+        if ("employees.read" not in keys) and (int(getattr(current_user, "id")) != int(user_id)):
+            raise AppException(FORBIDDEN)
         image_bytes = await image.read()
         service.enroll_face(db, user_id=user_id, image_bytes=image_bytes)
         return ok({"enrolled": True})
@@ -97,19 +101,21 @@ def list_users(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[list[UserOut]]:
-    return ok(service.list_users(db, limit=limit, offset=offset, q=q.strip() if q else None))
+    return ok(service.list_users(db, company_id=company_id, limit=limit, offset=offset, q=q.strip() if q else None))
 
 
-@router.get("/{user_id}", response_model=ApiResponse[UserOut])
+@router.get("/{user_id:int}", response_model=ApiResponse[UserOut])
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[UserOut]:
     try:
-        return ok(service.get_user(db, user_id=user_id))
+        return ok(service.get_user(db, user_id=user_id, company_id=company_id))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -118,11 +124,13 @@ def get_user(
 def create_user(
     payload: UserCreateRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[UserOut]:
     try:
         user = service.create_user(
             db,
+            company_id=company_id,
             name=payload.name,
             code=payload.code,
             email=payload.email,
@@ -136,17 +144,19 @@ def create_user(
         raise AppException(BAD_REQUEST, detail=str(e))
 
 
-@router.put("/{user_id}", response_model=ApiResponse[UserOut])
+@router.put("/{user_id:int}", response_model=ApiResponse[UserOut])
 def update_user(
     user_id: int,
     payload: UserUpdateRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[UserOut]:
     try:
         user = service.update_user(
             db,
             user_id=user_id,
+            company_id=company_id,
             name=payload.name,
             code=payload.code,
             email=payload.email,
@@ -159,14 +169,15 @@ def update_user(
         raise AppException(BAD_REQUEST, detail=str(e))
 
 
-@router.delete("/{user_id}", response_model=ApiResponse[dict[str, object]])
+@router.delete("/{user_id:int}", response_model=ApiResponse[dict[str, object]])
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[dict[str, object]]:
     try:
-        service.delete_user(db, user_id=user_id)
+        service.delete_user(db, user_id=user_id, company_id=company_id)
         return ok({"deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

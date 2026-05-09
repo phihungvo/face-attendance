@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./EmployeeCheckinPage.module.scss";
 import { useNavigate } from "react-router-dom";
 import { listMyAttendanceLogs, scanMyAttendanceFromImage, type AttendanceLog } from "../../../shared/api/attendance";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
+import { useAutoScan } from "../../../shared/hooks/useAutoScan";
 
 export default function EmployeeCheckinPage() {
   const nav = useNavigate();
   const cam = useCamera();
-  const [busy, setBusy] = useState(false);
+  const [busy] = useState(false);
+  const [auto, setAuto] = useState(true);
+  const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ action: "checkin" | "checkout"; confidence: number; time: string } | null>(null);
+  const [result, setResult] = useState<{ user: string; action: "checkin" | "checkout"; confidence: number; time: string } | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
 
   async function refreshLogs() {
@@ -26,11 +29,61 @@ export default function EmployeeCheckinPage() {
     refreshLogs();
   }, []);
 
+  useEffect(() => {
+    return () => cam.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const statusLabel = useMemo(() => {
     const latest = logs[0];
     if (!latest) return "Chưa có log hôm nay";
     return latest.type === "checkin" ? "Đang làm việc" : "Đã ra ca";
   }, [logs]);
+
+  const completedToday = useMemo(() => {
+    const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+    let hasIn = false;
+    let hasOut = false;
+    for (const l of logs) {
+      const d = new Date(l.timestamp).toLocaleDateString("en-CA");
+      if (d !== today) continue;
+      if (l.type === "checkin") hasIn = true;
+      if (l.type === "checkout") hasOut = true;
+      if (hasIn && hasOut) return true;
+    }
+    return false;
+  }, [logs]);
+
+  useEffect(() => {
+    if (completedToday) {
+      setCompleted(true);
+      setAuto(false);
+    }
+  }, [completedToday]);
+
+  const captureOnce = useCallback(() => cam.capture({ quality: 0.9, type: "image/jpeg" }), [cam]);
+  const scanOnce = useCallback((b: Blob) => scanMyAttendanceFromImage(b), []);
+
+  useAutoScan({
+    enabled: cam.state.ready && auto && !busy && !completed,
+    intervalMs: 1400,
+    capture: captureOnce,
+    scan: scanOnce,
+    onResult: async (res) => {
+      setResult({ user: res.user_name, action: res.action, confidence: res.confidence, time: res.time });
+      setError(null);
+      await refreshLogs();
+    },
+    onError: (e) => {
+      // Avoid spamming UI on intermittent failures (keep last good state visible).
+      const msg = getApiErrorMessage(e);
+      if (msg) setError(msg);
+      if (msg.includes("Đã check-in và check-out rồi")) {
+        setCompleted(true);
+        setAuto(false);
+      }
+    }
+  });
 
   return (
     <div className={styles.page}>
@@ -44,6 +97,7 @@ export default function EmployeeCheckinPage() {
       <div className={styles.content}>
         <div className={styles.statusRow}>
           <div className={`${styles.statusChip} ${statusLabel === "Đang làm việc" ? styles.in : styles.out}`}>{statusLabel}</div>
+          {cam.state.ready ? <div className={styles.autoChip}>{auto ? "Auto: ON" : "Auto: OFF"}</div> : null}
         </div>
 
         <div className={styles.camera}>
@@ -55,9 +109,11 @@ export default function EmployeeCheckinPage() {
         {error ? <div className={styles.errBox}>{error}</div> : null}
         {result ? (
           <div className={styles.infoBox}>
-            ✅ {result.action === "checkout" ? "Ra ca" : "Vào ca"} • conf={result.confidence.toFixed(3)} • {new Date(result.time).toLocaleString("vi-VN")}
+            ✅ <b>{result.user}</b> • {result.action === "checkout" ? "Ra ca" : "Vào ca"} • conf={result.confidence.toFixed(3)} •{" "}
+            {new Date(result.time).toLocaleString("vi-VN")}
           </div>
         ) : null}
+        {completed ? <div className={styles.infoBox}>✅ Hôm nay bạn đã check-in và check-out rồi. Không thể chấm công thêm.</div> : null}
 
         <div className={styles.actions}>
           {!cam.state.ready ? (
@@ -68,23 +124,12 @@ export default function EmployeeCheckinPage() {
             <button
               className={styles.primary}
               type="button"
-              disabled={!cam.state.ready || busy}
+              disabled={!cam.state.ready || busy || completed}
               onClick={async () => {
-                try {
-                  setBusy(true);
-                  setError(null);
-                  const blob = await cam.capture({ quality: 0.9, type: "image/jpeg" });
-                  const res = await scanMyAttendanceFromImage(blob);
-                  setResult({ action: res.action, confidence: res.confidence, time: res.time });
-                  await refreshLogs();
-                } catch (e) {
-                  setError(getApiErrorMessage(e));
-                } finally {
-                  setBusy(false);
-                }
+                setAuto((v) => !v);
               }}
             >
-              {busy ? "Đang quét..." : "📷 Quét chấm công"}
+              {auto ? "⏸ Tạm dừng auto" : "▶︎ Bật auto"}
             </button>
           )}
           <button className={styles.ghost} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.switchCamera()}>

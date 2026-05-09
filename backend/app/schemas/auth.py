@@ -29,5 +29,7 @@ class TokenResponse(BaseModel):
 class MeResponse(BaseModel):
     user_id: int
     username: str
+    company_id: int | None = None
+    company_name: str | None = None
     role_keys: list[str]
     permission_keys: list[str]

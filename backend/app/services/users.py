@@ -24,8 +24,8 @@ class UserService:
         self._ml = MlClient()
         self._policy = AttendancePolicyRepository()
 
-    def enroll(self, db: Session, *, name: str, image_bytes: bytes) -> int:
-        user = self._users.create(db, name=name)
+    def enroll(self, db: Session, *, company_id: int | None = None, name: str, image_bytes: bytes) -> int:
+        user = self._users.create(db, company_id=company_id, name=name)
         emb = self._ml.extract_embedding(image_bytes=image_bytes)
         # store JSON string
         import json
@@ -93,11 +93,11 @@ class UserService:
                 next_allowed = datetime(now.year, now.month + 1, 1, 0, 0, 0)
         return {"last_enrolled_at": last, "next_allowed_at": next_allowed}
 
-    def list_users(self, db: Session, *, limit: int = 100, offset: int = 0, q: str | None = None):
-        return self._users.list(db, limit=limit, offset=offset, q=q)
+    def list_users(self, db: Session, *, company_id: int | None = None, limit: int = 100, offset: int = 0, q: str | None = None):
+        return self._users.list(db, company_id=company_id, limit=limit, offset=offset, q=q)
 
-    def get_user(self, db: Session, *, user_id: int):
-        user = self._users.get(db, user_id=user_id)
+    def get_user(self, db: Session, *, user_id: int, company_id: int | None = None):
+        user = self._users.get(db, user_id=user_id, company_id=company_id)
         if user is None:
             raise ValueError("User not found")
         return user
@@ -106,6 +106,7 @@ class UserService:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         name: str,
         code: str | None = None,
         email: str | None = None,
@@ -148,6 +149,7 @@ class UserService:
         try:
             user = self._users.create(
                 db,
+                company_id=company_id,
                 name=name,
                 code=code,
                 email=email,
@@ -179,6 +181,7 @@ class UserService:
         db: Session,
         *,
         user_id: int,
+        company_id: int | None = None,
         name: str,
         code: str | None = None,
         email: str | None = None,
@@ -197,6 +200,7 @@ class UserService:
             user = self._users.update_fields(
                 db,
                 user_id=user_id,
+                company_id=company_id,
                 name=name,
                 code=code,
                 email=email,
@@ -213,8 +217,8 @@ class UserService:
             db.rollback()
             raise ValueError("Duplicate code/email")
 
-    def delete_user(self, db: Session, *, user_id: int) -> None:
-        ok = self._users.delete(db, user_id=user_id)
+    def delete_user(self, db: Session, *, user_id: int, company_id: int | None = None) -> None:
+        ok = self._users.delete(db, user_id=user_id, company_id=company_id)
         if not ok:
             raise ValueError("User not found")
         db.commit()

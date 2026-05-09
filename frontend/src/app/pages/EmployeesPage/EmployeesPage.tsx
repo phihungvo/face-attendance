@@ -7,6 +7,7 @@ import { createUser, deleteUser, listUsers, updateUser } from "../../../shared/a
 import { listDepartments } from "../../../shared/api/departments";
 import { enrollFaceForUser } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { exportExcelHtml } from "../../../shared/lib/excelExport";
 import type { User } from "../../../shared/types/user";
 import type { Department } from "../../../shared/types/department";
 import { useCamera } from "../../../shared/hooks/useCamera";
@@ -199,6 +200,36 @@ export default function EmployeesPage() {
 
           <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh(query)}>
             {loading ? "Đang tải..." : "Làm mới"}
+          </button>
+          <button
+            className={styles.btnGhost}
+            type="button"
+            disabled={!filtered.length}
+            onClick={() => {
+              exportExcelHtml({
+                filename: `employees_${new Date().toLocaleDateString("en-CA")}.xls`,
+                title: "DANH SÁCH NHÂN VIÊN",
+                meta: { "Tổng": filtered.length, "Phòng ban": deptOptions.find((d) => d.id === deptFilter)?.label ?? "Tất cả" },
+                columns: [
+                  { key: "code", label: "Mã NV", widthPx: 110 },
+                  { key: "name", label: "Họ tên", widthPx: 220 },
+                  { key: "department", label: "Phòng ban", widthPx: 180 },
+                  { key: "role", label: "Chức vụ", widthPx: 150 },
+                  { key: "status", label: "Trạng thái", widthPx: 110 },
+                  { key: "email", label: "Email", widthPx: 220 }
+                ],
+                rows: filtered.map((u) => ({
+                  code: u.code || `#${u.id}`,
+                  name: u.name,
+                  department: u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—",
+                  role: u.role || "—",
+                  status: u.status || "active",
+                  email: u.email || "—"
+                }))
+              });
+            }}
+          >
+            📥 Xuất Excel
           </button>
 
           <button

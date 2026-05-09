@@ -11,6 +11,7 @@ class UserRepository:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         name: str,
         code: str | None = None,
         email: str | None = None,
@@ -19,6 +20,7 @@ class UserRepository:
         department_id: int | None = None,
     ) -> User:
         user = User(
+            company_id=company_id,
             name=name,
             code=code,
             email=email,
@@ -30,21 +32,35 @@ class UserRepository:
         db.flush()  # assign id
         return user
 
-    def list(self, db: Session, *, limit: int = 100, offset: int = 0, q: str | None = None) -> list[User]:
+    def list(
+        self,
+        db: Session,
+        *,
+        company_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        q: str | None = None,
+    ) -> list[User]:
         stmt = select(User)
+        if company_id is not None:
+            stmt = stmt.where(User.company_id == company_id)
         if q:
             stmt = stmt.where(User.name.ilike(f"%{q}%"))
         stmt = stmt.order_by(User.id.desc()).limit(limit).offset(offset)
         return list(db.execute(stmt).scalars().all())
 
-    def get(self, db: Session, user_id: int) -> User | None:
-        return db.get(User, user_id)
+    def get(self, db: Session, user_id: int, *, company_id: int | None = None) -> User | None:
+        if company_id is None:
+            return db.get(User, user_id)
+        stmt = select(User).where(User.id == user_id, User.company_id == company_id)
+        return db.execute(stmt).scalars().first()
 
     def update_fields(
         self,
         db: Session,
         *,
         user_id: int,
+        company_id: int | None = None,
         name: str,
         code: str | None = None,
         email: str | None = None,
@@ -52,7 +68,7 @@ class UserRepository:
         status: str | None = None,
         department_id: int | None = None,
     ) -> User | None:
-        user = self.get(db, user_id)
+        user = self.get(db, user_id, company_id=company_id)
         if user is None:
             return None
         user.name = name
@@ -66,8 +82,8 @@ class UserRepository:
         db.flush()
         return user
 
-    def delete(self, db: Session, *, user_id: int) -> bool:
-        user = self.get(db, user_id)
+    def delete(self, db: Session, *, user_id: int, company_id: int | None = None) -> bool:
+        user = self.get(db, user_id, company_id=company_id)
         if user is None:
             return False
         db.delete(user)

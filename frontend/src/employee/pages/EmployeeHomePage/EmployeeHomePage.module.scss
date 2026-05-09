@@ -36,10 +36,18 @@
   z-index: 1;
 }
 
+.greetingWrap {
+  flex: 1;
+  min-width: 0;
+  padding-right: 12px;
+}
+
 .greetingName {
-  font-size: 22px;
+  font-size: clamp(18px, 5.2vw, 22px);
   font-weight: 900;
   color: #fff;
+  line-height: 1.15;
+  word-break: break-word;
 }
 .greetingSub {
   font-size: 13px;

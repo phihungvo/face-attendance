@@ -19,6 +19,7 @@ import IamUsersPage from "./pages/IamUsersPage/IamUsersPage";
 import IamRolesPage from "./pages/IamRolesPage/IamRolesPage";
 import IamPermissionsPage from "./pages/IamPermissionsPage/IamPermissionsPage";
 import RequirePermission from "../shared/rbac/RequirePermission";
+import CompaniesPage from "./pages/CompaniesPage/CompaniesPage";
 
 function PrivateRoutes() {
   const auth = useAuth();
@@ -139,9 +140,39 @@ function PrivateRoutes() {
           }
         />
 
-        <Route path="/iam/users" element={<IamUsersPage />} />
-        <Route path="/iam/roles" element={<IamRolesPage />} />
-        <Route path="/iam/permissions" element={<IamPermissionsPage />} />
+        <Route
+          path="/companies"
+          element={
+            <RequirePermission permission="companies.read" fallback={<Navigate to="/" replace />}>
+              <CompaniesPage />
+            </RequirePermission>
+          }
+        />
+
+        <Route
+          path="/iam/users"
+          element={
+            <RequirePermission permission="iam.manage" fallback={<Navigate to="/" replace />}>
+              <IamUsersPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/iam/roles"
+          element={
+            <RequirePermission permission="iam.manage" fallback={<Navigate to="/" replace />}>
+              <IamRolesPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/iam/permissions"
+          element={
+            <RequirePermission permission="iam.manage" fallback={<Navigate to="/" replace />}>
+              <IamPermissionsPage />
+            </RequirePermission>
+          }
+        />
 
         <Route path="/employee/*" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />

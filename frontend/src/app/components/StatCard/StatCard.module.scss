@@ -3,9 +3,10 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: 18px 20px;
+  padding: 18px 18px 16px;
   position: relative;
   overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .card::before {
@@ -14,24 +15,41 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: var(--border2);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.9);
+  opacity: 0.5;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -40% -30% auto -30%;
+  height: 120%;
+  background: radial-gradient(closest-side, rgba(10, 132, 255, 0.12), rgba(10, 132, 255, 0));
+  transform: rotate(12deg);
+  pointer-events: none;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  border-color: var(--border2);
 }
 
 .card.blue::before {
-  background: var(--primary);
+  opacity: 0.9;
 }
 
 .card.green::before {
-  background: var(--accent);
+  opacity: 0.9;
 }
 
 .card.orange::before {
-  background: var(--warning);
+  opacity: 0.9;
 }
 
 .card.red::before {
-  background: var(--danger);
+  opacity: 0.9;
 }
 
 .icon {
@@ -43,21 +61,29 @@
   justify-content: center;
   font-size: 20px;
   margin-bottom: 12px;
-  background: var(--bg);
-  border: 1px solid var(--border2);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
 }
 
 .label {
   font-size: 12.5px;
   color: var(--text3);
   font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 .value {
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 30px;
+  font-weight: 900;
   line-height: 1;
   margin-bottom: 4px;
+  letter-spacing: -0.02em;
+  position: relative;
+  z-index: 1;
 }
 
 .change {
@@ -68,6 +94,8 @@
   align-items: center;
   gap: 3px;
   color: var(--text2);
+  position: relative;
+  z-index: 1;
 }
 
 .up {
@@ -79,21 +107,31 @@
 }
 
 .icon.blue {
-  background: #e3f0ff;
-  border-color: #cfe5ff;
+  background: rgba(10, 132, 255, 0.12);
+  border-color: rgba(10, 132, 255, 0.22);
 }
 
 .icon.green {
-  background: #e3f9ec;
-  border-color: #c8f0d8;
+  background: rgba(48, 209, 88, 0.14);
+  border-color: rgba(48, 209, 88, 0.24);
 }
 
 .icon.orange {
-  background: #fff3e0;
-  border-color: #ffe3b0;
+  background: rgba(255, 159, 10, 0.14);
+  border-color: rgba(255, 159, 10, 0.26);
 }
 
 .icon.red {
-  background: #ffe9e9;
-  border-color: #ffd0d0;
+  background: rgba(255, 59, 48, 0.14);
+  border-color: rgba(255, 59, 48, 0.24);
+}
+
+.card.green::after {
+  background: radial-gradient(closest-side, rgba(48, 209, 88, 0.14), rgba(48, 209, 88, 0));
+}
+.card.orange::after {
+  background: radial-gradient(closest-side, rgba(255, 159, 10, 0.14), rgba(255, 159, 10, 0));
+}
+.card.red::after {
+  background: radial-gradient(closest-side, rgba(255, 59, 48, 0.14), rgba(255, 59, 48, 0));
 }
