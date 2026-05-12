@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import get_company_scope_id, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -21,19 +21,21 @@ def list_departments(
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("departments.read")),
 ) -> ApiResponse[list[DepartmentOut]]:
-    return ok(service.list_departments(db, limit=limit, offset=offset, q=q.strip() if q else None))
+    return ok(service.list_departments(db, company_id=company_id, limit=limit, offset=offset, q=q.strip() if q else None))
 
 
 @router.get("/{dept_id}", response_model=ApiResponse[DepartmentOut])
 def get_department(
     dept_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("departments.read")),
 ) -> ApiResponse[DepartmentOut]:
     try:
-        return ok(service.get_department(db, dept_id=dept_id))
+        return ok(service.get_department(db, dept_id=dept_id, company_id=company_id))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -42,10 +44,11 @@ def get_department(
 def create_department(
     payload: DepartmentCreateRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("departments.read")),
 ) -> ApiResponse[DepartmentOut]:
     try:
-        return ok(service.create_department(db, code=payload.code, name=payload.name, location=payload.location))
+        return ok(service.create_department(db, company_id=company_id, code=payload.code, name=payload.name, location=payload.location))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -55,10 +58,11 @@ def update_department(
     dept_id: int,
     payload: DepartmentUpdateRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("departments.read")),
 ) -> ApiResponse[DepartmentOut]:
     try:
-        return ok(service.update_department(db, dept_id=dept_id, code=payload.code, name=payload.name, location=payload.location))
+        return ok(service.update_department(db, dept_id=dept_id, company_id=company_id, code=payload.code, name=payload.name, location=payload.location))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -67,10 +71,11 @@ def update_department(
 def delete_department(
     dept_id: int,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("departments.read")),
 ) -> ApiResponse[dict[str, object]]:
     try:
-        service.delete_department(db, dept_id=dept_id)
+        service.delete_department(db, dept_id=dept_id, company_id=company_id)
         return ok({"deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

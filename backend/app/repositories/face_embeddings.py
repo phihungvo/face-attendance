@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.face_embedding import FaceEmbedding
+from app.models.user import User
 
 
 class FaceEmbeddingRepository:
@@ -12,8 +13,11 @@ class FaceEmbeddingRepository:
         db.add(record)
         return record
 
-    def list_all(self, db: Session) -> list[FaceEmbedding]:
-        stmt = select(FaceEmbedding).order_by(FaceEmbedding.id.asc())
+    def list_all(self, db: Session, *, company_id: int | None = None) -> list[FaceEmbedding]:
+        stmt = select(FaceEmbedding)
+        if company_id is not None:
+            stmt = stmt.join(User, User.id == FaceEmbedding.user_id).where(User.company_id == company_id)
+        stmt = stmt.order_by(FaceEmbedding.id.asc())
         return list(db.execute(stmt).scalars().all())
 
     def list_by_user(self, db: Session, user_id: int) -> list[FaceEmbedding]:

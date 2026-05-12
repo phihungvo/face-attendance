@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     MYSQL_USER: str = "app"
     MYSQL_PASSWORD: str = "app_password"
     MYSQL_DB: str = "face_attendance"
+    DB_STARTUP_RETRIES: int = 30
+    DB_STARTUP_RETRY_SLEEP_SECONDS: float = 2.0
+    DB_STARTUP_FAIL_FAST: bool = False
 
     # ML
     FACE_MATCH_THRESHOLD: float = 0.5
@@ -48,6 +51,18 @@ class Settings(BaseSettings):
     # ML Service (internal)
     ML_SERVICE_URL: str = "http://ml:8001"
     ML_SERVICE_TIMEOUT_SECONDS: float = 15.0
+
+    # Bootstrap admin (created on first start if missing)
+    BOOTSTRAP_ADMIN_USERNAME: str = "admin"
+    BOOTSTRAP_ADMIN_PASSWORD: str = "admin123"
+    BOOTSTRAP_ADMIN_COMPANY_CODE: str = "default"
+    BOOTSTRAP_ADMIN_COMPANY_NAME: str = "Default Company"
+
+    # Bootstrap test accounts (created on first start if missing)
+    BOOTSTRAP_MANAGER_USERNAME: str = "manager"
+    BOOTSTRAP_MANAGER_PASSWORD: str = "manager123"
+    BOOTSTRAP_EMPLOYEE_USERNAME: str = "employee"
+    BOOTSTRAP_EMPLOYEE_PASSWORD: str = "employee123"
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

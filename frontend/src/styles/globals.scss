@@ -55,6 +55,7 @@
   --radius-lg: 20px;
   --nav-width: 260px;
   --header-h: 64px;
+  --content-pad: 24px;
   --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
@@ -117,6 +118,21 @@
 html,
 body {
   height: 100%;
+}
+
+/* Responsive tokens (manager/admin UI) */
+@media (max-width: 899px) {
+  :root {
+    --nav-width: 240px;
+    --content-pad: 18px;
+  }
+}
+
+@media (max-width: 599px) {
+  :root {
+    --content-pad: 14px;
+    --header-h: 58px;
+  }
 }
 
 body {

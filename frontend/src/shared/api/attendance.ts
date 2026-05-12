@@ -8,7 +8,20 @@ export type AttendanceLog = {
   user_name?: string | null;
   type: "checkin" | "checkout";
   confidence: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance_meters?: number | null;
+  geo_ok?: boolean | null;
   timestamp: string;
+};
+
+export type AttendanceStats = {
+  from_date: string; // YYYY-MM-DD
+  to_date: string; // YYYY-MM-DD
+  total_users: number;
+  total_checkins: number;
+  total_checkouts: number;
+  late_count: number;
 };
 
 export type TimelogRow = {
@@ -31,41 +44,61 @@ function fileFromBlob(blob: Blob, filename: string) {
 }
 
 export async function checkInFromImage(blob: Blob) {
+  return checkInFromImageWithGeo(blob);
+}
+
+export async function checkInFromImageWithGeo(blob: Blob, geo?: { latitude?: number | null; longitude?: number | null }) {
   const form = new FormData();
   form.append("image", fileFromBlob(blob, "checkin.jpg"));
-  const res = await api.post<ApiResponse<CheckResult>>("/attendance/checkin", form, {
-    headers: { "Content-Type": "multipart/form-data" }
-  });
+  if (geo?.latitude != null) form.append("latitude", String(geo.latitude));
+  if (geo?.longitude != null) form.append("longitude", String(geo.longitude));
+  // Let Axios set multipart boundary automatically (manual Content-Type can break FastAPI parsing).
+  const res = await api.post<ApiResponse<CheckResult>>("/attendance/checkin", form);
   if (!res.data.result) throw new Error("Check-in thất bại");
   return res.data.result;
 }
 
 export async function checkOutFromImage(blob: Blob) {
+  return checkOutFromImageWithGeo(blob);
+}
+
+export async function checkOutFromImageWithGeo(blob: Blob, geo?: { latitude?: number | null; longitude?: number | null }) {
   const form = new FormData();
   form.append("image", fileFromBlob(blob, "checkout.jpg"));
-  const res = await api.post<ApiResponse<CheckResult>>("/attendance/checkout", form, {
-    headers: { "Content-Type": "multipart/form-data" }
-  });
+  if (geo?.latitude != null) form.append("latitude", String(geo.latitude));
+  if (geo?.longitude != null) form.append("longitude", String(geo.longitude));
+  // Let Axios set multipart boundary automatically (manual Content-Type can break FastAPI parsing).
+  const res = await api.post<ApiResponse<CheckResult>>("/attendance/checkout", form);
   if (!res.data.result) throw new Error("Check-out thất bại");
   return res.data.result;
 }
 
 export async function scanAttendanceFromImage(blob: Blob) {
+  return scanAttendanceFromImageWithGeo(blob);
+}
+
+export async function scanAttendanceFromImageWithGeo(blob: Blob, geo?: { latitude?: number | null; longitude?: number | null }) {
   const form = new FormData();
   form.append("image", fileFromBlob(blob, "scan.jpg"));
-  const res = await api.post<ApiResponse<ScanResult>>("/attendance/scan", form, {
-    headers: { "Content-Type": "multipart/form-data" }
-  });
+  if (geo?.latitude != null) form.append("latitude", String(geo.latitude));
+  if (geo?.longitude != null) form.append("longitude", String(geo.longitude));
+  // Let Axios set multipart boundary automatically (manual Content-Type can break FastAPI parsing).
+  const res = await api.post<ApiResponse<ScanResult>>("/attendance/scan", form);
   if (!res.data.result) throw new Error("Quét chấm công thất bại");
   return res.data.result;
 }
 
 export async function scanMyAttendanceFromImage(blob: Blob) {
+  return scanMyAttendanceFromImageWithGeo(blob);
+}
+
+export async function scanMyAttendanceFromImageWithGeo(blob: Blob, geo?: { latitude?: number | null; longitude?: number | null }) {
   const form = new FormData();
   form.append("image", fileFromBlob(blob, "scan.jpg"));
-  const res = await api.post<ApiResponse<ScanResult>>("/attendance/me/scan", form, {
-    headers: { "Content-Type": "multipart/form-data" }
-  });
+  if (geo?.latitude != null) form.append("latitude", String(geo.latitude));
+  if (geo?.longitude != null) form.append("longitude", String(geo.longitude));
+  // Let Axios set multipart boundary automatically (manual Content-Type can break FastAPI parsing).
+  const res = await api.post<ApiResponse<ScanResult>>("/attendance/me/scan", form);
   if (!res.data.result) throw new Error("Quét chấm công thất bại");
   return res.data.result;
 }
@@ -82,6 +115,28 @@ export async function listMyTimelog(params: { from_date: string; to_date: string
 
 export async function listAttendanceLogs() {
   const res = await api.get<ApiResponse<AttendanceLog[]>>("/attendance/logs");
+  return res.data.result ?? [];
+}
+
+export async function getAttendanceStats(params: { from_date: string; to_date: string }) {
+  const res = await api.get<ApiResponse<AttendanceStats>>("/attendance/stats", { params });
+  if (!res.data.result) throw new Error("Không lấy được thống kê chấm công");
+  return res.data.result;
+}
+
+export type DailyAttendanceRow = {
+  user_id: number;
+  user_name: string;
+  date: string;
+  checkin_time: string | null;
+  checkout_time: string | null;
+  work_hours: number;
+  late: boolean;
+  absent: boolean;
+};
+
+export async function getDailyAttendanceReport(params: { day: string }) {
+  const res = await api.get<ApiResponse<DailyAttendanceRow[]>>("/attendance/reports/daily", { params });
   return res.data.result ?? [];
 }
 

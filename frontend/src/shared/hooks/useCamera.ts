@@ -10,6 +10,8 @@ export type CameraState = {
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const desiredOnRef = useRef(false);
+  const restartTimerRef = useRef<number | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,18 +27,24 @@ export function useCamera() {
   }, []);
 
   const stop = useCallback(() => {
+    desiredOnRef.current = false;
     setReady(false);
     const s = streamRef.current;
     streamRef.current = null;
     if (s) s.getTracks().forEach((t) => t.stop());
     const v = videoRef.current;
     if (v) v.srcObject = null;
+    if (restartTimerRef.current) {
+      window.clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
   }, []);
 
   const start = useCallback(
     async (opts?: { deviceId?: string }) => {
       try {
         setError(null);
+        desiredOnRef.current = true;
         stop();
         if (!window.isSecureContext) {
           const proto = typeof window !== "undefined" ? window.location.protocol : "";
@@ -67,6 +75,20 @@ export function useCamera() {
         const settings = track?.getSettings?.();
         setActiveDeviceId((settings as any)?.deviceId ?? opts?.deviceId ?? null);
 
+        // iOS Safari may stop the camera stream during viewport/zoom/orientation changes.
+        // If the user still intends the camera to be on, attempt a lightweight restart.
+        if (track) {
+          track.onended = () => {
+            if (!desiredOnRef.current) return;
+            if (document.visibilityState !== "visible") return;
+            if (restartTimerRef.current) window.clearTimeout(restartTimerRef.current);
+            restartTimerRef.current = window.setTimeout(() => {
+              if (!desiredOnRef.current) return;
+              start({ deviceId: (settings as any)?.deviceId ?? opts?.deviceId });
+            }, 250);
+          };
+        }
+
         const v = videoRef.current;
         if (!v) return;
         v.srcObject = stream;
@@ -88,6 +110,19 @@ export function useCamera() {
     },
     [refreshDevices, stop]
   );
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!desiredOnRef.current) return;
+      // If browser killed the stream while hidden, restore when returning.
+      if (!streamRef.current || streamRef.current.getTracks().every((t) => t.readyState !== "live")) {
+        start({ deviceId: activeDeviceId ?? undefined }).catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [activeDeviceId, start]);
 
   const switchCamera = useCallback(async () => {
     const cams = devices;

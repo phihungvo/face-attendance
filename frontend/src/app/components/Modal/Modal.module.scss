@@ -1,11 +1,13 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
   padding: 18px;
   z-index: 999;
+  animation: modalFade 0.16s ease-out;
 }
 
 .modal {
@@ -15,6 +17,11 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+  transform-origin: 50% 30%;
+  animation: modalPop 0.16s ease-out;
+  max-height: min(90vh, 860px);
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
@@ -23,11 +30,13 @@
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface2) 60%, transparent), transparent);
 }
 
 .title {
   font-weight: 900;
-  font-size: 14px;
+  font-size: 15px;
+  letter-spacing: -0.2px;
 }
 
 .close {
@@ -35,18 +44,27 @@
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: var(--bg);
+  background: transparent;
   border: 1px solid var(--border2);
   cursor: pointer;
   font-weight: 900;
+  color: var(--text2);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .close:hover {
-  background: var(--muted-bg);
+  background: var(--hover);
+  border-color: var(--border2);
+  transform: translateY(-1px);
+}
+
+.close:active {
+  transform: translateY(0);
 }
 
 .body {
   padding: 14px 16px 16px;
+  overflow: auto;
 }
 
 .footer {
@@ -55,4 +73,27 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  background: linear-gradient(0deg, color-mix(in oklab, var(--surface2) 55%, transparent), transparent);
+  position: sticky;
+  bottom: 0;
+}
+
+@keyframes modalFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

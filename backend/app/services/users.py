@@ -24,8 +24,8 @@ class UserService:
         self._ml = MlClient()
         self._policy = AttendancePolicyRepository()
 
-    def enroll(self, db: Session, *, name: str, image_bytes: bytes) -> int:
-        user = self._users.create(db, name=name)
+    def enroll(self, db: Session, *, company_id: int | None = None, name: str, image_bytes: bytes) -> int:
+        user = self._users.create(db, company_id=company_id, name=name)
         emb = self._ml.extract_embedding(image_bytes=image_bytes)
         # store JSON string
         import json
@@ -93,11 +93,11 @@ class UserService:
                 next_allowed = datetime(now.year, now.month + 1, 1, 0, 0, 0)
         return {"last_enrolled_at": last, "next_allowed_at": next_allowed}
 
-    def list_users(self, db: Session, *, limit: int = 100, offset: int = 0, q: str | None = None):
-        return self._users.list(db, limit=limit, offset=offset, q=q)
+    def list_users(self, db: Session, *, company_id: int | None = None, limit: int = 100, offset: int = 0, q: str | None = None):
+        return self._users.list(db, company_id=company_id, limit=limit, offset=offset, q=q)
 
-    def get_user(self, db: Session, *, user_id: int):
-        user = self._users.get(db, user_id=user_id)
+    def get_user(self, db: Session, *, user_id: int, company_id: int | None = None):
+        user = self._users.get(db, user_id=user_id, company_id=company_id)
         if user is None:
             raise ValueError("User not found")
         return user
@@ -106,6 +106,7 @@ class UserService:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         name: str,
         code: str | None = None,
         email: str | None = None,
@@ -113,6 +114,7 @@ class UserService:
         status: str | None = None,
         department_id: int | None = None,
         create_login: bool = True,
+        portal_role_key: str | None = None,
     ):
         name = name.strip()
         if not name:
@@ -123,6 +125,14 @@ class UserService:
         status = status.strip() if status else None
         if create_login and not email:
             raise ValueError("email là bắt buộc để gửi link kích hoạt")
+        if code:
+            existed_code = self._users.get_by_code(db, company_id=company_id, code=code)
+            if existed_code is not None:
+                raise ValueError("Mã nhân viên đã tồn tại trong công ty")
+        if email:
+            existed = self._users.get_by_email(db, company_id=company_id, email=email)
+            if existed is not None:
+                raise ValueError("Email đã tồn tại trong công ty")
 
         def _suggest_username() -> str | None:
             # Prefer employee code as username; fallback to email local-part.
@@ -148,6 +158,7 @@ class UserService:
         try:
             user = self._users.create(
                 db,
+                company_id=company_id,
                 name=name,
                 code=code,
                 email=email,
@@ -161,9 +172,12 @@ class UserService:
                 user.auth_status = "pending"
                 user.password_hash = None
                 # Default RBAC role for portal access.
-                emp_role = self._rbac.get_role_by_key(db, "employee")
-                if emp_role is not None:
-                    user.roles = [emp_role]
+                key = (portal_role_key or "employee").strip() if portal_role_key else "employee"
+                if key not in {"employee", "manager"}:
+                    raise ValueError("portal_role_key không hợp lệ (chỉ hỗ trợ employee/manager)")
+                r = self._rbac.get_role_by_key(db, key) or self._rbac.get_role_by_key(db, "employee")
+                if r is not None:
+                    user.roles = [r]
             db.commit()
             db.refresh(user)
             if create_login:
@@ -172,13 +186,19 @@ class UserService:
             return user
         except IntegrityError:
             db.rollback()
-            raise ValueError("Duplicate code/email")
+            # Keep a deterministic error message even if DB constraint differs across environments.
+            if code and (self._users.get_by_code(db, company_id=company_id, code=code) is not None):
+                raise ValueError("Mã nhân viên đã tồn tại trong công ty")
+            if email and (self._users.get_by_email(db, company_id=company_id, email=email) is not None):
+                raise ValueError("Email đã tồn tại trong công ty")
+            raise ValueError("Trùng mã nhân viên hoặc email")
 
     def update_user(
         self,
         db: Session,
         *,
         user_id: int,
+        company_id: int | None = None,
         name: str,
         code: str | None = None,
         email: str | None = None,
@@ -193,10 +213,19 @@ class UserService:
         email = email.strip() if email else None
         role = role.strip() if role else None
         status = status.strip() if status else None
+        if code:
+            existed_code = self._users.get_by_code(db, company_id=company_id, code=code)
+            if existed_code is not None and int(existed_code.id) != int(user_id):
+                raise ValueError("Mã nhân viên đã tồn tại trong công ty")
+        if email:
+            existed = self._users.get_by_email(db, company_id=company_id, email=email)
+            if existed is not None and int(existed.id) != int(user_id):
+                raise ValueError("Email đã tồn tại trong công ty")
         try:
             user = self._users.update_fields(
                 db,
                 user_id=user_id,
+                company_id=company_id,
                 name=name,
                 code=code,
                 email=email,
@@ -211,10 +240,18 @@ class UserService:
             return user
         except IntegrityError:
             db.rollback()
-            raise ValueError("Duplicate code/email")
+            if code:
+                existed_code = self._users.get_by_code(db, company_id=company_id, code=code)
+                if existed_code is not None and int(existed_code.id) != int(user_id):
+                    raise ValueError("Mã nhân viên đã tồn tại trong công ty")
+            if email:
+                existed = self._users.get_by_email(db, company_id=company_id, email=email)
+                if existed is not None and int(existed.id) != int(user_id):
+                    raise ValueError("Email đã tồn tại trong công ty")
+            raise ValueError("Trùng mã nhân viên hoặc email")
 
-    def delete_user(self, db: Session, *, user_id: int) -> None:
-        ok = self._users.delete(db, user_id=user_id)
+    def delete_user(self, db: Session, *, user_id: int, company_id: int | None = None) -> None:
+        ok = self._users.delete(db, user_id=user_id, company_id=company_id)
         if not ok:
             raise ValueError("User not found")
         db.commit()

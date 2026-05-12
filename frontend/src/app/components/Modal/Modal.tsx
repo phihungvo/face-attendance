@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import styles from "./Modal.module.scss";
 
 export default function Modal({
@@ -6,13 +6,17 @@ export default function Modal({
   title,
   children,
   footer,
-  onClose
+  onClose,
+  modalClassName,
+  modalStyle
 }: {
   open: boolean;
   title: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   onClose(): void;
+  modalClassName?: string;
+  modalStyle?: CSSProperties;
 }) {
   if (!open) return null;
 
@@ -25,7 +29,7 @@ export default function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className={styles.modal}>
+      <div className={[styles.modal, modalClassName].filter(Boolean).join(" ")} style={modalStyle}>
         <div className={styles.header}>
           <div className={styles.title}>{title}</div>
           <button className={styles.close} type="button" onClick={onClose} aria-label="Close">
@@ -38,4 +42,3 @@ export default function Modal({
     </div>
   );
 }
-

@@ -21,6 +21,11 @@ class ActivateRequest(BaseModel):
     password: str = Field(min_length=6, max_length=128)
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=6, max_length=128)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "Bearer"
@@ -29,5 +34,7 @@ class TokenResponse(BaseModel):
 class MeResponse(BaseModel):
     user_id: int
     username: str
+    company_id: int | None = None
+    company_name: str | None = None
     role_keys: list[str]
     permission_keys: list[str]

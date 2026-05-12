@@ -32,11 +32,26 @@ class LeaveRepository:
         db.flush()
         return leave
 
-    def get(self, db: Session, leave_id: int) -> LeaveRequest | None:
-        return db.get(LeaveRequest, leave_id)
+    def get(self, db: Session, leave_id: int, *, company_id: int | None = None) -> LeaveRequest | None:
+        if company_id is None:
+            return db.get(LeaveRequest, leave_id)
+        stmt = (
+            select(LeaveRequest)
+            .join(User, User.id == LeaveRequest.user_id)
+            .where(LeaveRequest.id == leave_id, User.company_id == company_id)
+            .limit(1)
+        )
+        return db.execute(stmt).scalars().first()
 
-    def delete(self, db: Session, *, leave_id: int) -> bool:
-        leave = self.get(db, leave_id)
+    def get_with_user(self, db: Session, leave_id: int, *, company_id: int | None = None) -> tuple[LeaveRequest, User] | None:
+        stmt = select(LeaveRequest, User).join(User, User.id == LeaveRequest.user_id).where(LeaveRequest.id == leave_id)
+        if company_id is not None:
+            stmt = stmt.where(User.company_id == company_id)
+        row = db.execute(stmt.limit(1)).first()
+        return (row[0], row[1]) if row else None
+
+    def delete(self, db: Session, *, leave_id: int, company_id: int | None = None) -> bool:
+        leave = self.get(db, leave_id, company_id=company_id)
         if leave is None:
             return False
         db.delete(leave)
@@ -48,6 +63,7 @@ class LeaveRepository:
         db: Session,
         *,
         leave_id: int,
+        company_id: int | None = None,
         user_id: int,
         type: str,
         start_date: date,
@@ -55,7 +71,7 @@ class LeaveRepository:
         reason: str | None = None,
         status: str | None = None,
     ) -> LeaveRequest | None:
-        leave = self.get(db, leave_id)
+        leave = self.get(db, leave_id, company_id=company_id)
         if leave is None:
             return None
         leave.user_id = user_id
@@ -69,8 +85,8 @@ class LeaveRepository:
         db.flush()
         return leave
 
-    def set_status(self, db: Session, *, leave_id: int, status: str) -> LeaveRequest | None:
-        leave = self.get(db, leave_id)
+    def set_status(self, db: Session, *, leave_id: int, company_id: int | None = None, status: str) -> LeaveRequest | None:
+        leave = self.get(db, leave_id, company_id=company_id)
         if leave is None:
             return None
         leave.status = status
@@ -82,6 +98,7 @@ class LeaveRepository:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         q: str | None = None,
         status: str | None = None,
         user_id: int | None = None,
@@ -92,6 +109,7 @@ class LeaveRepository:
         stmt = select(func.count(LeaveRequest.id)).select_from(LeaveRequest).join(User, User.id == LeaveRequest.user_id)
         stmt = self._apply_filters(
             stmt,
+            company_id=company_id,
             q=q,
             status=status,
             user_id=user_id,
@@ -105,6 +123,7 @@ class LeaveRepository:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         limit: int = 100,
         offset: int = 0,
         q: str | None = None,
@@ -117,6 +136,7 @@ class LeaveRepository:
         stmt = select(LeaveRequest, User).join(User, User.id == LeaveRequest.user_id)
         stmt = self._apply_filters(
             stmt,
+            company_id=company_id,
             q=q,
             status=status,
             user_id=user_id,
@@ -131,6 +151,7 @@ class LeaveRepository:
         self,
         stmt,
         *,
+        company_id: int | None,
         q: str | None,
         status: str | None,
         user_id: int | None,
@@ -138,6 +159,8 @@ class LeaveRepository:
         from_date: date | None,
         to_date: date | None,
     ):
+        if company_id is not None:
+            stmt = stmt.where(User.company_id == company_id)
         if q:
             like = f"%{q}%"
             stmt = stmt.where(or_(User.name.ilike(like), User.code.ilike(like)))
@@ -152,4 +175,3 @@ class LeaveRepository:
         if to_date:
             stmt = stmt.where(LeaveRequest.end_date <= to_date)
         return stmt
-

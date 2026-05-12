@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,8 @@ from app.db.seed import seed_rbac
 from app.models.base import Base
 import app.models  # noqa: F401  # ensure models are registered
 from app.db.session import SessionLocal
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -34,8 +37,19 @@ def create_app() -> FastAPI:
     def _startup() -> None:
         # Basic production-friendly default: create tables if not exist.
         # For real deployments, prefer Alembic migrations.
+        if settings.DB_STARTUP_FAIL_FAST:
+            Base.metadata.create_all(bind=engine)
+            run_lightweight_migrations(engine, schema=settings.MYSQL_DB)
+            db = SessionLocal()
+            try:
+                seed_rbac(db)
+                db.commit()
+            finally:
+                db.close()
+            return
+
         last_err: Exception | None = None
-        for _ in range(30):
+        for attempt in range(1, settings.DB_STARTUP_RETRIES + 1):
             try:
                 Base.metadata.create_all(bind=engine)
                 # Best-effort lightweight migrations for dev/local upgrades.
@@ -50,7 +64,14 @@ def create_app() -> FastAPI:
                 return
             except Exception as e:  # pragma: no cover
                 last_err = e
-                time.sleep(2)
+                if attempt == 1 or attempt == settings.DB_STARTUP_RETRIES:
+                    logger.warning(
+                        "DB init failed (attempt %s/%s): %s",
+                        attempt,
+                        settings.DB_STARTUP_RETRIES,
+                        repr(e),
+                    )
+                time.sleep(settings.DB_STARTUP_RETRY_SLEEP_SECONDS)
         if last_err is not None:
             raise last_err
 

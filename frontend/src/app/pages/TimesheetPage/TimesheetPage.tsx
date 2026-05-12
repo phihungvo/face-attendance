@@ -6,6 +6,7 @@ import { deleteTimelogDay, listTimelog, upsertTimelogDay, type TimelogRow } from
 import { listDepartments } from "../../../shared/api/departments";
 import type { Department } from "../../../shared/types/department";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { exportExcelHtml } from "../../../shared/lib/excelExport";
 import styles from "./TimesheetPage.module.scss";
 
 function toYmd(d: Date) {
@@ -164,6 +165,54 @@ export default function TimesheetPage() {
             }}
           >
             📥 Xuất CSV
+          </button>
+          <button
+            className={`${styles.btn} ${styles.btnGhost}`}
+            type="button"
+            disabled={!rows.length}
+            onClick={() => {
+              exportExcelHtml({
+                filename: `timelog_${fromDate}_${toDate}.xls`,
+                title: "BẢNG GIỜ CÔNG",
+                meta: {
+                  "Từ ngày": fromDate,
+                  "Đến ngày": toDate,
+                  "Phòng ban": departments.find((d) => d.id === departmentId)?.name ?? "Tất cả",
+                  "Trạng thái": status || "Tất cả",
+                  "Tổng nhân viên": summary.totalEmployees,
+                  "Tổng giờ": summary.totalHours,
+                  "Đi trễ": summary.lateDays,
+                  "Vắng": summary.absentDays
+                },
+                columns: [
+                  { key: "user_code", label: "Mã NV", widthPx: 110 },
+                  { key: "user_name", label: "Nhân viên", widthPx: 220 },
+                  { key: "department_name", label: "Phòng ban", widthPx: 170 },
+                  { key: "date", label: "Ngày", widthPx: 110, align: "center" },
+                  { key: "checkin", label: "Giờ vào", widthPx: 90, align: "center" },
+                  { key: "checkout", label: "Giờ ra", widthPx: 90, align: "center" },
+                  { key: "work_hours", label: "Giờ làm", widthPx: 90, align: "right" },
+                  { key: "status", label: "Trạng thái", widthPx: 120 },
+                  { key: "method", label: "Phương thức", widthPx: 110 }
+                ],
+                rows: rows.map((r) => {
+                  const st = r.absent ? "Vắng" : r.late ? "Muộn" : "Đúng giờ";
+                  return {
+                    user_code: r.user_code || `#${r.user_id}`,
+                    user_name: r.user_name,
+                    department_name: r.department_name || "—",
+                    date: r.date,
+                    checkin: toHm(r.checkin_time) || "—",
+                    checkout: toHm(r.checkout_time) || "—",
+                    work_hours: Number.isFinite(r.work_hours) ? Math.round((r.work_hours ?? 0) * 100) / 100 : 0,
+                    status: st,
+                    method: r.method || "Face+GPS"
+                  };
+                })
+              });
+            }}
+          >
+            📥 Xuất Excel
           </button>
 
           <div className={styles.chips}>

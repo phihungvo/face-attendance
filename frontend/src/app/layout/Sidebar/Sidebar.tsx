@@ -1,11 +1,31 @@
 import { NavLink } from "react-router-dom";
+import { useEffect } from "react";
 import styles from "./Sidebar.module.scss";
-import { navSections } from "./navConfig";
+import { getNavSections } from "./navConfig";
 import { useAuth } from "../../../shared/auth/auth";
+import { useTheme } from "../../../shared/theme/theme";
 
-export default function Sidebar() {
+export default function Sidebar({
+  variant = "static",
+  open = false,
+  onClose
+}: {
+  variant?: "static" | "drawer";
+  open?: boolean;
+  onClose?: () => void;
+}) {
   const auth = useAuth();
+  const { resolvedTheme, toggle, setMode } = useTheme();
   const can = (p: string) => auth.permissionKeys.includes(p as any);
+  const navSections = getNavSections(auth.roleKeys);
+  const isEmployee = auth.roleKeys.includes("employee") && !auth.roleKeys.includes("manager") && !auth.roleKeys.includes("admin");
+
+  useEffect(() => {
+    if (!isEmployee) return;
+    // Default employee UI to dark on first visit, without overriding an explicit user preference.
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem("theme-mode") == null) setMode("dark");
+  }, [isEmployee, setMode]);
 
   const itemAllowed = (to: string) => {
     const map: Record<string, string> = {
@@ -15,11 +35,13 @@ export default function Sidebar() {
       "/employees": "employees.read",
       "/departments": "departments.read",
       "/leave": "leave.read",
+      "/schedules": "schedules.read",
       "/reports": "reports.read",
       "/overtime": "overtime.read",
       "/payroll": "payroll.read",
       "/notifications": "notifications.read",
       "/settings": "settings.read",
+      "/companies": "companies.read",
       "/iam/users": "iam.manage",
       "/iam/roles": "iam.manage",
       "/iam/permissions": "iam.manage"
@@ -29,8 +51,27 @@ export default function Sidebar() {
     return can(needed);
   };
 
+  const cls =
+    variant === "drawer"
+      ? open
+        ? `${styles.sidebar} ${styles.drawer} ${styles.drawerOpen}`
+        : `${styles.sidebar} ${styles.drawer}`
+      : styles.sidebar;
+
+  const closeIfDrawer = () => {
+    if (variant === "drawer") onClose?.();
+  };
+
   return (
-    <nav className={styles.sidebar}>
+    <nav className={cls} aria-label="Điều hướng quản lý">
+      {variant === "drawer" ? (
+        <div className={styles.drawerTop}>
+          <div className={styles.drawerTitle}>Menu</div>
+          <button className={styles.drawerClose} type="button" onClick={onClose} aria-label="Đóng menu">
+            ✕
+          </button>
+        </div>
+      ) : null}
       <div className={styles.logo}>
         <div className={styles.logoIcon}>🎯</div>
         <div className={styles.logoText}>
@@ -50,6 +91,7 @@ export default function Sidebar() {
               key={item.key}
               to={item.to}
               end={item.to === "/"}
+              onClick={closeIfDrawer}
               className={({ isActive }) => (isActive ? `${styles.navItem} ${styles.active}` : styles.navItem)}
             >
               <span className={styles.navIcon}>{item.icon}</span>
@@ -65,11 +107,26 @@ export default function Sidebar() {
       ))}
 
       <div className={styles.sidebarFooter}>
-        <button className={styles.userCard} type="button" onClick={auth.logout} title="Đăng xuất">
-          <div className={styles.avatar}>AT</div>
+        {isEmployee ? (
+          <button className={styles.themeToggle} type="button" onClick={toggle} aria-label="Bật/tắt sáng tối">
+            <span className={styles.themeIcon}>{resolvedTheme === "dark" ? "🌙" : "☀️"}</span>
+            <span className={styles.themeLabel}>Giao diện</span>
+            <span className={styles.themeValue}>{resolvedTheme === "dark" ? "Tối" : "Sáng"}</span>
+          </button>
+        ) : null}
+        <button
+          className={styles.userCard}
+          type="button"
+          onClick={() => {
+            auth.logout();
+            closeIfDrawer();
+          }}
+          title="Đăng xuất"
+        >
+          <div className={styles.avatar}>{(auth.username || "U").slice(0, 2).toUpperCase()}</div>
           <div className={styles.userInfo}>
-            <p>Admin Trưởng</p>
-            <span>Quản trị viên</span>
+            <p>{auth.username || "User"}</p>
+            <span>{auth.roleKeys.includes("admin") ? "Admin" : auth.roleKeys.includes("manager") ? "Quản lý" : "Nhân viên"}</span>
           </div>
           <span className={styles.userChevron}>›</span>
         </button>

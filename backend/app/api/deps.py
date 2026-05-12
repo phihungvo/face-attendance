@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Depends
+from fastapi import Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -35,6 +36,28 @@ def get_permission_keys(user: User) -> set[str]:
     for perm in getattr(user, "permissions", []):
         keys.add(perm.key)
     return keys
+
+
+def get_role_keys(user: User) -> set[str]:
+    return {getattr(r, "key", "") for r in getattr(user, "roles", []) or [] if getattr(r, "key", "")}
+
+
+def is_admin(user: User) -> bool:
+    return "admin" in get_role_keys(user)
+
+
+def get_company_scope_id(
+    user: User = Depends(get_current_user),
+    x_company_id: int | None = Header(default=None, alias="X-Company-Id"),
+) -> int | None:
+    """
+    Multi-company scoping:
+    - Admin can choose a company via `X-Company-Id` (or omit to operate cross-company on admin-only endpoints).
+    - Non-admin is always scoped to their `user.company_id`.
+    """
+    if is_admin(user):
+        return int(x_company_id) if x_company_id is not None else None
+    return int(getattr(user, "company_id", None)) if getattr(user, "company_id", None) is not None else None
 
 
 def require_permission(permission_key: str):

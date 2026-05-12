@@ -9,6 +9,25 @@
   flex-shrink: 0;
 }
 
+.menuBtn {
+  display: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.menuBtn:hover {
+  background: var(--hover);
+}
+
 .titleWrap {
   min-width: 0;
 }
@@ -42,6 +61,32 @@
   font-size: 13px;
   color: var(--text2);
   white-space: nowrap;
+}
+
+.companyBox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  font-size: 13px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.companyIcon {
+  font-size: 14px;
+}
+
+.companyBox select {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
 }
 
 .searchBox {
@@ -126,4 +171,41 @@
 
 .btnPrimary:hover {
   background: var(--primary-dark);
+}
+
+@media (max-width: 899px) {
+  .topbar {
+    padding: 0 var(--content-pad);
+    gap: 12px;
+  }
+
+  .menuBtn {
+    display: inline-flex;
+  }
+
+  .searchBox {
+    width: 180px;
+  }
+}
+
+@media (max-width: 599px) {
+  .pageTitle {
+    font-size: 16px;
+  }
+
+  .pageSub {
+    display: none;
+  }
+
+  .dateChip {
+    display: none;
+  }
+
+  .searchBox {
+    display: none;
+  }
+
+  .btn {
+    padding: 8px 12px;
+  }
 }

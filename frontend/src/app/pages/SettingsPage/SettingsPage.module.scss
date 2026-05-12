@@ -30,6 +30,23 @@
   align-items: center;
 }
 
+@media (max-width: 899px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 599px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .rowRight {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
 .formLabel {
   font-size: 12px;
   font-weight: 900;
@@ -143,6 +160,19 @@
   background: var(--muted-bg);
 }
 
+.btnLink {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btnLink:hover {
+  text-decoration: underline;
+}
+
 .btnPrimaryFull {
   padding: 10px 14px;
   border-radius: 12px;
@@ -216,6 +246,22 @@
 
 .settingsItem:last-child {
   border-bottom: none;
+}
+
+.settingsClickable {
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font);
+  color: inherit;
+}
+
+.settingsArrow {
+  margin-left: auto;
+  color: var(--text3);
+  font-weight: 900;
 }
 
 .settingsIcon {

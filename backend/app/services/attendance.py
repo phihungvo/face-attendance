@@ -5,6 +5,7 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.clients.ml_client import MlClient
 from app.core.attendance_engine import AttendanceConfig, compute_attendance, decide_scan_action
@@ -12,7 +13,9 @@ from app.repositories.attendance_logs import AttendanceLogRepository
 from app.repositories.attendance_policy import AttendancePolicyRepository
 from app.repositories.departments import DepartmentRepository
 from app.repositories.face_embeddings import FaceEmbeddingRepository
+from app.repositories.schedules import WorkScheduleRegistrationRepository, WorkScheduleRepository
 from app.repositories.users import UserRepository
+from app.models.company import Company
 
 
 @dataclass(frozen=True)
@@ -35,26 +38,100 @@ class AttendanceService:
         self._users = UserRepository()
         self._depts = DepartmentRepository()
         self._ml = MlClient()
+        self._schedules = WorkScheduleRepository()
+        self._schedule_regs = WorkScheduleRegistrationRepository()
 
-    def checkin(self, db: Session, *, image_bytes: bytes) -> tuple[str, float, object]:
+    def _policy_cfg(self, policy) -> AttendanceConfig:
+        return AttendanceConfig(
+            shift_start=policy.shift_start,
+            shift_end=policy.shift_end,
+            late_grace_minutes=int(policy.late_grace_minutes),
+            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
+            break_start=policy.break_start,
+            break_end=policy.break_end,
+            break_duration_minutes=int(policy.break_duration_minutes),
+            break_threshold_hours=float(policy.break_threshold_hours),
+            auto_checkout_time=policy.auto_checkout_time,
+        )
+
+    def _schedule_cfg_map(
+        self,
+        db: Session,
+        *,
+        company_id: int | None,
+        from_day: date,
+        to_day: date,
+        user_ids: list[int] | None = None,
+    ) -> dict[tuple[int, date], AttendanceConfig]:
+        """
+        Build per-user per-day attendance configs from approved schedule registrations.
+        Falls back to policy config when not present.
+        """
+        if company_id is None:
+            return {}
+        regs = self._schedule_regs.list_approved_in_range(db, company_id=company_id, from_date=from_day, to_date=to_day, user_ids=user_ids)
+        if not regs:
+            return {}
+        schedule_ids = sorted({int(r.schedule_id) for r in regs})
+        schedules = {int(s.id): s for s in self._schedules.list_by_ids(db, company_id=company_id, ids=schedule_ids)}
+
+        out: dict[tuple[int, date], AttendanceConfig] = {}
+        for r in regs:
+            s = schedules.get(int(r.schedule_id))
+            if s is None:
+                continue
+            if getattr(s, "status", "active") != "active":
+                continue
+            out[(int(r.user_id), r.day)] = AttendanceConfig(
+                shift_start=str(s.shift_start),
+                shift_end=str(s.shift_end),
+                late_grace_minutes=int(getattr(s, "late_grace_minutes", 0) or 0),
+                early_leave_grace_minutes=int(getattr(s, "early_leave_grace_minutes", 0) or 0),
+                break_start=str(s.break_start),
+                break_end=str(s.break_end),
+                break_duration_minutes=int(getattr(s, "break_duration_minutes", 0) or 0),
+                break_threshold_hours=float(getattr(s, "break_threshold_hours", 0.0) or 0.0),
+                auto_checkout_time=str(getattr(s, "auto_checkout_time", "23:59")),
+            )
+        return out
+
+    def checkin(
+        self,
+        db: Session,
+        *,
+        company_id: int | None = None,
+        image_bytes: bytes,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> tuple[str, float, object]:
         policy = self._policy.get_or_create(db)
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkin_from, policy.checkin_to, label="check-in")
 
-        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        user, confidence = self._match_user(db, company_id=company_id, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        geo = self._enforce_geo(db, user_company_id=int(getattr(user, "company_id", 0) or 0), latitude=latitude, longitude=longitude)
 
         _enforce_min_interval(db, self._logs, user_id=user.id, log_type="checkin", now=now, min_minutes=policy.min_minutes_between_same_type)
-        log = self._logs.create(db, user_id=user.id, log_type="checkin", confidence=confidence, timestamp=now)
+        log = self._logs.create(db, user_id=user.id, log_type="checkin", confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
         return (user.name, confidence, log.timestamp)
 
-    def checkout(self, db: Session, *, image_bytes: bytes) -> tuple[str, float, object]:
+    def checkout(
+        self,
+        db: Session,
+        *,
+        company_id: int | None = None,
+        image_bytes: bytes,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> tuple[str, float, object]:
         policy = self._policy.get_or_create(db)
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkout_from, policy.checkout_to, label="check-out")
 
-        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        user, confidence = self._match_user(db, company_id=company_id, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        geo = self._enforce_geo(db, user_company_id=int(getattr(user, "company_id", 0) or 0), latitude=latitude, longitude=longitude)
 
         _enforce_min_interval(
             db,
@@ -64,12 +141,20 @@ class AttendanceService:
             now=now,
             min_minutes=policy.min_minutes_between_same_type,
         )
-        log = self._logs.create(db, user_id=user.id, log_type="checkout", confidence=confidence, timestamp=now)
+        log = self._logs.create(db, user_id=user.id, log_type="checkout", confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
         return (user.name, confidence, log.timestamp)
 
-    def scan(self, db: Session, *, image_bytes: bytes) -> tuple[str, float, object, str]:
+    def scan(
+        self,
+        db: Session,
+        *,
+        company_id: int | None = None,
+        image_bytes: bytes,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> tuple[str, float, object, str]:
         """
         One-shot scan: auto decide check-in/check-out based on policy windows and existing logs.
         """
@@ -81,7 +166,8 @@ class AttendanceService:
         if not in_checkin and not in_checkout:
             raise ValueError("Ngoài khung giờ check-in/check-out")
 
-        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        user, confidence = self._match_user(db, company_id=company_id, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        geo = self._enforce_geo(db, user_company_id=int(getattr(user, "company_id", 0) or 0), latitude=latitude, longitude=longitude)
 
         day = _attendance_day_for_ts(now, shift_start=policy.shift_start, shift_end=policy.shift_end)
         overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
@@ -109,12 +195,20 @@ class AttendanceService:
         )
 
         _enforce_min_interval(db, self._logs, user_id=user.id, log_type=action, now=now, min_minutes=policy.min_minutes_between_same_type)
-        log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now)
+        log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
         return (user.name, confidence, log.timestamp, action)
 
-    def scan_for_user(self, db: Session, *, user_id: int, image_bytes: bytes) -> tuple[str, float, object, str]:
+    def scan_for_user(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        image_bytes: bytes,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> tuple[str, float, object, str]:
         """
         Employee self-service scan: match face, then enforce matched user == current user.
         """
@@ -124,9 +218,13 @@ class AttendanceService:
         in_checkin = _in_time_window(now, policy.checkin_from, policy.checkin_to)
         in_checkout = _in_time_window(now, policy.checkout_from, policy.checkout_to)
 
-        user, confidence = self._match_user(db, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        me = self._users.get(db, user_id)
+        if me is None:
+            raise ValueError("User not found")
+        user, confidence = self._match_user(db, company_id=int(getattr(me, "company_id", 0) or 0) or None, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
         if int(getattr(user, "id")) != int(user_id):
             raise ValueError("Khuôn mặt không khớp tài khoản đang đăng nhập")
+        geo = self._enforce_geo(db, user_company_id=int(getattr(user, "company_id", 0) or 0), latitude=latitude, longitude=longitude)
 
         day = _attendance_day_for_ts(now, shift_start=policy.shift_start, shift_end=policy.shift_end)
         overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
@@ -154,10 +252,39 @@ class AttendanceService:
         )
 
         _enforce_min_interval(db, self._logs, user_id=user.id, log_type=action, now=now, min_minutes=policy.min_minutes_between_same_type)
-        log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now)
+        log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
         return (user.name, confidence, log.timestamp, action)
+
+    def _enforce_geo(self, db: Session, *, user_company_id: int, latitude: float | None, longitude: float | None) -> dict[str, object]:
+        """
+        If company has geo-fence configured (lat/lng + radius_meters):
+        - require client location (lat/lng)
+        - enforce distance <= radius
+        Store latitude/longitude + computed distance in log.
+        """
+        if not user_company_id:
+            return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
+
+        company = db.execute(select(Company).where(Company.id == user_company_id)).scalars().first()
+        if company is None:
+            return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
+
+        clat = getattr(company, "latitude", None)
+        clng = getattr(company, "longitude", None)
+        radius = getattr(company, "geo_radius_meters", None)
+        if clat is None or clng is None or radius is None:
+            return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
+
+        if latitude is None or longitude is None:
+            raise ValueError("Thiếu vị trí GPS. Vui lòng bật định vị để chấm công.")
+
+        dist = _haversine_meters(latitude, longitude, float(clat), float(clng))
+        ok_geo = dist <= float(radius)
+        if not ok_geo:
+            raise ValueError(f"Ngoài phạm vi chấm công (cách công ty ~{int(dist)}m, giới hạn {int(float(radius))}m)")
+        return {"latitude": latitude, "longitude": longitude, "distance_meters": float(dist), "geo_ok": True}
 
     def list_logs_for_user(self, db: Session, *, user_id: int, limit: int = 50, offset: int = 0):
         pairs = self._logs.list_with_user_for_user(db, user_id=user_id, limit=limit, offset=offset)
@@ -204,17 +331,9 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cid = int(getattr(user, "company_id", 0) or 0) or None
+        cfg_map = self._schedule_cfg_map(db, company_id=cid, from_day=from_day, to_day=to_day_inclusive, user_ids=[int(user.id)])
 
         rows: list[dict[str, object]] = []
         day_cursor = from_day
@@ -223,6 +342,7 @@ class AttendanceService:
             cin = times.get("checkin")
             cout = times.get("checkout")
             absent = cin is None
+            cfg = cfg_map.get((int(user.id), day_cursor), base_cfg)
             computed = compute_attendance(day=day_cursor, checkin_time=cin, checkout_time=cout, cfg=cfg)
             late = (cin is not None) and (computed.late_minutes > 0)
             rows.append(
@@ -250,26 +370,26 @@ class AttendanceService:
             day_cursor = day_cursor + timedelta(days=1)
         return rows
 
-    def _match_user(self, db: Session, *, image_bytes: bytes, threshold: float) -> tuple[object, float]:
+    def _match_user(self, db: Session, *, company_id: int | None = None, image_bytes: bytes, threshold: float) -> tuple[object, float]:
         # Probe embedding from ML service
         probe = self._ml.extract_embedding(image_bytes=image_bytes)
 
         # Build candidate list (user_id, embedding)
         candidates: list[tuple[int, list[float]]] = []
-        for record in self._embeddings.list_all(db):
+        for record in self._embeddings.list_all(db, company_id=company_id):
             candidates.append((record.user_id, embedding_from_json(record.embedding)))
 
         match = match_best(probe_embedding=probe, candidates=candidates, threshold=float(threshold))
         if match is None:
             raise ValueError("No matched user (below threshold)")
 
-        user = self._users.get(db, match.user_id)
+        user = self._users.get(db, match.user_id, company_id=company_id)
         if user is None:
             raise ValueError("Matched user not found")
         return (user, float(match.confidence))
 
-    def list_logs(self, db: Session, *, limit: int = 200, offset: int = 0):
-        pairs = self._logs.list_with_user(db, limit=limit, offset=offset)
+    def list_logs(self, db: Session, *, company_id: int | None = None, limit: int = 200, offset: int = 0):
+        pairs = self._logs.list_with_user(db, company_id=company_id, limit=limit, offset=offset)
         # Attach user_name dynamically (Pydantic from_attributes can read it)
         out = []
         for log, user_name in pairs:
@@ -277,13 +397,13 @@ class AttendanceService:
             out.append(log)
         return out
 
-    def daily_report(self, db: Session, *, day: date) -> list[DailyComputed]:
+    def daily_report(self, db: Session, *, company_id: int | None = None, day: date) -> list[DailyComputed]:
         policy = self._policy.get_or_create(db)
         overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
         start = datetime.combine(day, time(0, 0, 0))
         end = start + (timedelta(days=2) if overnight else timedelta(days=1))
-        logs = self._logs.list_in_range(db, start=start, end=end)
-        users = {u.id: u.name for u in self._users.list(db, limit=10000, offset=0)}
+        logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+        users = {u.id: u.name for u in self._users.list(db, company_id=company_id, limit=10000, offset=0)}
 
         by_user: dict[int, dict[str, datetime]] = {}
         for log in logs:
@@ -299,17 +419,8 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=day, to_day=day, user_ids=list(users.keys()))
 
         rows: list[DailyComputed] = []
         for user_id, user_name in users.items():
@@ -320,6 +431,7 @@ class AttendanceService:
             late = False
             work_hours = 0.0
             if cin is not None:
+                cfg = cfg_map.get((int(user_id), day), base_cfg)
                 computed = compute_attendance(day=day, checkin_time=cin, checkout_time=cout, cfg=cfg)
                 late = computed.late_minutes > 0
                 work_hours = computed.working_minutes / 60.0
@@ -338,7 +450,7 @@ class AttendanceService:
         rows.sort(key=lambda r: (r.absent, r.user_name))
         return rows
 
-    def monthly_report(self, db: Session, *, year: int, month: int) -> list[dict[str, object]]:
+    def monthly_report(self, db: Session, *, company_id: int | None = None, year: int, month: int) -> list[dict[str, object]]:
         month_start = date(year, month, 1)
         if month == 12:
             next_month = date(year + 1, 1, 1)
@@ -349,8 +461,8 @@ class AttendanceService:
         start = datetime.combine(month_start, time(0, 0, 0))
         end = datetime.combine(next_month, time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
 
-        logs = self._logs.list_in_range(db, start=start, end=end)
-        users = {u.id: u.name for u in self._users.list(db, limit=10000, offset=0)}
+        logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+        users = {u.id: u.name for u in self._users.list(db, company_id=company_id, limit=10000, offset=0)}
 
         # First check-in + last check-out per user per attendance day
         per_user_day: dict[tuple[int, date], dict[str, datetime]] = {}
@@ -369,17 +481,8 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=month_start, to_day=(next_month - timedelta(days=1)), user_ids=list(users.keys()))
         days_in_month = (next_month - month_start).days
 
         # Aggregate per user
@@ -392,6 +495,7 @@ class AttendanceService:
             if cin is None:
                 continue
             totals[uid]["present_days"] = int(totals[uid]["present_days"]) + 1
+            cfg = cfg_map.get((int(uid), d), base_cfg)
             computed = compute_attendance(day=d, checkin_time=cin, checkout_time=cout, cfg=cfg)
             if computed.late_minutes > 0:
                 totals[uid]["late_days"] = int(totals[uid]["late_days"]) + 1
@@ -418,6 +522,7 @@ class AttendanceService:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         from_day: date,
         to_day_inclusive: date,
         department_id: int | None = None,
@@ -432,11 +537,14 @@ class AttendanceService:
         if _is_overnight_shift(policy.shift_start, policy.shift_end):
             end = end + timedelta(days=1)
 
-        logs = self._logs.list_in_range(db, start=start, end=end)
-        users = self._users.list(db, limit=10000, offset=0)
-        depts = {d.id: d for d in self._depts.list(db, limit=10000, offset=0)}
+        logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        depts = {d.id: d for d in self._depts.list(db, company_id=company_id, limit=10000, offset=0)}
 
         # Optional filters (by department)
+        if department_id is not None and department_id not in depts:
+            # Dept not in scope -> empty result instead of cross-company leak.
+            return []
         users_f = []
         for u in users:
             if department_id is not None and u.department_id != department_id:
@@ -462,17 +570,8 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=from_day, to_day=to_day_inclusive, user_ids=list(users_by_id.keys()))
 
         def _match_status(*, late: bool, absent: bool) -> bool:
             if status is None:
@@ -495,6 +594,7 @@ class AttendanceService:
                 if not include_absent and cin is None and cout is None:
                     continue
                 absent = cin is None
+                cfg = cfg_map.get((int(uid), day_cursor), base_cfg)
                 computed = compute_attendance(day=day_cursor, checkin_time=cin, checkout_time=cout, cfg=cfg)
                 late = (cin is not None) and (computed.late_minutes > 0)
                 if not _match_status(late=late, absent=absent):
@@ -531,12 +631,13 @@ class AttendanceService:
         self,
         db: Session,
         *,
+        company_id: int | None = None,
         user_id: int,
         day: date,
         checkin_time: datetime | None,
         checkout_time: datetime | None,
     ) -> dict[str, object]:
-        user = self._users.get(db, user_id)
+        user = self._users.get(db, user_id, company_id=company_id)
         if user is None:
             raise ValueError("User not found")
         start = datetime.combine(day, time(0, 0, 0))
@@ -567,21 +668,13 @@ class AttendanceService:
         db.commit()
 
         # Return computed row (include_absent so UI can see cleared state)
-        dept = self._depts.get(db, user.department_id) if user.department_id is not None else None
+        dept = self._depts.get(db, user.department_id, company_id=company_id) if user.department_id is not None else None
         cin = checkin_time
         cout = checkout_time
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=day, to_day=day, user_ids=[int(user.id)])
+        cfg = cfg_map.get((int(user.id), day), base_cfg)
 
         absent = cin is None
         computed = compute_attendance(day=day, checkin_time=cin, checkout_time=cout, cfg=cfg)
@@ -609,8 +702,8 @@ class AttendanceService:
             "method": "Manual",
         }
 
-    def timelog_delete_day(self, db: Session, *, user_id: int, day: date) -> None:
-        user = self._users.get(db, user_id)
+    def timelog_delete_day(self, db: Session, *, company_id: int | None = None, user_id: int, day: date) -> None:
+        user = self._users.get(db, user_id, company_id=company_id)
         if user is None:
             raise ValueError("User not found")
         start = datetime.combine(day, time(0, 0, 0))
@@ -618,7 +711,7 @@ class AttendanceService:
         self._logs.delete_in_range(db, start=start, end=end, user_id=user_id)
         db.commit()
 
-    def stats(self, db: Session, *, from_day: date, to_day_inclusive: date) -> dict[str, object]:
+    def stats(self, db: Session, *, company_id: int | None = None, from_day: date, to_day_inclusive: date) -> dict[str, object]:
         if to_day_inclusive < from_day:
             raise ValueError("to_date must be >= from_date")
         start = datetime.combine(from_day, time(0, 0, 0))
@@ -626,11 +719,11 @@ class AttendanceService:
         policy = self._policy.get_or_create(db)
         if _is_overnight_shift(policy.shift_start, policy.shift_end):
             end = end + timedelta(days=1)
-        logs = self._logs.list_in_range(db, start=start, end=end)
-        users = self._users.list(db, limit=10000, offset=0)
+        logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
 
-        shift_start = _parse_hhmm(policy.shift_start)
-        grace = timedelta(minutes=int(policy.late_grace_minutes))
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=from_day, to_day=to_day_inclusive, user_ids=[int(u.id) for u in users])
 
         late_count = 0
         for log in logs:
@@ -639,6 +732,9 @@ class AttendanceService:
             d = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
             if d < from_day or d > to_day_inclusive:
                 continue
+            cfg = cfg_map.get((int(log.user_id), d), base_cfg)
+            shift_start = _parse_hhmm(cfg.shift_start)
+            grace = timedelta(minutes=int(cfg.late_grace_minutes))
             if log.timestamp > (datetime.combine(d, shift_start) + grace):
                 late_count += 1
 
@@ -701,6 +797,19 @@ def _attendance_day_for_ts(ts: datetime, *, shift_start: str, shift_end: str) ->
     if ts.time() < end_t:
         return ts.date() - timedelta(days=1)
     return ts.date()
+
+
+def _haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    from math import asin, cos, radians, sin, sqrt
+
+    r = 6371000.0
+    p1 = radians(lat1)
+    p2 = radians(lat2)
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(p1) * cos(p2) * sin(dlon / 2) ** 2
+    c = 2 * asin(sqrt(a))
+    return float(r * c)
 
 
 def _enforce_min_interval(

@@ -1,10 +1,14 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { api, type ApiResponse, getApiErrorMessage, getToken, setToken } from "../lib/apiClient";
+import { api, type ApiResponse, getApiErrorMessage, getCompanyId, getToken, setCompanyId, setToken } from "../lib/apiClient";
 import { useEffect } from "react";
 
 type AuthContextValue = {
   token: string | null;
   username: string | null;
+  companyId: number | null;
+  companyName: string | null;
+  selectedCompanyId: number | null;
+  setSelectedCompanyId(companyId: number | null): void;
   roleKeys: string[];
   permissionKeys: string[];
   meLoading: boolean;
@@ -20,6 +24,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(() => getToken());
   const [username, setUsername] = useState<string | null>(null);
+  const [companyId, setCompanyIdState] = useState<number | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyIdState] = useState<number | null>(() => getCompanyId());
   const [roleKeys, setRoleKeys] = useState<string[]>([]);
   const [permissionKeys, setPermissionKeys] = useState<string[]>([]);
   const [meLoading, setMeLoading] = useState(false);
@@ -29,10 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!t) return;
     setMeLoading(true);
     try {
-      const res = await api.get<ApiResponse<{ username: string; role_keys: string[]; permission_keys: string[] }>>("/auth/me");
+      const res = await api.get<ApiResponse<{ username: string; company_id?: number | null; company_name?: string | null; role_keys: string[]; permission_keys: string[] }>>("/auth/me");
       const me = res.data.result;
       if (!me) throw new Error("Không thể lấy thông tin user");
       setUsername(me.username);
+      const cid = (me.company_id ?? null) as number | null;
+      setCompanyIdState(cid);
+      setCompanyName((me.company_name ?? null) as string | null);
+      // Default selected company to user's company on first login.
+      if (!getCompanyId() && cid) {
+        setCompanyId(cid);
+        setSelectedCompanyIdState(cid);
+      }
       setRoleKeys(me.role_keys ?? []);
       setPermissionKeys(me.permission_keys ?? []);
     } finally {
@@ -85,15 +100,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshMe();
       },
       refreshMe,
+      companyId,
+      companyName,
+      selectedCompanyId,
+      setSelectedCompanyId(companyId) {
+        setCompanyId(companyId);
+        setSelectedCompanyIdState(companyId);
+      },
       logout() {
         setToken(null);
+        setCompanyId(null);
         setTokenState(null);
         setUsername(null);
+        setCompanyIdState(null);
+        setCompanyName(null);
+        setSelectedCompanyIdState(null);
         setRoleKeys([]);
         setPermissionKeys([]);
       }
     }),
-    [meLoading, permissionKeys, roleKeys, token, username]
+    [companyId, companyName, meLoading, permissionKeys, roleKeys, selectedCompanyId, token, username]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

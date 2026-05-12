@@ -1,20 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Card from "../../components/Card/Card";
 import Table from "../../components/Table/Table";
 import { useClock } from "../../../shared/hooks/useClock";
 import { formatDateTimeVi } from "../../../shared/lib/date";
-import { listAttendanceLogs, scanAttendanceFromImage, type AttendanceLog } from "../../../shared/api/attendance";
+import { listAttendanceLogs, scanAttendanceFromImageWithGeo, type AttendanceLog } from "../../../shared/api/attendance";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
+import { useAutoScan } from "../../../shared/hooks/useAutoScan";
+import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
 import styles from "./AttendancePage.module.scss";
 
 export default function AttendancePage() {
   const { now } = useClock(1000);
   const [busy, setBusy] = useState(false);
+  const [auto, setAuto] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ user: string; confidence: number; time: string; action: "checkin" | "checkout" } | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const cam = useCamera();
+  const geo = useGeoPosition({ watch: true });
   const liveClock = useMemo(() => now.toLocaleTimeString("vi-VN"), [now]);
   const liveDate = useMemo(() => formatDateTimeVi(now, { dateOnly: true }), [now]);
 
@@ -30,6 +34,35 @@ export default function AttendancePage() {
   useEffect(() => {
     refreshLogs();
   }, []);
+
+  useEffect(() => {
+    return () => cam.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const captureOnce = useCallback(() => cam.capture({ quality: 0.9, type: "image/jpeg" }), [cam]);
+  const scanOnce = useCallback(
+    (b: Blob) => scanAttendanceFromImageWithGeo(b, { latitude: geo.latitude, longitude: geo.longitude }),
+    [geo.latitude, geo.longitude]
+  );
+
+  useAutoScan({
+    enabled: cam.state.ready && auto && !busy,
+    intervalMs: 1200,
+    capture: captureOnce,
+    scan: scanOnce,
+    onResult: async (res) => {
+      setResult({ user: res.user_name, confidence: res.confidence, time: res.time, action: res.action });
+      setError(null);
+      await refreshLogs();
+    },
+    onError: (e) => {
+      const msg = getApiErrorMessage(e);
+      // Don't block the whole kiosk if a specific employee already completed the day.
+      if (msg.includes("Đã check-in và check-out rồi")) return;
+      setError(msg);
+    }
+  });
 
   return (
     <div className={styles.page}>
@@ -49,7 +82,7 @@ export default function AttendancePage() {
                 <div className={styles.faceFrame}>
                   <div className={styles.scanLine} />
                 </div>
-                <div className={styles.overlayHint}>Đặt khuôn mặt vào khung • Bấm “Quét”</div>
+                <div className={styles.overlayHint}>Đặt khuôn mặt vào khung • Hệ thống tự quét</div>
               </div>
             ) : null}
           </div>
@@ -59,12 +92,15 @@ export default function AttendancePage() {
                 📷 Bật Camera
               </button>
             ) : (
-              <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => cam.stop()} disabled={busy}>
-                ⏹ Tắt Camera
+              <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => setAuto((v) => !v)} disabled={busy}>
+                {auto ? "⏸ Tạm dừng auto" : "▶︎ Bật auto"}
               </button>
             )}
             <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => cam.switchCamera()} disabled={!cam.state.ready || busy}>
               🔄 Đổi camera
+            </button>
+            <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => cam.stop()} disabled={!cam.state.ready || busy}>
+              ⏹ Tắt Camera
             </button>
           </div>
         </div>
@@ -76,6 +112,12 @@ export default function AttendancePage() {
           </div>
 
           {cam.state.error ? <div className={styles.warningBox}>{cam.state.error}</div> : null}
+          {geo.supported && !geo.enabled ? (
+            <div className={styles.warningBox}>
+              ⚠️ Chưa lấy được GPS. Nếu công ty bật giới hạn vị trí, bạn cần cho phép định vị để chấm công.
+              {geo.error ? <div style={{ marginTop: 6, opacity: 0.9 }}>{geo.error}</div> : null}
+            </div>
+          ) : null}
           {error ? <div className={styles.errorBox}>{error}</div> : null}
           {result ? (
             <div className={styles.infoBox}>
@@ -83,30 +125,8 @@ export default function AttendancePage() {
               {new Date(result.time).toLocaleString("vi-VN")}
             </div>
           ) : (
-            <div className={styles.infoBox}>Bật camera → đứng trước camera → bấm “Quét” để hệ thống tự check-in/check-out.</div>
+            <div className={styles.infoBox}>Bật camera → đứng trước camera → hệ thống tự check-in/check-out liên tục.</div>
           )}
-
-          <button
-            className={`${styles.btn} ${styles.btnPrimary}`}
-            type="button"
-            disabled={!cam.state.ready || busy}
-            onClick={async () => {
-              try {
-                setBusy(true);
-                setError(null);
-                const blob = await cam.capture({ quality: 0.9, type: "image/jpeg" });
-                const res = await scanAttendanceFromImage(blob);
-                setResult({ user: res.user_name, confidence: res.confidence, time: res.time, action: res.action });
-                await refreshLogs();
-              } catch (e) {
-                setError(getApiErrorMessage(e));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {busy ? "Đang quét..." : "📷 Quét chấm công"}
-          </button>
         </div>
       </div>
 
