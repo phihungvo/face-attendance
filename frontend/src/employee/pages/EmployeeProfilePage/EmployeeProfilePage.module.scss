@@ -115,9 +115,19 @@
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
+  width: 100%;
+  box-sizing: border-box;
 }
 .profileItem:last-child {
   border-bottom: none;
+}
+
+button.profileItem {
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: var(--font);
+  color: inherit;
 }
 
 .profileItemIcon {

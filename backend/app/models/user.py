@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -10,6 +10,10 @@ from app.models.base import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("company_id", "email", name="uq_users_company_email"),
+        UniqueConstraint("company_id", "code", name="uq_users_company_code"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id"), nullable=True, index=True)
@@ -21,9 +25,9 @@ class User(Base):
     invite_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     invite_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     invite_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    code: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True, index=True)
+    code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     role: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="active")
     department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True, index=True)

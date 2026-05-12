@@ -1,7 +1,9 @@
 import { NavLink } from "react-router-dom";
+import { useEffect } from "react";
 import styles from "./Sidebar.module.scss";
 import { getNavSections } from "./navConfig";
 import { useAuth } from "../../../shared/auth/auth";
+import { useTheme } from "../../../shared/theme/theme";
 
 export default function Sidebar({
   variant = "static",
@@ -13,8 +15,17 @@ export default function Sidebar({
   onClose?: () => void;
 }) {
   const auth = useAuth();
+  const { resolvedTheme, toggle, setMode } = useTheme();
   const can = (p: string) => auth.permissionKeys.includes(p as any);
   const navSections = getNavSections(auth.roleKeys);
+  const isEmployee = auth.roleKeys.includes("employee") && !auth.roleKeys.includes("manager") && !auth.roleKeys.includes("admin");
+
+  useEffect(() => {
+    if (!isEmployee) return;
+    // Default employee UI to dark on first visit, without overriding an explicit user preference.
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem("theme-mode") == null) setMode("dark");
+  }, [isEmployee, setMode]);
 
   const itemAllowed = (to: string) => {
     const map: Record<string, string> = {
@@ -24,6 +35,7 @@ export default function Sidebar({
       "/employees": "employees.read",
       "/departments": "departments.read",
       "/leave": "leave.read",
+      "/schedules": "schedules.read",
       "/reports": "reports.read",
       "/overtime": "overtime.read",
       "/payroll": "payroll.read",
@@ -95,6 +107,13 @@ export default function Sidebar({
       ))}
 
       <div className={styles.sidebarFooter}>
+        {isEmployee ? (
+          <button className={styles.themeToggle} type="button" onClick={toggle} aria-label="Bật/tắt sáng tối">
+            <span className={styles.themeIcon}>{resolvedTheme === "dark" ? "🌙" : "☀️"}</span>
+            <span className={styles.themeLabel}>Giao diện</span>
+            <span className={styles.themeValue}>{resolvedTheme === "dark" ? "Tối" : "Sáng"}</span>
+          </button>
+        ) : null}
         <button
           className={styles.userCard}
           type="button"

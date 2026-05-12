@@ -138,6 +138,7 @@ def create_user(
             status=payload.status,
             department_id=payload.department_id,
             create_login=payload.create_login,
+            portal_role_key=payload.portal_role_key,
         )
         return ok(user)
     except ValueError as e:

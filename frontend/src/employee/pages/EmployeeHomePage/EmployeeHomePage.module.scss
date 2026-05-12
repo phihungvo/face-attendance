@@ -36,6 +36,32 @@
   z-index: 1;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.themeBtn {
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.themeBtn:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
 .greetingWrap {
   flex: 1;
   min-width: 0;
@@ -195,16 +221,30 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  text-decoration: none;
 }
 .btnOut {
-  background: linear-gradient(135deg, var(--rose), #e03060);
+  background: linear-gradient(135deg, var(--indigo), var(--indigo-mid));
   color: #fff;
-  box-shadow: 0 4px 18px rgba(242, 92, 122, 0.4);
+  box-shadow: 0 6px 22px rgba(91, 79, 232, 0.35);
 }
 .btnBreak {
-  background: var(--amber-light);
-  color: #8b6000;
-  border: 2px solid rgba(245, 166, 35, 0.3);
+  background: color-mix(in oklab, var(--surface2) 70%, transparent);
+  color: var(--ink);
+  border: 1.5px solid var(--border);
+}
+
+.btnDisabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.shiftHint {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 850;
+  color: var(--ink3);
 }
 
 .scrollArea {

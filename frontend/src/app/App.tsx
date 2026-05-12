@@ -20,6 +20,8 @@ import IamRolesPage from "./pages/IamRolesPage/IamRolesPage";
 import IamPermissionsPage from "./pages/IamPermissionsPage/IamPermissionsPage";
 import RequirePermission from "../shared/rbac/RequirePermission";
 import CompaniesPage from "./pages/CompaniesPage/CompaniesPage";
+import SchedulesPage from "./pages/SchedulesPage/SchedulesPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage/ChangePasswordPage";
 
 function PrivateRoutes() {
   const auth = useAuth();
@@ -139,12 +141,29 @@ function PrivateRoutes() {
             </RequirePermission>
           }
         />
+        <Route
+          path="/change-password"
+          element={
+            <RequirePermission permission="settings.read" fallback={<Navigate to="/" replace />}>
+              <ChangePasswordPage />
+            </RequirePermission>
+          }
+        />
 
         <Route
           path="/companies"
           element={
             <RequirePermission permission="companies.read" fallback={<Navigate to="/" replace />}>
               <CompaniesPage />
+            </RequirePermission>
+          }
+        />
+
+        <Route
+          path="/schedules"
+          element={
+            <RequirePermission permission="schedules.read" fallback={<Navigate to="/" replace />}>
+              <SchedulesPage />
             </RequirePermission>
           }
         />

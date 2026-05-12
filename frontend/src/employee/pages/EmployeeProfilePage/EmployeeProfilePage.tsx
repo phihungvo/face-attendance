@@ -7,11 +7,13 @@ import { enrollMyFace, getMyFaceStatus } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { getMyProfile } from "../../../shared/api/users";
 import { listMyTimelog } from "../../../shared/api/attendance";
+import { useTheme } from "../../../shared/theme/theme";
 
 export default function EmployeeProfilePage() {
   const auth = useAuth();
   const nav = useNavigate();
   const cam = useCamera();
+  const { resolvedTheme, toggle } = useTheme();
   const [busy, setBusy] = useState(false);
   const [faceError, setFaceError] = useState<string | null>(null);
   const [faceInfo, setFaceInfo] = useState<string | null>(null);
@@ -139,7 +141,7 @@ export default function EmployeeProfilePage() {
 
         <div className={styles.profileSection}>
           <div className={styles.profileSectionTitle}>Đăng ký khuôn mặt</div>
-          <div className={styles.faceCard}>
+          <div className={styles.faceCard} id="face-section">
             <div className={styles.faceCamera}>
               {!cam.state.ready ? <div className={styles.facePlaceholder}>📷 Camera chưa bật</div> : null}
               <video ref={cam.videoRef} className={styles.faceVideo} playsInline muted />
@@ -193,9 +195,25 @@ export default function EmployeeProfilePage() {
         </div>
 
         <div className={styles.profileSection}>
-        <div className={styles.profileSectionTitle}>Cài đặt & Bảo mật</div>
-        <div className={styles.profileRow}>
-            <div className={styles.profileItem}>
+          <div className={styles.profileSectionTitle}>Cài đặt & Bảo mật</div>
+          <div className={styles.profileRow}>
+            <button className={`${styles.profileItem} ${styles.clickable}`} type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối">
+              <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
+                {resolvedTheme === "dark" ? "🌙" : "☀️"}
+              </div>
+              <div>
+                <div className={styles.profileItemKey}>Giao diện</div>
+                <div className={styles.profileItemVal} style={{ color: "var(--indigo)" }}>
+                  {resolvedTheme === "dark" ? "Đang tối" : "Đang sáng"}
+                </div>
+              </div>
+              <div className={styles.profileItemArrow}>›</div>
+            </button>
+            <button
+              className={`${styles.profileItem} ${styles.clickable}`}
+              type="button"
+              onClick={() => document.getElementById("face-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
               <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
                 🤳
               </div>
@@ -207,8 +225,8 @@ export default function EmployeeProfilePage() {
                 </div>
               </div>
               <div className={styles.profileItemArrow}>›</div>
-            </div>
-            <div className={`${styles.profileItem} ${styles.clickable}`} onClick={() => window.alert("Chức năng đổi mật khẩu sẽ được nối API sau.")}>
+            </button>
+            <button className={`${styles.profileItem} ${styles.clickable}`} type="button" onClick={() => nav("/employee/change-password")}>
               <div className={styles.profileItemIcon} style={{ background: "#FFE9E9" }}>
                 🔒
               </div>
@@ -219,9 +237,10 @@ export default function EmployeeProfilePage() {
                 </div>
               </div>
               <div className={styles.profileItemArrow}>›</div>
-            </div>
-            <div
+            </button>
+            <button
               className={`${styles.profileItem} ${styles.clickable}`}
+              type="button"
               onClick={() => {
                 auth.logout();
                 nav("/", { replace: true });
@@ -237,7 +256,7 @@ export default function EmployeeProfilePage() {
                 </div>
               </div>
               <div className={styles.profileItemArrow}>›</div>
-            </div>
+            </button>
           </div>
         </div>
       </div>

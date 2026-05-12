@@ -13,6 +13,7 @@ from app.repositories.attendance_logs import AttendanceLogRepository
 from app.repositories.attendance_policy import AttendancePolicyRepository
 from app.repositories.departments import DepartmentRepository
 from app.repositories.face_embeddings import FaceEmbeddingRepository
+from app.repositories.schedules import WorkScheduleRegistrationRepository, WorkScheduleRepository
 from app.repositories.users import UserRepository
 from app.models.company import Company
 
@@ -37,6 +38,62 @@ class AttendanceService:
         self._users = UserRepository()
         self._depts = DepartmentRepository()
         self._ml = MlClient()
+        self._schedules = WorkScheduleRepository()
+        self._schedule_regs = WorkScheduleRegistrationRepository()
+
+    def _policy_cfg(self, policy) -> AttendanceConfig:
+        return AttendanceConfig(
+            shift_start=policy.shift_start,
+            shift_end=policy.shift_end,
+            late_grace_minutes=int(policy.late_grace_minutes),
+            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
+            break_start=policy.break_start,
+            break_end=policy.break_end,
+            break_duration_minutes=int(policy.break_duration_minutes),
+            break_threshold_hours=float(policy.break_threshold_hours),
+            auto_checkout_time=policy.auto_checkout_time,
+        )
+
+    def _schedule_cfg_map(
+        self,
+        db: Session,
+        *,
+        company_id: int | None,
+        from_day: date,
+        to_day: date,
+        user_ids: list[int] | None = None,
+    ) -> dict[tuple[int, date], AttendanceConfig]:
+        """
+        Build per-user per-day attendance configs from approved schedule registrations.
+        Falls back to policy config when not present.
+        """
+        if company_id is None:
+            return {}
+        regs = self._schedule_regs.list_approved_in_range(db, company_id=company_id, from_date=from_day, to_date=to_day, user_ids=user_ids)
+        if not regs:
+            return {}
+        schedule_ids = sorted({int(r.schedule_id) for r in regs})
+        schedules = {int(s.id): s for s in self._schedules.list_by_ids(db, company_id=company_id, ids=schedule_ids)}
+
+        out: dict[tuple[int, date], AttendanceConfig] = {}
+        for r in regs:
+            s = schedules.get(int(r.schedule_id))
+            if s is None:
+                continue
+            if getattr(s, "status", "active") != "active":
+                continue
+            out[(int(r.user_id), r.day)] = AttendanceConfig(
+                shift_start=str(s.shift_start),
+                shift_end=str(s.shift_end),
+                late_grace_minutes=int(getattr(s, "late_grace_minutes", 0) or 0),
+                early_leave_grace_minutes=int(getattr(s, "early_leave_grace_minutes", 0) or 0),
+                break_start=str(s.break_start),
+                break_end=str(s.break_end),
+                break_duration_minutes=int(getattr(s, "break_duration_minutes", 0) or 0),
+                break_threshold_hours=float(getattr(s, "break_threshold_hours", 0.0) or 0.0),
+                auto_checkout_time=str(getattr(s, "auto_checkout_time", "23:59")),
+            )
+        return out
 
     def checkin(
         self,
@@ -274,17 +331,9 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cid = int(getattr(user, "company_id", 0) or 0) or None
+        cfg_map = self._schedule_cfg_map(db, company_id=cid, from_day=from_day, to_day=to_day_inclusive, user_ids=[int(user.id)])
 
         rows: list[dict[str, object]] = []
         day_cursor = from_day
@@ -293,6 +342,7 @@ class AttendanceService:
             cin = times.get("checkin")
             cout = times.get("checkout")
             absent = cin is None
+            cfg = cfg_map.get((int(user.id), day_cursor), base_cfg)
             computed = compute_attendance(day=day_cursor, checkin_time=cin, checkout_time=cout, cfg=cfg)
             late = (cin is not None) and (computed.late_minutes > 0)
             rows.append(
@@ -369,17 +419,8 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=day, to_day=day, user_ids=list(users.keys()))
 
         rows: list[DailyComputed] = []
         for user_id, user_name in users.items():
@@ -390,6 +431,7 @@ class AttendanceService:
             late = False
             work_hours = 0.0
             if cin is not None:
+                cfg = cfg_map.get((int(user_id), day), base_cfg)
                 computed = compute_attendance(day=day, checkin_time=cin, checkout_time=cout, cfg=cfg)
                 late = computed.late_minutes > 0
                 work_hours = computed.working_minutes / 60.0
@@ -439,17 +481,8 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=month_start, to_day=(next_month - timedelta(days=1)), user_ids=list(users.keys()))
         days_in_month = (next_month - month_start).days
 
         # Aggregate per user
@@ -462,6 +495,7 @@ class AttendanceService:
             if cin is None:
                 continue
             totals[uid]["present_days"] = int(totals[uid]["present_days"]) + 1
+            cfg = cfg_map.get((int(uid), d), base_cfg)
             computed = compute_attendance(day=d, checkin_time=cin, checkout_time=cout, cfg=cfg)
             if computed.late_minutes > 0:
                 totals[uid]["late_days"] = int(totals[uid]["late_days"]) + 1
@@ -536,17 +570,8 @@ class AttendanceService:
                 if prev is None or log.timestamp > prev:
                     bucket["checkout"] = log.timestamp
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=from_day, to_day=to_day_inclusive, user_ids=list(users_by_id.keys()))
 
         def _match_status(*, late: bool, absent: bool) -> bool:
             if status is None:
@@ -569,6 +594,7 @@ class AttendanceService:
                 if not include_absent and cin is None and cout is None:
                     continue
                 absent = cin is None
+                cfg = cfg_map.get((int(uid), day_cursor), base_cfg)
                 computed = compute_attendance(day=day_cursor, checkin_time=cin, checkout_time=cout, cfg=cfg)
                 late = (cin is not None) and (computed.late_minutes > 0)
                 if not _match_status(late=late, absent=absent):
@@ -646,17 +672,9 @@ class AttendanceService:
         cin = checkin_time
         cout = checkout_time
 
-        cfg = AttendanceConfig(
-            shift_start=policy.shift_start,
-            shift_end=policy.shift_end,
-            late_grace_minutes=int(policy.late_grace_minutes),
-            early_leave_grace_minutes=int(policy.early_leave_grace_minutes),
-            break_start=policy.break_start,
-            break_end=policy.break_end,
-            break_duration_minutes=int(policy.break_duration_minutes),
-            break_threshold_hours=float(policy.break_threshold_hours),
-            auto_checkout_time=policy.auto_checkout_time,
-        )
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=day, to_day=day, user_ids=[int(user.id)])
+        cfg = cfg_map.get((int(user.id), day), base_cfg)
 
         absent = cin is None
         computed = compute_attendance(day=day, checkin_time=cin, checkout_time=cout, cfg=cfg)
@@ -704,8 +722,8 @@ class AttendanceService:
         logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
         users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
 
-        shift_start = _parse_hhmm(policy.shift_start)
-        grace = timedelta(minutes=int(policy.late_grace_minutes))
+        base_cfg = self._policy_cfg(policy)
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=from_day, to_day=to_day_inclusive, user_ids=[int(u.id) for u in users])
 
         late_count = 0
         for log in logs:
@@ -714,6 +732,9 @@ class AttendanceService:
             d = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
             if d < from_day or d > to_day_inclusive:
                 continue
+            cfg = cfg_map.get((int(log.user_id), d), base_cfg)
+            shift_start = _parse_hhmm(cfg.shift_start)
+            grace = timedelta(minutes=int(cfg.late_grace_minutes))
             if log.timestamp > (datetime.combine(d, shift_start) + grace):
                 late_count += 1
 

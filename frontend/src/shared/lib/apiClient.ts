@@ -57,6 +57,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (res) => {
+    // Backend convention: always return { code, message, result }.
+    // Some deployments/proxies may still return HTTP 200 for logical errors,
+    // so we treat code!=1000 as an error to ensure UI shows the message.
+    const data: any = res?.data;
+    if (data && typeof data.code === "number" && data.code !== 1000) {
+      const err: any = new Error(String(data.message || "Có lỗi xảy ra"));
+      err.response = res;
+      return Promise.reject(err);
+    }
+    return res;
+  },
+  (err) => Promise.reject(err)
+);
+
 export function getApiErrorMessage(e: any): string {
   if (e?.response?.data?.message) return String(e.response.data.message);
   if (e?.message) return String(e.message);

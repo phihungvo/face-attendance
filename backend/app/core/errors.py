@@ -32,6 +32,11 @@ AUTH_INVALID_CREDENTIALS = ErrorCode(code=2002, message="Tên đăng nhập ho�
 AUTH_ACCOUNT_PENDING = ErrorCode(code=2003, message="Tài khoản chưa được kích hoạt", http_status=403)
 AUTH_INVITE_INVALID = ErrorCode(code=2004, message="Link kích hoạt không hợp lệ", http_status=400)
 AUTH_INVITE_EXPIRED = ErrorCode(code=2005, message="Link kích hoạt đã hết hạn", http_status=400)
+AUTH_IDENTIFIER_AMBIGUOUS = ErrorCode(
+    code=2006,
+    message="Email này tồn tại ở nhiều công ty. Vui lòng đăng nhập bằng username hoặc mã nhân viên.",
+    http_status=400,
+)
 
 ML_NOT_READY = ErrorCode(
     code=3001,

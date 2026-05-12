@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     MYSQL_USER: str = "app"
     MYSQL_PASSWORD: str = "app_password"
     MYSQL_DB: str = "face_attendance"
+    DB_STARTUP_RETRIES: int = 30
+    DB_STARTUP_RETRY_SLEEP_SECONDS: float = 2.0
+    DB_STARTUP_FAIL_FAST: bool = False
 
     # ML
     FACE_MATCH_THRESHOLD: float = 0.5

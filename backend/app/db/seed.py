@@ -28,6 +28,10 @@ PERMISSIONS: list[tuple[str, str]] = [
     ("iam.manage", "Quản lý phân quyền (IAM)"),
     ("companies.read", "Xem danh sách công ty"),
     ("companies.manage", "Quản lý công ty"),
+    ("schedules.read", "Xem lịch/ca làm"),
+    ("schedules.manage", "Quản lý ca làm"),
+    ("schedules.approve", "Duyệt đăng ký lịch làm"),
+    ("schedules.register", "Đăng ký lịch làm"),
     ("employee.portal", "Truy cập cổng nhân viên"),
 ]
 
@@ -133,7 +137,7 @@ def seed_rbac(db: Session) -> None:
 
     # Manager: vận hành theo công ty, không quản lý hệ thống/IAM/công ty.
     manager_perm_keys = [k for k, _ in PERMISSIONS if k not in {"employee.portal", "iam.manage", "companies.manage", "companies.read"}]
-    employee_perm_keys = ["employee.portal", "notifications.read", "settings.read"]
+    employee_perm_keys = ["employee.portal", "notifications.read", "settings.read", "schedules.read", "schedules.register"]
 
     ensure_role("manager", "Quản lý", manager_perm_keys)
     ensure_role("employee", "Nhân viên", employee_perm_keys)

@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.core.response import ok
 from app.db.session import get_db
-from app.schemas.auth import ActivateRequest, LoginRequest, MeResponse, RegisterRequest, TokenResponse
+from app.schemas.auth import ActivateRequest, ChangePasswordRequest, LoginRequest, MeResponse, RegisterRequest, TokenResponse
 from app.schemas.common import ApiResponse
 from app.services.auth import AuthService
 from app.api.deps import get_current_user
+from app.core.errors import BAD_REQUEST, AppException
 
 router = APIRouter()
 service = AuthService()
@@ -29,6 +30,22 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> ApiResponse[T
 def activate(payload: ActivateRequest, db: Session = Depends(get_db)) -> ApiResponse[TokenResponse]:
     token = service.activate_with_token(db, token=payload.token, password=payload.password)
     return ok(TokenResponse(access_token=token))
+
+@router.post("/change-password", response_model=ApiResponse[dict[str, object]])
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[dict[str, object]]:
+    if payload.current_password == payload.new_password:
+        raise AppException(BAD_REQUEST, detail="Mật khẩu mới phải khác mật khẩu hiện tại")
+    try:
+        service.change_password(db, user_id=int(user.id), current_password=payload.current_password, new_password=payload.new_password)
+    except AppException:
+        raise
+    except Exception as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+    return ok({"changed": True})
 
 
 @router.get("/me", response_model=ApiResponse[MeResponse])

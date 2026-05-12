@@ -4,8 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { getMyProfile } from "../../../shared/api/users";
 import { listMyTimelog } from "../../../shared/api/attendance";
 import { getMyLeaveBalance } from "../../../shared/api/leaves";
+import { useTheme } from "../../../shared/theme/theme";
+import { listMyScheduleRegistrations, listSchedules, type WorkSchedule, type WorkScheduleRegistration } from "../../../shared/api/schedules";
+import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 
 export default function EmployeeHomePage() {
+  const { resolvedTheme, toggle } = useTheme();
   const [me, setMe] = useState<{ name: string; code?: string | null; department_name?: string | null } | null>(null);
   const [today, setToday] = useState<{ checkin: string; checkout: string; worked: string; status: "in" | "idle" }>({
     checkin: "—",
@@ -23,11 +27,15 @@ export default function EmployeeHomePage() {
     days: Array<{ label: string; state: "done" | "late" | "today" | "miss" }>;
   }>({ title: "Chuỗi chuyên cần", countLabel: "—", weekSummary: "—", days: [] });
   const [now, setNow] = useState(() => new Date());
+  const [todayShift, setTodayShift] = useState<{ name: string; start: string; end: string } | null>(null);
+  const [todayShiftErr, setTodayShiftErr] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   useEffect(() => {
     (async () => {
@@ -50,7 +58,6 @@ export default function EmployeeHomePage() {
         const to = `${ym}-${String(lastDay).padStart(2, "0")}`;
         const rows: any[] = await listMyTimelog({ from_date: from, to_date: to });
 
-        const todayKey = new Date().toISOString().slice(0, 10);
         const todayRow = rows.find((r) => r.date === todayKey);
         const fmtTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—");
         const minutes = (r: any) => (typeof r.working_minutes === "number" ? r.working_minutes : Math.round((r.work_hours ?? 0) * 60));
@@ -121,7 +128,60 @@ export default function EmployeeHomePage() {
         // ignore
       }
     })();
-  }, []);
+  }, [todayKey]);
+
+  useEffect(() => {
+    (async () => {
+      setTodayShiftErr(null);
+      try {
+        const [sch, regs] = await Promise.all([
+          listSchedules({ limit: 500, offset: 0, status: "active" }),
+          listMyScheduleRegistrations({ limit: 200, offset: 0 })
+        ]);
+        const byId = new Map<number, WorkSchedule>(sch.map((s) => [s.id, s]));
+        const todayRegs = (regs as WorkScheduleRegistration[])
+          .filter((r) => String(r.day).slice(0, 10) === todayKey)
+          .sort((a, b) => (a.status === b.status ? b.id - a.id : a.status === "approved" ? -1 : 1));
+        const pick = todayRegs[0];
+        const s = pick ? byId.get(pick.schedule_id) : null;
+        if (s && s.shift_start && s.shift_end) setTodayShift({ name: s.name, start: s.shift_start, end: s.shift_end });
+        else setTodayShift(null);
+      } catch (e) {
+        setTodayShiftErr(getApiErrorMessage(e));
+        setTodayShift(null);
+      }
+    })();
+  }, [todayKey]);
+
+  const hhmmToMinutes = (hhmm: string) => {
+    const [h, m] = hhmm.split(":");
+    return Number(h) * 60 + Number(m);
+  };
+
+  const nowMinutes = useMemo(() => now.getHours() * 60 + now.getMinutes(), [now]);
+  const shiftStartMin = useMemo(() => (todayShift?.start ? hhmmToMinutes(todayShift.start) : null), [todayShift]);
+  const shiftEndMin = useMemo(() => (todayShift?.end ? hhmmToMinutes(todayShift.end) : null), [todayShift]);
+
+  const canCheckinNow = useMemo(() => {
+    if (today.status === "in") return false;
+    if (shiftStartMin == null || shiftEndMin == null) return true;
+    // Allow early check-in up to 120 minutes before shift start, and until shift end + 60 minutes.
+    return nowMinutes >= shiftStartMin - 120 && nowMinutes <= shiftEndMin + 60;
+  }, [today.status, shiftStartMin, shiftEndMin, nowMinutes]);
+
+  const canCheckoutNow = useMemo(() => {
+    if (today.status !== "in") return false;
+    if (shiftStartMin == null || shiftEndMin == null) return true;
+    // Allow checkout from 60 minutes after shift start (avoid accidental immediate checkout).
+    return nowMinutes >= shiftStartMin + 60;
+  }, [today.status, shiftStartMin, shiftEndMin, nowMinutes]);
+
+  const primaryAttendanceAction = useMemo(() => {
+    if (today.status === "in") {
+      return { label: "⏹ Ra ca", hint: todayShift ? `Ca: ${todayShift.start}–${todayShift.end}` : "Ra ca", disabled: !canCheckoutNow };
+    }
+    return { label: "📷 Vào ca", hint: todayShift ? `Ca: ${todayShift.start}–${todayShift.end}` : "Vào ca", disabled: !canCheckinNow };
+  }, [today.status, todayShift, canCheckoutNow, canCheckinNow]);
 
   useEffect(() => {
     (async () => {
@@ -175,9 +235,14 @@ export default function EmployeeHomePage() {
             <div className={styles.greetingName}>Xin chào, {(me?.name || "Bạn").split(" ").slice(-1)[0]}! 👋</div>
             <div className={styles.greetingSub}>{greetingSub}</div>
           </div>
-          <Link to="/employee/profile" className={styles.headerAvatar} aria-label="Hồ sơ">
-            {initials || "ME"}
-          </Link>
+          <div className={styles.headerActions}>
+            <button className={styles.themeBtn} type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện">
+              {resolvedTheme === "dark" ? "🌙" : "☀️"}
+            </button>
+            <Link to="/employee/profile" className={styles.headerAvatar} aria-label="Hồ sơ">
+              {initials || "ME"}
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -214,13 +279,23 @@ export default function EmployeeHomePage() {
         </div>
 
         <div className={styles.checkinBtnRow}>
-          <Link to="/employee/checkin" className={`${styles.btnCi} ${styles.btnOut}`}>
-            ⏹ Ra ca
+          <Link
+            to="/employee/checkin"
+            className={`${styles.btnCi} ${styles.btnOut} ${primaryAttendanceAction.disabled ? styles.btnDisabled : ""}`}
+            aria-disabled={primaryAttendanceAction.disabled}
+            onClick={(e) => {
+              if (primaryAttendanceAction.disabled) e.preventDefault();
+            }}
+            title={primaryAttendanceAction.hint}
+          >
+            {primaryAttendanceAction.label}
           </Link>
-          <button className={`${styles.btnCi} ${styles.btnBreak}`} type="button">
-            ☕ Nghỉ giải lao
-          </button>
+          <Link to="/employee/leave" className={`${styles.btnCi} ${styles.btnBreak}`} title="Tạo đơn xin nghỉ">
+            🌴 Xin nghỉ
+          </Link>
         </div>
+        {todayShift ? <div className={styles.shiftHint}>Hôm nay: <span className={styles.mono}>{todayShift.start}–{todayShift.end}</span> • {todayShift.name}</div> : null}
+        {todayShiftErr ? <div className={styles.shiftHint} style={{ color: "var(--rose)" }}>⚠️ {todayShiftErr}</div> : null}
       </div>
 
       <div className={styles.scrollArea}>

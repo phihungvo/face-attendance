@@ -43,6 +43,7 @@ class UserCreateRequest(BaseModel):
     status: str | None = Field(default=None, max_length=16)
     department_id: int | None = None
     create_login: bool = Field(default=True, description="Tạo account đăng nhập + gửi email kích hoạt")
+    portal_role_key: str | None = Field(default=None, max_length=64, description="RBAC role key for portal access (employee/manager)")
 
 
 class EnrollResponse(BaseModel):

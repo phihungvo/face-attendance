@@ -26,6 +26,7 @@ export function getNavSections(roleKeys: string[]): NavSection[] {
         items: [
           { key: "checkin", label: "Chấm Công", icon: "📷", to: "/checkin", badge: { text: "LIVE", tone: "green" } },
           { key: "timelog", label: "Bảng Giờ Công", icon: "🕐", to: "/timelog" },
+          { key: "schedules", label: "Ca Làm", icon: "🗓️", to: "/schedules" },
           { key: "employees", label: "Nhân Viên", icon: "👥", to: "/employees" },
           { key: "departments", label: "Phòng Ban", icon: "🏢", to: "/departments" },
           { key: "leave", label: "Nghỉ Phép", icon: "🌴", to: "/leave" }
@@ -59,7 +60,8 @@ export function getNavSections(roleKeys: string[]): NavSection[] {
       items: [
         { key: "dashboard", label: "Dashboard", icon: "📊", to: "/" },
         { key: "checkin", label: "Chấm Công", icon: "📷", to: "/checkin", badge: { text: "LIVE", tone: "green" } },
-        { key: "timelog", label: "Bảng Giờ Công", icon: "🕐", to: "/timelog" }
+        { key: "timelog", label: "Bảng Giờ Công", icon: "🕐", to: "/timelog" },
+        { key: "schedules", label: "Ca Làm", icon: "🗓️", to: "/schedules" }
       ]
     },
     {

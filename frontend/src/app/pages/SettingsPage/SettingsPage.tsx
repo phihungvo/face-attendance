@@ -6,6 +6,7 @@ import { getMyCompany, updateMyCompany } from "../../../shared/api/companies";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useTheme } from "../../../shared/theme/theme";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
+import { useNavigate } from "react-router-dom";
 import styles from "./SettingsPage.module.scss";
 
 function Toggle({
@@ -30,6 +31,7 @@ function Toggle({
 }
 
 export default function SettingsPage() {
+  const nav = useNavigate();
   const [company, setCompany] = useState<string>("");
   const [companyAddr, setCompanyAddr] = useState<string>("");
   const [companyLat, setCompanyLat] = useState<string>("");
@@ -266,6 +268,15 @@ export default function SettingsPage() {
                 </div>
                 <Toggle checked={twoFactor} onChange={setTwoFactor} label="Bảo mật 2 lớp" />
               </div>
+
+              <button className={`${styles.settingsItem} ${styles.settingsClickable}`} type="button" onClick={() => nav("/change-password")}>
+                <div className={`${styles.settingsIcon} ${styles.iconDanger}`}>🔒</div>
+                <div className={styles.settingsInfo}>
+                  <div className={styles.settingsLabel}>Đổi mật khẩu</div>
+                  <div className={styles.settingsDesc}>Thay đổi mật khẩu đăng nhập</div>
+                </div>
+                <div className={styles.settingsArrow}>›</div>
+              </button>
             </div>
           </Card>
 

@@ -9,10 +9,12 @@ from sqlalchemy.orm import Session
 from app.clients.email_client import EmailClient
 from app.core.errors import (
     AUTH_ACCOUNT_PENDING,
+    AUTH_IDENTIFIER_AMBIGUOUS,
     AUTH_INVALID_CREDENTIALS,
     AUTH_INVITE_EXPIRED,
     AUTH_INVITE_INVALID,
     AUTH_USERNAME_TAKEN,
+    BAD_REQUEST,
     AppException,
 )
 from app.core.security import create_access_token, hash_password, verify_password
@@ -59,7 +61,16 @@ class AuthService:
         return create_access_token(subject=str(user.id))
 
     def login(self, db: Session, *, identifier: str, password: str) -> str:
-        user = self._users.get_by_identifier(db, identifier)
+        # Support login by username/code/email. Email and employee code may be duplicated across companies.
+        user = self._users.get_by_username(db, identifier) or self._users.get_by_code(db, identifier)
+        if user is None:
+            by_code = self._users.list_by_code(db, identifier)
+            if len(by_code) > 1:
+                raise AppException(AUTH_IDENTIFIER_AMBIGUOUS)
+            by_email = self._users.list_by_email(db, identifier)
+            if len(by_email) > 1:
+                raise AppException(AUTH_IDENTIFIER_AMBIGUOUS)
+            user = by_email[0] if len(by_email) == 1 else None
         if user is None:
             raise AppException(AUTH_INVALID_CREDENTIALS)
         if (getattr(user, "auth_status", None) == "pending") or (user.password_hash is None):
@@ -123,3 +134,17 @@ class AuthService:
         db.commit()
 
         return create_access_token(subject=str(user.id))
+
+    def change_password(self, db: Session, *, user_id: int, current_password: str, new_password: str) -> None:
+        from app.models.user import User
+
+        user = db.get(User, user_id)
+        if user is None:
+            raise AppException(BAD_REQUEST, detail="User không tồn tại")
+        if (getattr(user, "auth_status", None) == "pending") or (user.password_hash is None):
+            raise AppException(AUTH_ACCOUNT_PENDING)
+        if not verify_password(current_password, user.password_hash):
+            raise AppException(AUTH_INVALID_CREDENTIALS)
+        user.password_hash = hash_password(new_password)
+        db.add(user)
+        db.commit()

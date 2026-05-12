@@ -7,6 +7,14 @@ from app.models.user import User
 
 
 class UserRepository:
+    def get_by_code(self, db: Session, *, company_id: int | None, code: str) -> User | None:
+        stmt = select(User).where(User.company_id == company_id, User.code == code).order_by(User.id.asc())
+        return db.execute(stmt).scalars().first()
+
+    def get_by_email(self, db: Session, *, company_id: int | None, email: str) -> User | None:
+        stmt = select(User).where(User.company_id == company_id, User.email == email).order_by(User.id.asc())
+        return db.execute(stmt).scalars().first()
+
     def create(
         self,
         db: Session,

@@ -248,6 +248,22 @@
   border-bottom: none;
 }
 
+.settingsClickable {
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font);
+  color: inherit;
+}
+
+.settingsArrow {
+  margin-left: auto;
+  color: var(--text3);
+  font-weight: 900;
+}
+
 .settingsIcon {
   width: 40px;
   height: 40px;

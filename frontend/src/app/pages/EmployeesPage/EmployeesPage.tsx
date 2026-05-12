@@ -64,6 +64,7 @@ export default function EmployeesPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
+  const [portalRoleKey, setPortalRoleKey] = useState<"employee" | "manager">("employee");
   const [departmentId, setDepartmentId] = useState<string>("");
   const [faceModalOpen, setFaceModalOpen] = useState(false);
   const [faceUser, setFaceUser] = useState<User | null>(null);
@@ -242,6 +243,7 @@ export default function EmployeesPage() {
               setEmail("");
               setRole("");
               setDepartmentId("");
+              setPortalRoleKey("employee");
               setModalOpen(true);
             }}
           >
@@ -480,7 +482,12 @@ export default function EmployeesPage() {
                     role: role.trim() || null,
                     status: editing ? (editing.status as any) : "active",
                     department_id: departmentId ? Number(departmentId) : null,
-                    ...(editing ? {} : { create_login: true })
+                    ...(editing
+                      ? {}
+                      : {
+                          create_login: true,
+                          portal_role_key: portalRoleKey
+                        })
                   };
                   if (editing) await updateUser(editing.id, payload);
                   else await createUser(payload);
@@ -537,13 +544,24 @@ export default function EmployeesPage() {
             </select>
           </div>
 
+          {!editing ? (
+            <div className={styles.formGroup}>
+              <div className={styles.formLabelTop}>Quyền truy cập Portal</div>
+              <select className={styles.input} value={portalRoleKey} onChange={(e) => setPortalRoleKey(e.target.value as any)}>
+                <option value="employee">Nhân viên</option>
+                <option value="manager">Quản lý</option>
+              </select>
+              <div className={styles.fieldHint}>Quản lý có thể xem/duyệt theo phạm vi công ty (không có quyền IAM/Công ty).</div>
+            </div>
+          ) : null}
+
           <div className={styles.formGroup}>
-            <div className={styles.formLabelTop}>Vai trò</div>
-            <input className={styles.input} value={role} onChange={(e) => setRole(e.target.value)} placeholder="VD: Engineer" />
+            <div className={styles.formLabelTop}>Chức danh (tùy chọn)</div>
+            <input className={styles.input} value={role} onChange={(e) => setRole(e.target.value)} placeholder="VD: Team lead" />
           </div>
         </div>
 
-        <div className={styles.modalNote}>Lưu ý: `code`/`email` là duy nhất. Nếu trùng sẽ báo lỗi từ backend.</div>
+        <div className={styles.modalNote}>Lưu ý: `code`/`email` là duy nhất trong phạm vi công ty. Nếu trùng sẽ báo lỗi từ backend.</div>
       </Modal>
 
       <Modal

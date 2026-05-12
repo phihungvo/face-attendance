@@ -14,6 +14,7 @@ export async function createUser(payload: {
   status?: string | null;
   department_id?: number | null;
   create_login?: boolean;
+  portal_role_key?: "employee" | "manager" | null;
 }) {
   const res = await api.post<ApiResponse<User>>("/users", payload);
   if (!res.data.result) throw new Error("Không tạo được nhân viên");
