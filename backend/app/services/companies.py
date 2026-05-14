@@ -39,6 +39,12 @@ class CompanyService:
             raise ValueError("name is required")
         if (latitude is None) ^ (longitude is None):
             raise ValueError("latitude/longitude phải đi cùng nhau")
+        if latitude is not None and (latitude < -90 or latitude > 90):
+            raise ValueError("latitude không hợp lệ (phải trong -90..90)")
+        if longitude is not None and (longitude < -180 or longitude > 180):
+            raise ValueError("longitude không hợp lệ (phải trong -180..180)")
+        if geo_radius_meters is not None and float(geo_radius_meters) < 0:
+            raise ValueError("geo_radius_meters không hợp lệ (phải >= 0)")
         try:
             c = self._companies.create(db, code=code, name=name, status=status, address=address.strip() if address else None, latitude=latitude, longitude=longitude, geo_radius_meters=geo_radius_meters)
             db.commit()
@@ -63,6 +69,12 @@ class CompanyService:
     ):
         if (latitude is None) ^ (longitude is None):
             raise ValueError("latitude/longitude phải đi cùng nhau")
+        if latitude is not None and (latitude < -90 or latitude > 90):
+            raise ValueError("latitude không hợp lệ (phải trong -90..90)")
+        if longitude is not None and (longitude < -180 or longitude > 180):
+            raise ValueError("longitude không hợp lệ (phải trong -180..180)")
+        if geo_radius_meters is not None and float(geo_radius_meters) < 0:
+            raise ValueError("geo_radius_meters không hợp lệ (phải >= 0)")
         try:
             c = self._companies.update(
                 db,

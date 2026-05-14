@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import get_company_scope_id, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -18,19 +18,25 @@ service = SettingsService()
 @router.get("/attendance", response_model=ApiResponse[AttendancePolicyOut])
 def get_attendance_policy(
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("settings.read")),
 ) -> ApiResponse[AttendancePolicyOut]:
-    return ok(service.get_attendance_policy(db))
+    if company_id is None:
+        raise AppException(BAD_REQUEST, detail="Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
+    return ok(service.get_attendance_policy(db, company_id=int(company_id)))
 
 
 @router.put("/attendance", response_model=ApiResponse[AttendancePolicyOut])
 def update_attendance_policy(
     payload: AttendancePolicyUpdateRequest,
     db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("settings.read")),
 ) -> ApiResponse[AttendancePolicyOut]:
+    if company_id is None:
+        raise AppException(BAD_REQUEST, detail="Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
     try:
         data = payload.model_dump()
-        return ok(service.update_attendance_policy(db, data=data))
+        return ok(service.update_attendance_policy(db, company_id=int(company_id), data=data))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

@@ -80,10 +80,10 @@ export const mockEmployees = {
     { icon: "⛔", label: "Tạm nghỉ", value: 8, variant: "red" as const, delta: { label: "↓ -1", tone: "red" as const } }
   ],
   rows: [
-    { initials: "NA", name: "Nguyễn Văn An", code: "NV001", dept: "Kỹ thuật", role: "Engineer", email: "an.nguyen@company.vn", shift: "Ca sáng", status: "Active", statusTone: "active" as const },
-    { initials: "TB", name: "Trần Thị Bình", code: "NV002", dept: "Kế toán", role: "Accountant", email: "binh.tran@company.vn", shift: "Ca sáng", status: "Active", statusTone: "active" as const },
-    { initials: "HL", name: "Hoàng Linh", code: "NV003", dept: "Nhân sự", role: "HR", email: "linh.hoang@company.vn", shift: "Ca sáng", status: "Active", statusTone: "active" as const },
-    { initials: "QH", name: "Quang Huy", code: "NV004", dept: "Sản xuất", role: "Operator", email: "huy.quang@company.vn", shift: "Ca sáng", status: "Inactive", statusTone: "inactive" as const }
+    { initials: "NA", name: "Nguyễn Văn An", code: "NV001", dept: "Kỹ thuật", role: "Engineer", email: "an.nguyen@company.vn", shift: "Ca sáng", status: "Đang hoạt động", statusTone: "active" as const },
+    { initials: "TB", name: "Trần Thị Bình", code: "NV002", dept: "Kế toán", role: "Accountant", email: "binh.tran@company.vn", shift: "Ca sáng", status: "Đang hoạt động", statusTone: "active" as const },
+    { initials: "HL", name: "Hoàng Linh", code: "NV003", dept: "Nhân sự", role: "HR", email: "linh.hoang@company.vn", shift: "Ca sáng", status: "Đang hoạt động", statusTone: "active" as const },
+    { initials: "QH", name: "Quang Huy", code: "NV004", dept: "Sản xuất", role: "Operator", email: "huy.quang@company.vn", shift: "Ca sáng", status: "Tạm tắt", statusTone: "inactive" as const }
   ]
 };
 

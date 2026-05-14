@@ -6,6 +6,7 @@ import { createCompany, deleteCompany, listCompanies, updateCompany, type Compan
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import styles from "./CompaniesPage.module.scss";
 import { useAuth } from "../../../shared/auth/auth";
+import { viStatusLabel } from "../../../shared/i18n/vi";
 
 export default function CompaniesPage() {
   const auth = useAuth();
@@ -111,7 +112,7 @@ export default function CompaniesPage() {
                 <td className={styles.mono}>{c.code}</td>
                 <td>{c.name}</td>
                 <td>
-                  <span className={c.status === "active" ? `${styles.tag} ${styles.good}` : `${styles.tag} ${styles.bad}`}>{c.status}</span>
+                  <span className={c.status === "active" ? `${styles.tag} ${styles.good}` : `${styles.tag} ${styles.bad}`}>{viStatusLabel(c.status)}</span>
                 </td>
                 <td className={styles.actions}>
                   <button className={styles.smallBtn} type="button" onClick={() => auth.setSelectedCompanyId(c.id)} title="Chọn công ty này để thao tác">
@@ -163,11 +164,11 @@ export default function CompaniesPage() {
           </label>
           <label>
             <div className={styles.label}>Trạng thái</div>
-            <select value={status} onChange={(e) => setStatus(e.target.value as any)}>
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </select>
-          </label>
+              <select value={status} onChange={(e) => setStatus(e.target.value as any)}>
+                <option value="active">{viStatusLabel("active")}</option>
+                <option value="inactive">{viStatusLabel("inactive")}</option>
+              </select>
+            </label>
         </div>
       </Modal>
     </div>

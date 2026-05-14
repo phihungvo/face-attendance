@@ -1,6 +1,9 @@
 .wrap {
   overflow-x: auto;
-  border-radius: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .table {
@@ -17,19 +20,22 @@
 }
 
 .table th {
-  padding: 10px 14px;
+  padding: 11px 14px;
   font-size: 11.5px;
-  color: var(--text3);
-  font-weight: 700;
+  color: var(--text2);
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: var(--surface2);
+  background: var(--table-head-bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .table td {
   font-size: 13.5px;
-  color: var(--text2);
-  font-weight: 500;
+  color: var(--text);
+  font-weight: 600;
   vertical-align: middle;
 }
 
@@ -37,6 +43,24 @@
   border-bottom: none;
 }
 
+.table tbody tr:nth-child(even) td {
+  background: var(--table-row-bg);
+}
+
 .table tbody tr:hover td {
-  background: var(--surface2);
+  background: color-mix(in oklab, var(--primary) 8%, var(--surface2));
+}
+
+.table tbody tr:focus-within td {
+  box-shadow: inset 0 0 0 9999px color-mix(in oklab, var(--primary) 7%, transparent);
+}
+
+@media (max-width: 599px) {
+  .table th,
+  .table td {
+    padding: 11px 12px;
+  }
+  .wrap {
+    border-radius: 14px;
+  }
 }

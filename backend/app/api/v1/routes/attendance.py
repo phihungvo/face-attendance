@@ -40,6 +40,8 @@ async def checkin(
     Check-in via face recognition.
     """
     try:
+        if company_id is None:
+            raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
         user_name, confidence, ts = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         return ok(CheckInResponse(user_name=user_name, confidence=confidence, time=ts))
@@ -60,6 +62,8 @@ async def checkout(
     Check-out via face recognition.
     """
     try:
+        if company_id is None:
+            raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
         user_name, confidence, ts = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         return ok(CheckOutResponse(user_name=user_name, confidence=confidence, time=ts))
@@ -80,6 +84,8 @@ async def scan(
     One-shot scan: auto decide check-in/check-out.
     """
     try:
+        if company_id is None:
+            raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
         user_name, confidence, ts, action = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))

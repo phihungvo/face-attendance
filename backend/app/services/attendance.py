@@ -104,7 +104,7 @@ class AttendanceService:
         latitude: float | None = None,
         longitude: float | None = None,
     ) -> tuple[str, float, object]:
-        policy = self._policy.get_or_create(db)
+        policy = self._policy.get_or_create(db, company_id=company_id)
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkin_from, policy.checkin_to, label="check-in")
 
@@ -126,7 +126,7 @@ class AttendanceService:
         latitude: float | None = None,
         longitude: float | None = None,
     ) -> tuple[str, float, object]:
-        policy = self._policy.get_or_create(db)
+        policy = self._policy.get_or_create(db, company_id=company_id)
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkout_from, policy.checkout_to, label="check-out")
 
@@ -158,7 +158,7 @@ class AttendanceService:
         """
         One-shot scan: auto decide check-in/check-out based on policy windows and existing logs.
         """
-        policy = self._policy.get_or_create(db)
+        policy = self._policy.get_or_create(db, company_id=company_id)
         now = _now_in_policy_tz(policy.timezone)
 
         in_checkin = _in_time_window(now, policy.checkin_from, policy.checkin_to)
@@ -212,16 +212,17 @@ class AttendanceService:
         """
         Employee self-service scan: match face, then enforce matched user == current user.
         """
-        policy = self._policy.get_or_create(db)
+        me = self._users.get(db, user_id)
+        if me is None:
+            raise ValueError("User not found")
+        cid = int(getattr(me, "company_id", 0) or 0) or None
+        policy = self._policy.get_or_create(db, company_id=cid)
         now = _now_in_policy_tz(policy.timezone)
 
         in_checkin = _in_time_window(now, policy.checkin_from, policy.checkin_to)
         in_checkout = _in_time_window(now, policy.checkout_from, policy.checkout_to)
 
-        me = self._users.get(db, user_id)
-        if me is None:
-            raise ValueError("User not found")
-        user, confidence = self._match_user(db, company_id=int(getattr(me, "company_id", 0) or 0) or None, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
+        user, confidence = self._match_user(db, company_id=cid, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
         if int(getattr(user, "id")) != int(user_id):
             raise ValueError("Khuôn mặt không khớp tài khoản đang đăng nhập")
         geo = self._enforce_geo(db, user_company_id=int(getattr(user, "company_id", 0) or 0), latitude=latitude, longitude=longitude)
@@ -305,14 +306,15 @@ class AttendanceService:
         if to_day_inclusive < from_day:
             raise ValueError("to_date must be >= from_date")
 
-        policy = self._policy.get_or_create(db)
-        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
-        start = datetime.combine(from_day, time(0, 0, 0))
-        end = datetime.combine(to_day_inclusive + timedelta(days=1), time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
-
         user = self._users.get(db, user_id)
         if user is None:
             raise ValueError("User not found")
+
+        cid = int(getattr(user, "company_id", 0) or 0) or None
+        policy = self._policy.get_or_create(db, company_id=cid)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        start = datetime.combine(from_day, time(0, 0, 0))
+        end = datetime.combine(to_day_inclusive + timedelta(days=1), time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
 
         logs = self._logs.list_in_range(db, start=start, end=end, user_id=user_id)
 
@@ -332,7 +334,6 @@ class AttendanceService:
                     bucket["checkout"] = log.timestamp
 
         base_cfg = self._policy_cfg(policy)
-        cid = int(getattr(user, "company_id", 0) or 0) or None
         cfg_map = self._schedule_cfg_map(db, company_id=cid, from_day=from_day, to_day=to_day_inclusive, user_ids=[int(user.id)])
 
         rows: list[dict[str, object]] = []
@@ -398,7 +399,7 @@ class AttendanceService:
         return out
 
     def daily_report(self, db: Session, *, company_id: int | None = None, day: date) -> list[DailyComputed]:
-        policy = self._policy.get_or_create(db)
+        policy = self._policy.get_or_create(db, company_id=company_id)
         overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
         start = datetime.combine(day, time(0, 0, 0))
         end = start + (timedelta(days=2) if overnight else timedelta(days=1))
@@ -456,7 +457,7 @@ class AttendanceService:
             next_month = date(year + 1, 1, 1)
         else:
             next_month = date(year, month + 1, 1)
-        policy = self._policy.get_or_create(db)
+        policy = self._policy.get_or_create(db, company_id=company_id)
         overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
         start = datetime.combine(month_start, time(0, 0, 0))
         end = datetime.combine(next_month, time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
@@ -533,7 +534,7 @@ class AttendanceService:
             raise ValueError("to_date must be >= from_date")
         start = datetime.combine(from_day, time(0, 0, 0))
         end = datetime.combine(to_day_inclusive + timedelta(days=1), time(0, 0, 0))
-        policy = self._policy.get_or_create(db)
+        policy = self._policy.get_or_create(db, company_id=company_id)
         if _is_overnight_shift(policy.shift_start, policy.shift_end):
             end = end + timedelta(days=1)
 
@@ -643,7 +644,8 @@ class AttendanceService:
         start = datetime.combine(day, time(0, 0, 0))
         end = start + timedelta(days=1)
 
-        policy = self._policy.get_or_create(db)
+        cid = int(company_id or getattr(user, "company_id", 0) or 0) or None
+        policy = self._policy.get_or_create(db, company_id=cid)
         overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
 
         # Clear existing logs in the window that maps to this attendance day.
@@ -716,7 +718,7 @@ class AttendanceService:
             raise ValueError("to_date must be >= from_date")
         start = datetime.combine(from_day, time(0, 0, 0))
         end = datetime.combine(to_day_inclusive + timedelta(days=1), time(0, 0, 0))
-        policy = self._policy.get_or_create(db)
+        policy = self._policy.get_or_create(db, company_id=company_id)
         if _is_overnight_shift(policy.shift_start, policy.shift_end):
             end = end + timedelta(days=1)
         logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
