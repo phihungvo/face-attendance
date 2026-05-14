@@ -11,10 +11,10 @@ class SettingsService:
     def __init__(self) -> None:
         self._policy = AttendancePolicyRepository()
 
-    def get_attendance_policy(self, db: Session):
-        return self._policy.get_or_create(db)
+    def get_attendance_policy(self, db: Session, *, company_id: int):
+        return self._policy.get_or_create(db, company_id=company_id)
 
-    def update_attendance_policy(self, db: Session, *, data: dict[str, object]):
+    def update_attendance_policy(self, db: Session, *, company_id: int, data: dict[str, object]):
         tz = str(data.get("timezone") or "").strip()
         if not tz:
             raise ValueError("timezone is required")
@@ -30,7 +30,7 @@ class SettingsService:
         if th < 0.1 or th > 0.99:
             raise ValueError("face_match_threshold phải trong khoảng 0.1–0.99")
 
-        policy = self._policy.update(db, data=data)
+        policy = self._policy.update(db, data=data, company_id=company_id)
         db.commit()
         db.refresh(policy)
         return policy

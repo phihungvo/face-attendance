@@ -146,7 +146,7 @@ export default function LeavePage() {
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
-        <Card title="🌴 Trạng thái duyệt" sub="Tổng quan">
+        <Card title="🌴 Trạng thái duyệt">
           <div className={styles.kpis}>
             <div className={styles.kpi}>
               <div className={styles.kpiLabel}>Chờ duyệt</div>
@@ -162,12 +162,9 @@ export default function LeavePage() {
             </div>
           </div>
         </Card>
-        <Card title="🧾 Quy tắc" sub="Gợi ý xử lý đơn">
-          <div className={styles.warningBox}>Đơn nghỉ phép cần đối chiếu bảng giờ công và chính sách nội bộ trước khi duyệt.</div>
-        </Card>
       </div>
 
-      <Card title="🌴 Đơn nghỉ phép" sub="CRUD thật qua API">
+      <Card title="🌴 Đơn nghỉ phép">
         {error ? <div className={styles.error}>{error}</div> : null}
 
         <div className={styles.toolbar}>
@@ -355,7 +352,7 @@ export default function LeavePage() {
           </tbody>
         </Table>
 
-        {rows.length === 0 ? <div className={styles.empty}>Chưa có đơn nghỉ phép (hoặc không khớp bộ lọc).</div> : null}
+        {rows.length === 0 ? <div className={styles.empty}>Chưa có đơn nghỉ phép.</div> : null}
 
         <div className={styles.pagination}>
           <div className={styles.pageHint}>{total === 0 ? "0 kết quả" : `Trang ${pageSafe}/${totalPages} • ${total} đơn`}</div>

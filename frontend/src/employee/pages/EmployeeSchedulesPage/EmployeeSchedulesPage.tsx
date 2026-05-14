@@ -11,6 +11,7 @@ import {
   type WorkSchedule,
   type WorkScheduleRegistration
 } from "../../../shared/api/schedules";
+import { viStatusLabel } from "../../../shared/i18n/vi";
 import styles from "./EmployeeSchedulesPage.module.scss";
 
 function todayYmd() {
@@ -603,7 +604,7 @@ export default function EmployeeSchedulesPage() {
                         </div>
                         <div className={styles.dayRight}>
                           <div>
-                            <span className={statusTag(r.status)}>{r.status}</span>
+                            <span className={statusTag(r.status)}>{viStatusLabel(r.status)}</span>
                           </div>
                           <button
                             className={styles.smallBtn}
@@ -670,7 +671,7 @@ export default function EmployeeSchedulesPage() {
                     </td>
                     <td>{sch ? `${sch.name} (${sch.shift_start}–${sch.shift_end})` : `#${r.schedule_id}`}</td>
                     <td>
-                      <span className={statusTag(r.status)}>{r.status}</span>
+                      <span className={statusTag(r.status)}>{viStatusLabel(r.status)}</span>
                     </td>
                     <td>
                       <button className={styles.smallBtn} type="button" onClick={() => setSelectedDay(normalizeYmd(r.day))}>

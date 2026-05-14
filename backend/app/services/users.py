@@ -47,7 +47,9 @@ class UserService:
         # replace old embeddings for simplicity
         self._embeddings.delete_by_user(db, user_id=user_id)
         self._embeddings.create(db, user_id=user_id, embedding_json=emb_json)
-        setattr(user, "face_enrolled_at", datetime.now(ZoneInfo(self._policy.get_or_create(db).timezone)).replace(tzinfo=None))
+        cid = int(getattr(user, "company_id", 0) or 0) or None
+        policy = self._policy.get_or_create(db, company_id=cid)
+        setattr(user, "face_enrolled_at", datetime.now(ZoneInfo(policy.timezone)).replace(tzinfo=None))
         db.commit()
 
     def enroll_face_self(self, db: Session, *, user_id: int, image_bytes: bytes) -> dict[str, object]:
@@ -55,7 +57,8 @@ class UserService:
         if user is None:
             raise ValueError("User not found")
 
-        policy = self._policy.get_or_create(db)
+        cid = int(getattr(user, "company_id", 0) or 0) or None
+        policy = self._policy.get_or_create(db, company_id=cid)
         now = datetime.now(ZoneInfo(policy.timezone)).replace(tzinfo=None)
 
         last = getattr(user, "face_enrolled_at", None)
@@ -82,7 +85,8 @@ class UserService:
         if user is None:
             raise ValueError("User not found")
 
-        policy = self._policy.get_or_create(db)
+        cid = int(getattr(user, "company_id", 0) or 0) or None
+        policy = self._policy.get_or_create(db, company_id=cid)
         now = datetime.now(ZoneInfo(policy.timezone)).replace(tzinfo=None)
         last = getattr(user, "face_enrolled_at", None)
         next_allowed: datetime | None = None

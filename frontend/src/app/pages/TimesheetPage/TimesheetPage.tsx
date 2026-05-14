@@ -91,7 +91,7 @@ export default function TimesheetPage() {
 
   return (
     <div className={styles.page}>
-      <Card title="📋 Nhật ký giờ công" sub="Lịch sử chấm công chi tiết">
+      <Card title="📋 Nhật ký giờ công">
         <div className={styles.filters}>
           <div className={styles.filterItem}>
             <div className={styles.filterLabel}>Từ ngày</div>

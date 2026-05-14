@@ -41,14 +41,13 @@ export default function DepartmentsPage() {
     return [
       { label: "Phòng ban", value: count },
       { label: "Địa điểm", value: locations },
-      { label: "Ghi chú", value: "DB" }
     ];
   }, [rows]);
 
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
-        <Card title="🏢 Tổng quan phòng ban" sub="Từ database">
+        <Card title="🏢 Tổng quan phòng ban">
           <div className={styles.kpis}>
             {kpis.map((k) => (
               <div key={k.label} className={styles.kpi}>
@@ -58,16 +57,15 @@ export default function DepartmentsPage() {
             ))}
           </div>
         </Card>
-        <Card title="🧭 Gợi ý" sub="Quy trình quản lý nhân sự">
-          <div className={styles.infoBox}>
-            Tạo phòng ban → gán quản lý → phân quyền → map ca làm/địa điểm chấm công (phần ca làm đã bỏ theo yêu cầu).
-          </div>
-        </Card>
+        {/*<Card title="🧭 Gợi ý" sub="Quy trình quản lý nhân sự">*/}
+        {/*  <div className={styles.infoBox}>*/}
+        {/*    Tạo phòng ban → gán quản lý → phân quyền → map ca làm/địa điểm chấm công (phần ca làm đã bỏ theo yêu cầu).*/}
+        {/*  </div>*/}
+        {/*</Card>*/}
       </div>
 
       <Card
         title="🏢 Danh sách phòng ban"
-        sub="CRUD thật qua DB (FastAPI)"
         right={
           <div className={styles.actions}>
             <div className={styles.searchBox}>

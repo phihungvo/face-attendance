@@ -22,7 +22,23 @@ export async function createCompany(payload: { code: string; name: string; statu
   return res.data.result!;
 }
 
-export async function updateCompany(id: number, payload: { code?: string; name?: string; status?: string }) {
+export async function getCompany(id: number) {
+  const res = await api.get<ApiResponse<Company>>(`/companies/${id}`);
+  return res.data.result!;
+}
+
+export async function updateCompany(
+  id: number,
+  payload: {
+    code?: string | null;
+    name?: string | null;
+    status?: string | null;
+    address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    geo_radius_meters?: number | null;
+  }
+) {
   const res = await api.put<ApiResponse<Company>>(`/companies/${id}`, payload);
   return res.data.result!;
 }

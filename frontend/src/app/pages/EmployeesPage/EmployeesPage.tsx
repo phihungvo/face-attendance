@@ -11,6 +11,7 @@ import { exportExcelHtml } from "../../../shared/lib/excelExport";
 import type { User } from "../../../shared/types/user";
 import type { Department } from "../../../shared/types/department";
 import { useCamera } from "../../../shared/hooks/useCamera";
+import { viStatusLabel } from "../../../shared/i18n/vi";
 import styles from "./EmployeesPage.module.scss";
 
 function initialsFromName(name: string) {
@@ -113,7 +114,7 @@ export default function EmployeesPage() {
       { icon: "👥", label: "Tổng nhân viên", value: users.length, variant: "blue" as const, delta: { label: "↑ DB", tone: "neutral" as const } },
       { icon: "🧾", label: "Bản ghi", value: users.length, variant: "green" as const, delta: { label: "↑ users", tone: "neutral" as const } },
       { icon: "🆕", label: "Mới hôm nay", value: 0, variant: "orange" as const, delta: { label: "—", tone: "neutral" as const } },
-      { icon: "⚙️", label: "Nguồn", value: "API", variant: "red" as const, delta: { label: "/api/v1/users", tone: "neutral" as const } }
+      // { icon: "⚙️", label: "Nguồn", value: "API", variant: "red" as const, delta: { label: "/api/v1/users", tone: "neutral" as const } }
     ];
   }, [users.length]);
 
@@ -304,7 +305,7 @@ export default function EmployeesPage() {
                     <div className={styles.empStatLbl}>Email</div>
                   </div>
                   <div className={styles.empStatItem}>
-                    <div className={u.status === "active" ? `${styles.empStatVal} ${styles.ok}` : `${styles.empStatVal} ${styles.warn}`}>{u.status}</div>
+                    <div className={u.status === "active" ? `${styles.empStatVal} ${styles.ok}` : `${styles.empStatVal} ${styles.warn}`}>{viStatusLabel(u.status)}</div>
                     <div className={styles.empStatLbl}>TT</div>
                   </div>
                 </div>
@@ -313,7 +314,7 @@ export default function EmployeesPage() {
           })}
         </div>
       ) : (
-        <Card title="👥 Danh sách nhân viên" sub="Hiển thị dạng bảng">
+        <Card title="👥 Danh sách nhân viên">
           <Table>
             <thead>
               <tr>
@@ -338,7 +339,7 @@ export default function EmployeesPage() {
                   <td>{u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—"}</td>
                   <td className={styles.muted}>{u.role || "—"}</td>
                   <td>
-                    <span className={u.status === "active" ? `${styles.tag} ${styles.good}` : `${styles.tag} ${styles.bad}`}>{u.status}</span>
+                    <span className={u.status === "active" ? `${styles.tag} ${styles.good}` : `${styles.tag} ${styles.bad}`}>{viStatusLabel(u.status)}</span>
                   </td>
                   <td className={styles.muted}>{u.email || "—"}</td>
                   <td>
@@ -374,7 +375,7 @@ export default function EmployeesPage() {
                       <button
                         className={u.status === "active" ? styles.rowBtn : `${styles.rowBtn} ${styles.enable}`}
                         type="button"
-                        title={u.status === "active" ? "Disable" : "Kích hoạt"}
+                        title={u.status === "active" ? "Tạm tắt" : "Kích hoạt"}
                         onClick={async () => {
                           try {
                             const nextStatus = u.status === "active" ? "inactive" : "active";

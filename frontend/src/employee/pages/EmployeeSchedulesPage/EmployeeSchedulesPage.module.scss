@@ -45,6 +45,10 @@
   border-radius: 14px;
   padding: 6px;
   box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: calc(8px + env(safe-area-inset-top));
+  z-index: 5;
+  backdrop-filter: blur(10px);
 }
 
 .tab {
@@ -557,6 +561,22 @@ button.calCell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .calendar {
+    gap: 6px;
+  }
+  .calCell {
+    padding: 8px;
+    min-height: 76px;
+    gap: 6px;
+    border-radius: 12px;
+  }
+  .calEvent {
+    padding: 3px 6px;
+    border-radius: 9px;
+  }
 }
 
 .more {

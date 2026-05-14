@@ -10,6 +10,10 @@
   gap: 14px;
 }
 
+.span2 {
+  grid-column: 1 / -1;
+}
+
 .col {
   display: flex;
   flex-direction: column;
@@ -28,6 +32,11 @@
   grid-template-columns: 150px 1fr;
   gap: 10px;
   align-items: center;
+}
+
+.formRowNoLabelGrid {
+  grid-template-columns: 1fr;
+  align-items: stretch;
 }
 
 @media (max-width: 899px) {
@@ -217,6 +226,79 @@
   font-size: 12px;
   font-weight: 900;
   color: var(--text3);
+}
+
+.mapWrap {
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.mapToolbar {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mapSearchInput {
+  flex: 1;
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mapCanvas {
+  height: 260px;
+}
+
+@media (min-width: 900px) {
+  .mapCanvas {
+    height: 380px;
+  }
+}
+
+.searchResults {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--border2);
+  background: var(--muted-bg);
+}
+
+.searchItem {
+  text-align: left;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 12.5px;
+}
+
+.searchItem:hover {
+  background: var(--muted-bg);
+}
+
+.mapHint {
+  padding: 10px;
+  font-size: 12.5px;
+  color: var(--text3);
+  font-weight: 800;
+  border-top: 1px solid var(--border2);
 }
 
 .rangeInputs {

@@ -11,9 +11,12 @@
     "tunnel:quic": "cloudflared tunnel --url http://127.0.0.1:3000 --protocol quic --no-autoupdate"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.0.0",
     "axios": "^1.7.7",
+    "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {

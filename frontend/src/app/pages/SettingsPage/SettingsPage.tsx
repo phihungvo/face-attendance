@@ -2,12 +2,62 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/Card/Card";
 import { mockSettings } from "../../../shared/mock/mockData";
 import { getAttendancePolicy, updateAttendancePolicy } from "../../../shared/api/settings";
-import { getMyCompany, updateMyCompany } from "../../../shared/api/companies";
+import { getCompany, getMyCompany, updateCompany, updateMyCompany } from "../../../shared/api/companies";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useTheme } from "../../../shared/theme/theme";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
 import { useNavigate } from "react-router-dom";
 import styles from "./SettingsPage.module.scss";
+import { useAuth } from "../../../shared/auth/auth";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import { viStatusLabel } from "../../../shared/i18n/vi";
+
+type LatLng = { lat: number; lng: number };
+type NominatimResult = { display_name: string; lat: string; lon: string };
+
+function isFiniteLatLng(v: LatLng | null): v is LatLng {
+  return !!v && Number.isFinite(v.lat) && Number.isFinite(v.lng);
+}
+
+function normalizeLatLng(lat: number, lng: number): LatLng {
+  const clat = Math.max(-90, Math.min(90, lat));
+  let clng = lng;
+  while (clng < -180) clng += 360;
+  while (clng > 180) clng -= 360;
+  return { lat: clat, lng: clng };
+}
+
+let leafletIconsFixed = false;
+function ensureLeafletDefaultIcon() {
+  if (leafletIconsFixed) return;
+  leafletIconsFixed = true;
+  // Fix broken default marker icon in many bundlers.
+  // @ts-ignore
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: new URL("leaflet/dist/images/marker-icon-2x.png", import.meta.url).toString(),
+    iconUrl: new URL("leaflet/dist/images/marker-icon.png", import.meta.url).toString(),
+    shadowUrl: new URL("leaflet/dist/images/marker-shadow.png", import.meta.url).toString()
+  });
+}
+
+function Recenter({ center }: { center: LatLng }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([center.lat, center.lng], Math.max(map.getZoom(), 15), { animate: true });
+  }, [center.lat, center.lng, map]);
+  return null;
+}
+
+function MapClickPicker({ onPick }: { onPick(next: LatLng): void }) {
+  useMapEvents({
+    click(e) {
+      onPick(normalizeLatLng(e.latlng.lat, e.latlng.lng));
+    }
+  });
+  return null;
+}
 
 function Toggle({
   checked,
@@ -32,6 +82,7 @@ function Toggle({
 
 export default function SettingsPage() {
   const nav = useNavigate();
+  const auth = useAuth();
   const [company, setCompany] = useState<string>("");
   const [companyAddr, setCompanyAddr] = useState<string>("");
   const [companyLat, setCompanyLat] = useState<string>("");
@@ -39,6 +90,9 @@ export default function SettingsPage() {
   const [companyRadius, setCompanyRadius] = useState<number>(250);
   const [companySaving, setCompanySaving] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
+  const [mapQuery, setMapQuery] = useState("");
+  const [mapSearching, setMapSearching] = useState(false);
+  const [mapResults, setMapResults] = useState<NominatimResult[]>([]);
   const [language, setLanguage] = useState<"vi" | "en">("vi");
   const [dailyEmailReport, setDailyEmailReport] = useState(true);
   const [twoFactor, setTwoFactor] = useState(true);
@@ -83,6 +137,19 @@ export default function SettingsPage() {
     return mode === "dark" ? "Tối" : "Sáng";
   }, [mode, resolvedTheme]);
 
+  const companyLatLng: LatLng | null = useMemo(() => {
+    const lat = companyLat.trim() ? Number(companyLat) : NaN;
+    const lng = companyLng.trim() ? Number(companyLng) : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return normalizeLatLng(lat, lng);
+  }, [companyLat, companyLng]);
+
+  const mapCenter: LatLng = useMemo(() => {
+    if (isFiniteLatLng(companyLatLng)) return companyLatLng;
+    if (geo.latitude != null && geo.longitude != null) return normalizeLatLng(geo.latitude, geo.longitude);
+    return { lat: 10.776889, lng: 106.700806 }; // HCMC fallback
+  }, [companyLatLng, geo.latitude, geo.longitude]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -117,7 +184,8 @@ export default function SettingsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const c = await getMyCompany();
+        const cid = auth.roleKeys.includes("admin") ? (auth.selectedCompanyId ?? null) : null;
+        const c = cid ? await getCompany(cid) : await getMyCompany();
         setCompany(c.name ?? "");
         setCompanyAddr((c as any).address ?? "");
         setCompanyLat((c as any).latitude != null ? String((c as any).latitude) : "");
@@ -128,7 +196,30 @@ export default function SettingsPage() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.selectedCompanyId, auth.roleKeys.join("|")]);
+
+  useEffect(() => {
+    ensureLeafletDefaultIcon();
   }, []);
+
+  async function searchMap() {
+    const q = mapQuery.trim();
+    if (!q) return;
+    try {
+      setMapSearching(true);
+      setMapResults([]);
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`;
+      const res = await fetch(url, { headers: { "Accept-Language": "vi" } });
+      if (!res.ok) throw new Error("Không tìm được địa điểm");
+      const json = (await res.json()) as unknown;
+      const rows = Array.isArray(json) ? (json as NominatimResult[]) : [];
+      setMapResults(rows);
+    } catch (e) {
+      setCompanyError(getApiErrorMessage(e));
+    } finally {
+      setMapSearching(false);
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -144,13 +235,13 @@ export default function SettingsPage() {
                 <div className={styles.formLabel}>Địa chỉ</div>
                 <input className={styles.input} value={companyAddr} onChange={(e) => setCompanyAddr(e.target.value)} placeholder="Địa chỉ công ty (tuỳ chọn)" />
               </div>
-              <div className={styles.formRow}>
+              <div className={`${styles.formRow} ${styles.formRowNoLabelGrid}`}>
                 <div className={styles.formLabel}>Vị trí chấm công (GPS)</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <input className={styles.input} value={companyLat} onChange={(e) => setCompanyLat(e.target.value)} placeholder="Latitude" />
                   <input className={styles.input} value={companyLng} onChange={(e) => setCompanyLng(e.target.value)} placeholder="Longitude" />
                 </div>
-                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 160px", gap: 10, alignItems: "center" }}>
+                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr", gap: 10, alignItems: "center" }}>
                   <input
                     className={styles.input}
                     type="number"
@@ -159,28 +250,89 @@ export default function SettingsPage() {
                     onChange={(e) => setCompanyRadius(Number(e.target.value))}
                     placeholder="Bán kính (m)"
                   />
-                  <button className={styles.btnGhost} type="button" onClick={() => geo.refresh()}>
-                    📍 Lấy vị trí
-                  </button>
+                  <div style={{ color: "var(--text3)", fontSize: 12.5, fontWeight: 800 }}>
+                    Bán kính hiện tại: {Number.isFinite(companyRadius) ? Math.max(0, Math.round(companyRadius)) : 0}m (0m = tắt giới hạn GPS)
+                  </div>
                 </div>
-                {geo.enabled ? (
-                  <div style={{ marginTop: 8, color: "var(--text3)", fontWeight: 700, fontSize: 12.5 }}>
-                    GPS hiện tại: {geo.latitude?.toFixed(6)}, {geo.longitude?.toFixed(6)} (±{Math.round(geo.accuracyMeters ?? 0)}m)
+                <div className={styles.mapWrap} style={{ marginTop: 12 }}>
+                  <div className={styles.mapToolbar}>
+                    <input
+                      className={styles.mapSearchInput}
+                      value={mapQuery}
+                      onChange={(e) => setMapQuery(e.target.value)}
+                      placeholder="Tìm địa điểm (ví dụ: 123 Lê Lợi, Q1)"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") searchMap();
+                      }}
+                      aria-label="Tìm địa điểm"
+                    />
+                    <button className={styles.btnGhost} type="button" disabled={mapSearching} onClick={searchMap}>
+                      {mapSearching ? "Đang tìm..." : "Tìm"}
+                    </button>
                     <button
+                      className={styles.btnGhost}
                       type="button"
-                      className={styles.btnLink}
-                      style={{ marginLeft: 8 }}
                       onClick={() => {
-                        setCompanyLat(String(geo.latitude ?? ""));
-                        setCompanyLng(String(geo.longitude ?? ""));
+                        if (geo.latitude == null || geo.longitude == null) {
+                          geo.refresh();
+                          return;
+                        }
+                        const p = normalizeLatLng(geo.latitude, geo.longitude);
+                        setCompanyLat(p.lat.toFixed(6));
+                        setCompanyLng(p.lng.toFixed(6));
                       }}
                     >
-                      Dùng vị trí này
+                      Dùng GPS
                     </button>
                   </div>
-                ) : null}
-                <div style={{ marginTop: 8, color: "var(--text3)", fontSize: 12.5 }}>
-                  Khi đã cấu hình GPS + bán kính, hệ thống chỉ cho chấm công nếu vị trí nhân viên nằm trong bán kính này.
+
+                  <div className={styles.mapCanvas}>
+                    <MapContainer center={[mapCenter.lat, mapCenter.lng]} zoom={15} style={{ height: "100%", width: "100%" }}>
+                      <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <MapClickPicker
+                        onPick={(p) => {
+                          setCompanyLat(p.lat.toFixed(6));
+                          setCompanyLng(p.lng.toFixed(6));
+                        }}
+                      />
+                      {isFiniteLatLng(companyLatLng) ? (
+                        <>
+                          <Recenter center={companyLatLng} />
+                          <Marker position={[companyLatLng.lat, companyLatLng.lng]} />
+                        </>
+                      ) : null}
+                    </MapContainer>
+                  </div>
+
+                  {mapResults.length ? (
+                    <div className={styles.searchResults}>
+                      {mapResults.map((r, idx) => {
+                        const lat = Number(r.lat);
+                        const lng = Number(r.lon);
+                        return (
+                          <button
+                            key={`${idx}-${r.lat}-${r.lon}`}
+                            className={styles.searchItem}
+                            type="button"
+                            onClick={() => {
+                              if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                              const p = normalizeLatLng(lat, lng);
+                              setCompanyLat(p.lat.toFixed(6));
+                              setCompanyLng(p.lng.toFixed(6));
+                              setMapResults([]);
+                            }}
+                            title={r.display_name}
+                          >
+                            {r.display_name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  <div className={styles.mapHint}>
+                    Chạm vào bản đồ để chọn vị trí công ty. Khi đã cấu hình GPS + bán kính, hệ thống chỉ cho chấm công nếu vị trí nhân viên nằm trong bán kính này.
+                  </div>
                 </div>
               </div>
               <div className={styles.actions} style={{ marginTop: 12 }}>
@@ -195,13 +347,16 @@ export default function SettingsPage() {
                       const lat = companyLat.trim() ? Number(companyLat) : null;
                       const lng = companyLng.trim() ? Number(companyLng) : null;
                       if ((lat == null) !== (lng == null)) throw new Error("Latitude/Longitude phải đi cùng nhau");
-                      await updateMyCompany({
+                      const payload = {
                         name: company.trim() || null,
                         address: companyAddr.trim() || null,
                         latitude: lat,
                         longitude: lng,
                         geo_radius_meters: Number.isFinite(companyRadius) ? companyRadius : 250
-                      });
+                      };
+                      const cid = auth.roleKeys.includes("admin") ? (auth.selectedCompanyId ?? null) : null;
+                      if (cid) await updateCompany(cid, payload);
+                      else await updateMyCompany(payload);
                     } catch (e) {
                       setCompanyError(getApiErrorMessage(e));
                     } finally {
@@ -379,7 +534,7 @@ export default function SettingsPage() {
         </div>
 
         <div className={styles.col}>
-          <Card title="⏰ Quy định giờ làm" sub="Áp dụng cho chấm công khuôn mặt + báo cáo">
+          <Card title="⏰ Quy định giờ làm">
             {policyError ? <div className={styles.errorBox}>{policyError}</div> : null}
             <div className={styles.form}>
               <div className={styles.formRow}>
@@ -576,12 +731,13 @@ export default function SettingsPage() {
               {mockSettings.services.map((s) => (
                 <div key={s.name} className={styles.statusItem}>
                   <div className={styles.statusName}>{s.name}</div>
-                  <div className={s.tone === "ok" ? `${styles.statusTag} ${styles.ok}` : `${styles.statusTag} ${styles.warn}`}>{s.status}</div>
+                  <div className={s.tone === "ok" ? `${styles.statusTag} ${styles.ok}` : `${styles.statusTag} ${styles.warn}`}>{viStatusLabel(s.status)}</div>
                 </div>
               ))}
             </div>
           </Card>
         </div>
+
       </div>
     </div>
   );
