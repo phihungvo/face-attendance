@@ -8,7 +8,7 @@ Chạy production cơ bản bằng Docker Compose.
 ## Chạy nhanh
 ```bash
 cd face-attendance
-docker compose up --build
+docker compose up --build 
 ```
  
 ## Dev mode (hot reload)
