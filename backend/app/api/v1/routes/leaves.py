@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.leaves import LeaveBalanceOut, LeaveCreateRequest, LeaveListResponse, LeaveMeCreateRequest, LeaveOut, LeaveUpdateRequest
 from app.services.leaves import LeaveService
+from app.notifications.publisher import publish_notification_event
 
 router = APIRouter()
 service = LeaveService()
@@ -49,6 +50,15 @@ def create_my_leave(
             start_date=payload.start_date,
             end_date=payload.end_date,
             reason=payload.reason,
+        )
+        publish_notification_event(
+            {
+                "type": "LEAVE_NEW",
+                "companyId": int(getattr(user, "company_id", 0) or 0) or None,
+                "employeeId": int(user.id),
+                "departmentId": item.get("department_id", None),
+                "data": {"leaveId": item.get("id")},
+            }
         )
         return ok(LeaveOut(**item))
     except ValueError as e:
@@ -179,7 +189,17 @@ def approve_leave(
     _: object = Depends(require_permission("leave.approve")),
 ) -> ApiResponse[LeaveOut]:
     try:
-        return ok(LeaveOut(**service.approve(db, leave_id=leave_id, company_id=company_id)))
+        item = service.approve(db, leave_id=leave_id, company_id=company_id)
+        publish_notification_event(
+            {
+                "type": "LEAVE_APPROVED",
+                "companyId": int(company_id) if company_id is not None else None,
+                "employeeId": int(item.get("user_id")),
+                "departmentId": item.get("department_id", None),
+                "data": {"leaveId": item.get("id")},
+            }
+        )
+        return ok(LeaveOut(**item))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -192,6 +212,16 @@ def reject_leave(
     _: object = Depends(require_permission("leave.approve")),
 ) -> ApiResponse[LeaveOut]:
     try:
-        return ok(LeaveOut(**service.reject(db, leave_id=leave_id, company_id=company_id)))
+        item = service.reject(db, leave_id=leave_id, company_id=company_id)
+        publish_notification_event(
+            {
+                "type": "LEAVE_REJECTED",
+                "companyId": int(company_id) if company_id is not None else None,
+                "employeeId": int(item.get("user_id")),
+                "departmentId": item.get("department_id", None),
+                "data": {"leaveId": item.get("id")},
+            }
+        )
+        return ok(LeaveOut(**item))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

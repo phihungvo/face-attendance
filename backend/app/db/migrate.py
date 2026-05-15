@@ -241,6 +241,51 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
     if not _column_exists(engine, table="users", column="face_enrolled_at", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN face_enrolled_at DATETIME NULL")
 
+    # notifications (realtime + inbox)
+    if not _table_exists(engine, table="notifications", schema=schema):
+        _exec(
+            engine,
+            """
+            CREATE TABLE notifications (
+              id BIGINT NOT NULL AUTO_INCREMENT,
+              company_id INT NULL,
+              user_id INT NULL,
+              role_key VARCHAR(64) NULL,
+              department_id INT NULL,
+              type VARCHAR(64) NOT NULL,
+              severity VARCHAR(16) NOT NULL DEFAULT 'INFO',
+              title VARCHAR(255) NOT NULL,
+              body TEXT NULL,
+              data JSON NULL,
+              is_read TINYINT(1) NOT NULL DEFAULT 0,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              read_at DATETIME NULL,
+              PRIMARY KEY (id),
+              KEY ix_notifications_company_created (company_id, created_at),
+              KEY ix_notifications_user_unread_created (user_id, is_read, created_at),
+              KEY ix_notifications_role_unread_created (role_key, is_read, created_at),
+              KEY ix_notifications_department_unread_created (department_id, is_read, created_at)
+            )
+            """
+        )
+
+    if not _table_exists(engine, table="notification_preferences", schema=schema):
+        _exec(
+            engine,
+            """
+            CREATE TABLE notification_preferences (
+              id BIGINT NOT NULL AUTO_INCREMENT,
+              user_id INT NOT NULL,
+              enabled TINYINT(1) NOT NULL DEFAULT 1,
+              mute_types JSON NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_notification_preferences_user (user_id)
+            )
+            """
+        )
+
     # attendance_logs geo fields
     if not _column_exists(engine, table="attendance_logs", column="latitude", schema=schema):
         _exec(engine, "ALTER TABLE attendance_logs ADD COLUMN latitude DOUBLE NULL")

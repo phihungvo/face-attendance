@@ -103,7 +103,7 @@ class AttendanceService:
         image_bytes: bytes,
         latitude: float | None = None,
         longitude: float | None = None,
-    ) -> tuple[str, float, object]:
+    ) -> tuple[int, str, float, object]:
         policy = self._policy.get_or_create(db, company_id=company_id)
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkin_from, policy.checkin_to, label="check-in")
@@ -115,7 +115,7 @@ class AttendanceService:
         log = self._logs.create(db, user_id=user.id, log_type="checkin", confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
-        return (user.name, confidence, log.timestamp)
+        return (int(user.id), user.name, confidence, log.timestamp)
 
     def checkout(
         self,
@@ -125,7 +125,7 @@ class AttendanceService:
         image_bytes: bytes,
         latitude: float | None = None,
         longitude: float | None = None,
-    ) -> tuple[str, float, object]:
+    ) -> tuple[int, str, float, object]:
         policy = self._policy.get_or_create(db, company_id=company_id)
         now = _now_in_policy_tz(policy.timezone)
         _enforce_time_window(now, policy.checkout_from, policy.checkout_to, label="check-out")
@@ -144,7 +144,7 @@ class AttendanceService:
         log = self._logs.create(db, user_id=user.id, log_type="checkout", confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
-        return (user.name, confidence, log.timestamp)
+        return (int(user.id), user.name, confidence, log.timestamp)
 
     def scan(
         self,
@@ -154,7 +154,7 @@ class AttendanceService:
         image_bytes: bytes,
         latitude: float | None = None,
         longitude: float | None = None,
-    ) -> tuple[str, float, object, str]:
+    ) -> tuple[int, str, float, object, str]:
         """
         One-shot scan: auto decide check-in/check-out based on policy windows and existing logs.
         """
@@ -198,7 +198,7 @@ class AttendanceService:
         log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
-        return (user.name, confidence, log.timestamp, action)
+        return (int(user.id), user.name, confidence, log.timestamp, action)
 
     def scan_for_user(
         self,
@@ -208,7 +208,7 @@ class AttendanceService:
         image_bytes: bytes,
         latitude: float | None = None,
         longitude: float | None = None,
-    ) -> tuple[str, float, object, str]:
+    ) -> tuple[int, str, float, object, str]:
         """
         Employee self-service scan: match face, then enforce matched user == current user.
         """
@@ -256,7 +256,7 @@ class AttendanceService:
         log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
-        return (user.name, confidence, log.timestamp, action)
+        return (int(user.id), user.name, confidence, log.timestamp, action)
 
     def _enforce_geo(self, db: Session, *, user_company_id: int, latitude: float | None, longitude: float | None) -> dict[str, object]:
         """

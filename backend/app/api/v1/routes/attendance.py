@@ -22,6 +22,7 @@ from app.schemas.attendance import (
 )
 from app.schemas.common import ApiResponse
 from app.services.attendance import AttendanceService
+from app.notifications.publisher import publish_notification_event
 
 router = APIRouter()
 service = AttendanceService()
@@ -43,7 +44,8 @@ async def checkin(
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
-        user_name, confidence, ts = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        user_id, user_name, confidence, ts = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        publish_notification_event({"type": "CHECKIN_SUCCESS", "companyId": int(company_id), "employeeId": int(user_id)})
         return ok(CheckInResponse(user_name=user_name, confidence=confidence, time=ts))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể check-in: {e}")
@@ -65,7 +67,8 @@ async def checkout(
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
-        user_name, confidence, ts = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        user_id, user_name, confidence, ts = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        publish_notification_event({"type": "CHECKOUT_SUCCESS", "companyId": int(company_id), "employeeId": int(user_id)})
         return ok(CheckOutResponse(user_name=user_name, confidence=confidence, time=ts))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể check-out: {e}")
@@ -87,7 +90,8 @@ async def scan(
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
-        user_name, confidence, ts, action = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        user_id, user_name, confidence, ts, action = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        publish_notification_event({"type": "CHECKIN_SUCCESS" if action == "checkin" else "CHECKOUT_SUCCESS", "companyId": int(company_id), "employeeId": int(user_id)})
         return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")
@@ -106,7 +110,8 @@ async def scan_me(
     """
     try:
         image_bytes = await image.read()
-        user_name, confidence, ts, action = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        user_id, user_name, confidence, ts, action = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        publish_notification_event({"type": "CHECKIN_SUCCESS" if action == "checkin" else "CHECKOUT_SUCCESS", "companyId": int(getattr(user, "company_id", 0) or 0) or None, "employeeId": int(user_id)})
         return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")

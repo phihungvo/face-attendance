@@ -1,4 +1,11 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   mysql:
     image: mysql:8
     environment:
@@ -25,6 +32,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
       ml:
         condition: service_started
     ports:
@@ -46,8 +55,28 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - backend
+      - notifications_service
     ports:
       - "3000:80"
+
+  notifications_service:
+    build:
+      context: ./notifications_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      PORT: 8010
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      NOTIF_REDIS_CHANNEL: ${NOTIF_REDIS_CHANNEL:-notif.events}
+      JWT_SECRET: ${JWT_SECRET:-change_me}
+      DATABASE_URL: mysql://${MYSQL_USER:-app}:${MYSQL_PASSWORD:-app_password}@mysql:${MYSQL_PORT:-3306}/${MYSQL_DB:-face_attendance}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    depends_on:
+      - mysql
+      - redis
+    ports:
+      - "8010:8010"
 
   phpmyadmin:
     profiles: ["tools"]
@@ -63,3 +92,4 @@ services:
 volumes:
   mysql_data:
   insightface_cache:
+  redis_data:

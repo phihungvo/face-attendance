@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Notification {
+  id          BigInt               @id @default(autoincrement())
+  companyId   Int?
+  userId      Int?
+  roleKey     String?              @db.VarChar(64)
+  departmentId Int?
+  type        String               @db.VarChar(64)
+  severity    NotificationSeverity @default(INFO)
+  title       String               @db.VarChar(255)
+  body        String?              @db.Text
+  data        Json?
+  isRead      Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  readAt      DateTime?
+
+  @@index([companyId, createdAt])
+  @@index([userId, isRead, createdAt])
+  @@index([roleKey, isRead, createdAt])
+  @@index([departmentId, isRead, createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id        BigInt   @id @default(autoincrement())
+  userId    Int      @unique
+  enabled   Boolean  @default(true)
+  muteTypes Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  companyId     Int?     @map("company_id")
+  departmentId  Int?     @map("department_id")
+  username      String?  @db.VarChar(64)
+  name          String   @db.VarChar(255)
+  authStatus    String   @default("active") @map("auth_status") @db.VarChar(16)
+
+  department    Department? @relation(fields: [departmentId], references: [id])
+  userRoles     UserRole[]
+
+  @@map("users")
+}
+
+model Department {
+  id        Int     @id @default(autoincrement())
+  companyId Int?    @map("company_id")
+  code      String  @db.VarChar(32)
+  name      String  @db.VarChar(255)
+
+  users     User[]
+
+  @@map("departments")
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  key   String @unique @db.VarChar(64)
+  label String @db.VarChar(255)
+
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id     Int @id @default(autoincrement())
+  userId Int @map("user_id")
+  roleId Int @map("role_id")
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+

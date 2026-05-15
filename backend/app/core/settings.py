@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     ML_SERVICE_URL: str = "http://ml:8001"
     ML_SERVICE_TIMEOUT_SECONDS: float = 15.0
 
+    # Notifications (Redis Pub/Sub -> notifications_service)
+    REDIS_URL: str = "redis://redis:6379/0"
+    NOTIF_REDIS_CHANNEL: str = "notif.events"
+
     # Bootstrap admin (created on first start if missing)
     BOOTSTRAP_ADMIN_USERNAME: str = "admin"
     BOOTSTRAP_ADMIN_PASSWORD: str = "admin123"
