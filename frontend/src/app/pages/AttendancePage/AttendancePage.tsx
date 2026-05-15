@@ -3,7 +3,8 @@ import Card from "../../components/Card/Card";
 import Table from "../../components/Table/Table";
 import { useClock } from "../../../shared/hooks/useClock";
 import { formatDateTimeVi } from "../../../shared/lib/date";
-import { listAttendanceLogs, scanAttendanceFromImageWithGeo, type AttendanceLog } from "../../../shared/api/attendance";
+import { listMyAttendanceLogs, scanMyAttendanceFromImageWithGeo, type AttendanceLog } from "../../../shared/api/attendance";
+import { getMyCompany } from "../../../shared/api/companies";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { useAutoScan } from "../../../shared/hooks/useAutoScan";
@@ -17,14 +18,15 @@ export default function AttendancePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ user: string; confidence: number; time: string; action: "checkin" | "checkout" } | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
+  const [requireGps, setRequireGps] = useState<boolean>(false);
   const cam = useCamera();
-  const geo = useGeoPosition({ watch: true });
+  const geo = useGeoPosition({ watch: requireGps, auto: requireGps });
   const liveClock = useMemo(() => now.toLocaleTimeString("vi-VN"), [now]);
   const liveDate = useMemo(() => formatDateTimeVi(now, { dateOnly: true }), [now]);
 
   async function refreshLogs() {
     try {
-      const data = await listAttendanceLogs();
+      const data = await listMyAttendanceLogs({ limit: 8, offset: 0 });
       setLogs(data.slice(0, 8));
     } catch {
       // ignore
@@ -36,13 +38,29 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const c = await getMyCompany();
+        if (!mounted) return;
+        setRequireGps(Boolean((c as any).require_gps_on_attendance ?? false));
+      } catch {
+        // If cannot load company settings, keep GPS optional by default.
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     return () => cam.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const captureOnce = useCallback(() => cam.capture({ quality: 0.9, type: "image/jpeg" }), [cam]);
   const scanOnce = useCallback(
-    (b: Blob) => scanAttendanceFromImageWithGeo(b, { latitude: geo.latitude, longitude: geo.longitude }),
+    (b: Blob) => scanMyAttendanceFromImageWithGeo(b, { latitude: geo.latitude, longitude: geo.longitude }),
     [geo.latitude, geo.longitude]
   );
 
@@ -60,6 +78,10 @@ export default function AttendancePage() {
       const msg = getApiErrorMessage(e);
       // Don't block the whole kiosk if a specific employee already completed the day.
       if (msg.includes("Đã check-in và check-out rồi")) return;
+      if (msg.includes("Thiếu vị trí GPS") || msg.includes("bật định vị")) {
+        // Avoid spamming failed scans while browser permission is blocked/denied.
+        setAuto(false);
+      }
       setError(msg);
     }
   });
@@ -112,10 +134,16 @@ export default function AttendancePage() {
           </div>
 
           {cam.state.error ? <div className={styles.warningBox}>{cam.state.error}</div> : null}
-          {geo.supported && !geo.enabled ? (
+          {requireGps && geo.supported && !geo.enabled ? (
             <div className={styles.warningBox}>
               ⚠️ Chưa lấy được GPS. Nếu công ty bật giới hạn vị trí, bạn cần cho phép định vị để chấm công.
               {geo.error ? <div style={{ marginTop: 6, opacity: 0.9 }}>{geo.error}</div> : null}
+              <div style={{ marginTop: 8 }}>
+                <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => geo.refresh()} disabled={geo.loading}>
+                  📍 Lấy GPS lại
+                </button>
+                {!auto ? <span style={{ marginLeft: 10, opacity: 0.9 }}>Auto đang tắt do thiếu GPS.</span> : null}
+              </div>
             </div>
           ) : null}
           {error ? <div className={styles.errorBox}>{error}</div> : null}

@@ -2,12 +2,14 @@ import styles from "./EmployeeTimesheetPage.module.scss";
 import { useEffect, useMemo, useState } from "react";
 import { listMyTimelog, type TimelogRow } from "../../../shared/api/attendance";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { ProfileOutlined } from "@ant-design/icons";
+import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
+import { empKeys } from "../../cacheKeys";
 
 export default function EmployeeTimesheetPage() {
   const now = useMemo(() => new Date(), []);
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [active, setActive] = useState(currentMonth);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<TimelogRow[]>([]);
 
@@ -20,29 +22,30 @@ export default function EmployeeTimesheetPage() {
     return out;
   }, [now]);
 
+  const q = useCachedQuery({
+    key: empKeys.myTimelogMonth(active),
+    ttlMs: 60_000,
+    fetcher: async () => {
+      const [y, m] = active.split("-").map((x) => Number(x));
+      const from = `${active}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const to = `${active}-${String(lastDay).padStart(2, "0")}`;
+      return listMyTimelog({ from_date: from, to_date: to });
+    }
+  });
+
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const [y, m] = active.split("-").map((x) => Number(x));
-        const from = `${active}-01`;
-        const lastDay = new Date(y, m, 0).getDate();
-        const to = `${active}-${String(lastDay).padStart(2, "0")}`;
-        const data = await listMyTimelog({ from_date: from, to_date: to });
-        setRows(data);
-      } catch (e) {
-        setError(getApiErrorMessage(e));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [active]);
+    if (q.error) setError(q.error);
+    else setError(null);
+    if (q.data) setRows(q.data);
+  }, [q.data, q.error]);
 
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
-        <div className={styles.title}>📋 Lịch sử chấm công</div>
+        <div className={styles.title}>
+          <ProfileOutlined /> Lịch sử chấm công
+        </div>
         <div className={styles.monthRow}>
           {months.map((m) => (
             <button key={m} type="button" className={m === active ? `${styles.monthTab} ${styles.monthTabActive}` : styles.monthTab} onClick={() => setActive(m)}>
@@ -54,7 +57,7 @@ export default function EmployeeTimesheetPage() {
 
       <div className={styles.content}>
         {error ? <div className={styles.errorBox}>{error}</div> : null}
-        {loading ? <div className={styles.loading}>Đang tải...</div> : null}
+        {q.loading ? <div className={styles.loading}>Đang tải...</div> : null}
         {rows.map((r) => {
           const statusLabel = r.absent ? "Vắng" : r.late ? "Đi trễ" : "Đúng giờ";
           const dayColor = r.absent ? "var(--ink3)" : r.late ? "var(--amber)" : "var(--green)";

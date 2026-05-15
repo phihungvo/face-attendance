@@ -260,10 +260,12 @@ class AttendanceService:
 
     def _enforce_geo(self, db: Session, *, user_company_id: int, latitude: float | None, longitude: float | None) -> dict[str, object]:
         """
-        If company has geo-fence configured (lat/lng + radius_meters):
-        - require client location (lat/lng)
-        - enforce distance <= radius
-        Store latitude/longitude + computed distance in log.
+        Semantics:
+        - If company does NOT require GPS: skip all geo enforcement (including geo-fence).
+        - If company requires GPS:
+          - require client location (lat/lng)
+          - if geo-fence configured (lat/lng + radius_meters > 0): enforce distance <= radius
+        Always store latitude/longitude; store computed distance when geo-fence is active.
         """
         if not user_company_id:
             return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
@@ -272,19 +274,32 @@ class AttendanceService:
         if company is None:
             return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
 
-        clat = getattr(company, "latitude", None)
-        clng = getattr(company, "longitude", None)
-        radius = getattr(company, "geo_radius_meters", None)
-        if clat is None or clng is None or radius is None:
+        require_gps = bool(getattr(company, "require_gps_on_attendance", False))
+        if not require_gps:
             return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
-
         if latitude is None or longitude is None:
             raise ValueError("Thiếu vị trí GPS. Vui lòng bật định vị để chấm công.")
 
+        clat = getattr(company, "latitude", None)
+        clng = getattr(company, "longitude", None)
+        radius = getattr(company, "geo_radius_meters", None)
+        # GPS fence is considered disabled unless company has:
+        # - latitude + longitude
+        # - radius_meters > 0
+        # UI convention: 0m means "tắt giới hạn GPS".
+        if clat is None or clng is None or radius is None:
+            return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
+        try:
+            radius_f = float(radius)
+        except Exception:
+            return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
+        if radius_f <= 0:
+            return {"latitude": latitude, "longitude": longitude, "distance_meters": None, "geo_ok": True}
+
         dist = _haversine_meters(latitude, longitude, float(clat), float(clng))
-        ok_geo = dist <= float(radius)
+        ok_geo = dist <= radius_f
         if not ok_geo:
-            raise ValueError(f"Ngoài phạm vi chấm công (cách công ty ~{int(dist)}m, giới hạn {int(float(radius))}m)")
+            raise ValueError(f"Ngoài phạm vi chấm công (cách công ty ~{int(dist)}m, giới hạn {int(radius_f)}m)")
         return {"latitude": latitude, "longitude": longitude, "distance_meters": float(dist), "geo_ok": True}
 
     def list_logs_for_user(self, db: Session, *, user_id: int, limit: int = 50, offset: int = 0):

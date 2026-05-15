@@ -88,6 +88,7 @@ export default function SettingsPage() {
   const [companyLat, setCompanyLat] = useState<string>("");
   const [companyLng, setCompanyLng] = useState<string>("");
   const [companyRadius, setCompanyRadius] = useState<number>(250);
+  const [companyRequireGps, setCompanyRequireGps] = useState(false);
   const [companySaving, setCompanySaving] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
   const [mapQuery, setMapQuery] = useState("");
@@ -191,6 +192,7 @@ export default function SettingsPage() {
         setCompanyLat((c as any).latitude != null ? String((c as any).latitude) : "");
         setCompanyLng((c as any).longitude != null ? String((c as any).longitude) : "");
         setCompanyRadius(Number((c as any).geo_radius_meters ?? 250));
+        setCompanyRequireGps(Boolean((c as any).require_gps_on_attendance ?? false));
       } catch (e) {
         setCompanyError(getApiErrorMessage(e));
       }
@@ -253,6 +255,16 @@ export default function SettingsPage() {
                   <div style={{ color: "var(--text3)", fontSize: 12.5, fontWeight: 800 }}>
                     Bán kính hiện tại: {Number.isFinite(companyRadius) ? Math.max(0, Math.round(companyRadius)) : 0}m (0m = tắt giới hạn GPS)
                   </div>
+                </div>
+                <div className={styles.formGroupRow} style={{ marginTop: 10 }}>
+                  <div className={styles.formLabelInline}>Yêu cầu GPS khi chấm công</div>
+                  <div className={styles.rowRight}>
+                    <Toggle checked={companyRequireGps} onChange={setCompanyRequireGps} label="Yêu cầu GPS khi chấm công" />
+                    <div className={styles.hintInline}>{companyRequireGps ? "Bật" : "Tắt"}</div>
+                  </div>
+                </div>
+                <div style={{ color: "var(--text3)", fontSize: 12.5, fontWeight: 800, marginTop: 6 }}>
+                  Khi bật: mỗi lần chấm công bắt buộc gửi vị trí GPS. Khi tắt: chấm công bỏ qua GPS và không áp dụng giới hạn bán kính.
                 </div>
                 <div className={styles.mapWrap} style={{ marginTop: 12 }}>
                   <div className={styles.mapToolbar}>
@@ -352,7 +364,8 @@ export default function SettingsPage() {
                         address: companyAddr.trim() || null,
                         latitude: lat,
                         longitude: lng,
-                        geo_radius_meters: Number.isFinite(companyRadius) ? companyRadius : 250
+                        geo_radius_meters: Number.isFinite(companyRadius) ? companyRadius : 250,
+                        require_gps_on_attendance: companyRequireGps
                       };
                       const cid = auth.roleKeys.includes("admin") ? (auth.selectedCompanyId ?? null) : null;
                       if (cid) await updateCompany(cid, payload);

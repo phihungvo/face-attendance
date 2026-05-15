@@ -56,6 +56,7 @@ def create_company(
                 latitude=payload.latitude,
                 longitude=payload.longitude,
                 geo_radius_meters=payload.geo_radius_meters,
+                require_gps_on_attendance=payload.require_gps_on_attendance,
             )
         )
     except ValueError as e:
@@ -70,17 +71,12 @@ def update_company(
     _: object = Depends(require_permission("companies.manage")),
 ) -> ApiResponse[CompanyOut]:
     try:
+        data = payload.model_dump(exclude_unset=True)
         return ok(
             service.update_company(
                 db,
                 company_id=company_id,
-                code=payload.code,
-                name=payload.name,
-                status=payload.status,
-                address=payload.address,
-                latitude=payload.latitude,
-                longitude=payload.longitude,
-                geo_radius_meters=payload.geo_radius_meters,
+                **data,
             )
         )
     except ValueError as e:
@@ -113,17 +109,12 @@ def update_my_company(
     if cid is None:
         raise AppException(BAD_REQUEST, detail="User chưa gắn company")
     try:
+        data = payload.model_dump(exclude_unset=True)
         return ok(
             service.update_company(
                 db,
                 company_id=int(cid),
-                code=payload.code,
-                name=payload.name,
-                status=payload.status,
-                address=payload.address,
-                latitude=payload.latitude,
-                longitude=payload.longitude,
-                geo_radius_meters=payload.geo_radius_meters,
+                **data,
             )
         )
     except ValueError as e:

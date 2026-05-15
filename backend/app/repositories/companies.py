@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.sentinels import UNSET
 from app.models.company import Company
 
 
@@ -18,8 +19,18 @@ class CompanyRepository:
         latitude: float | None = None,
         longitude: float | None = None,
         geo_radius_meters: float | None = None,
+        require_gps_on_attendance: bool | None = None,
     ) -> Company:
-        company = Company(code=code, name=name, status=status or "active", address=address, latitude=latitude, longitude=longitude, geo_radius_meters=geo_radius_meters)
+        company = Company(
+            code=code,
+            name=name,
+            status=status or "active",
+            address=address,
+            latitude=latitude,
+            longitude=longitude,
+            geo_radius_meters=geo_radius_meters,
+            require_gps_on_attendance=bool(require_gps_on_attendance) if require_gps_on_attendance is not None else False,
+        )
         db.add(company)
         db.flush()
         return company
@@ -42,31 +53,34 @@ class CompanyRepository:
         db: Session,
         *,
         company_id: int,
-        code: str | None = None,
-        name: str | None = None,
-        status: str | None = None,
-        address: str | None = None,
-        latitude: float | None = None,
-        longitude: float | None = None,
-        geo_radius_meters: float | None = None,
+        code: str | None | object = UNSET,
+        name: str | None | object = UNSET,
+        status: str | None | object = UNSET,
+        address: str | None | object = UNSET,
+        latitude: float | None | object = UNSET,
+        longitude: float | None | object = UNSET,
+        geo_radius_meters: float | None | object = UNSET,
+        require_gps_on_attendance: bool | None | object = UNSET,
     ) -> Company | None:
         c = self.get(db, company_id)
         if c is None:
             return None
-        if code is not None:
+        if code is not UNSET:
             c.code = code
-        if name is not None:
+        if name is not UNSET:
             c.name = name
-        if status is not None:
+        if status is not UNSET:
             c.status = status
-        if address is not None:
+        if address is not UNSET:
             c.address = address
-        if latitude is not None:
+        if latitude is not UNSET:
             c.latitude = latitude
-        if longitude is not None:
+        if longitude is not UNSET:
             c.longitude = longitude
-        if geo_radius_meters is not None:
+        if geo_radius_meters is not UNSET:
             c.geo_radius_meters = geo_radius_meters
+        if require_gps_on_attendance is not UNSET:
+            c.require_gps_on_attendance = bool(require_gps_on_attendance) if require_gps_on_attendance is not None else False
         db.add(c)
         db.flush()
         return c

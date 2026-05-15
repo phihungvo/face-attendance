@@ -9,6 +9,7 @@ export type Company = {
   latitude?: number | null;
   longitude?: number | null;
   geo_radius_meters?: number | null;
+  require_gps_on_attendance?: boolean;
   created_at: string;
 };
 
@@ -37,6 +38,7 @@ export async function updateCompany(
     latitude?: number | null;
     longitude?: number | null;
     geo_radius_meters?: number | null;
+    require_gps_on_attendance?: boolean | null;
   }
 ) {
   const res = await api.put<ApiResponse<Company>>(`/companies/${id}`, payload);
@@ -61,6 +63,7 @@ export async function updateMyCompany(payload: {
   latitude?: number | null;
   longitude?: number | null;
   geo_radius_meters?: number | null;
+  require_gps_on_attendance?: boolean | null;
 }) {
   const res = await api.put<ApiResponse<Company>>("/companies/me", payload);
   return res.data.result!;

@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../../shared/theme/theme";
+import { CalendarOutlined, CameraOutlined, HomeOutlined, IdcardOutlined, ProfileOutlined, UserOutlined } from "@ant-design/icons";
 import styles from "./EmployeeShell.module.scss";
 
 export default function EmployeeShell() {
@@ -32,34 +33,46 @@ export default function EmployeeShell() {
     return (
       <>
         <Link to="/employee" className={tabCls("home")}>
-          <div className={iconCls}>🏠</div>
+          <div className={iconCls}>
+            <HomeOutlined />
+          </div>
           <div className={labelCls}>Trang chủ</div>
         </Link>
 
         <Link to="/employee/timesheet" className={tabCls("history")}>
-          <div className={iconCls}>📋</div>
+          <div className={iconCls}>
+            <ProfileOutlined />
+          </div>
           <div className={labelCls}>Lịch sử</div>
         </Link>
 
         {variant === "side" ? (
           <Link to="/employee/checkin" className={tabCls(null)} aria-label="Chấm công">
-            <div className={iconCls}>📷</div>
+            <div className={iconCls}>
+              <CameraOutlined />
+            </div>
             <div className={labelCls}>Chấm công</div>
           </Link>
         ) : null}
 
         <Link to="/employee/leave" className={tabCls("leave")}>
-          <div className={iconCls}>🌴</div>
+          <div className={iconCls}>
+            <IdcardOutlined />
+          </div>
           <div className={labelCls}>Nghỉ phép</div>
         </Link>
 
         <Link to="/employee/schedules" className={tabCls("schedule")}>
-          <div className={iconCls}>🗓️</div>
+          <div className={iconCls}>
+            <CalendarOutlined />
+          </div>
           <div className={labelCls}>Lịch làm</div>
         </Link>
 
         <Link to="/employee/profile" className={tabCls("profile")}>
-          <div className={iconCls}>👤</div>
+          <div className={iconCls}>
+            <UserOutlined />
+          </div>
           <div className={labelCls}>Hồ sơ</div>
         </Link>
       </>
@@ -179,7 +192,7 @@ export default function EmployeeShell() {
           {!hideNav ? (
             <div className={styles.desktopToolBar} aria-label="Thanh công cụ (desktop)">
               <Link to="/employee/checkin" className={`${styles.desktopToolBtn} ${styles.desktopToolBtnPrimary}`} aria-label="Chấm công">
-                📷 Chấm công
+                <CameraOutlined /> Chấm công
               </Link>
             </div>
           ) : null}
@@ -202,7 +215,7 @@ export default function EmployeeShell() {
               onPointerUp={onFabPointerUp}
               onPointerCancel={onFabPointerUp}
             >
-              📷
+              <CameraOutlined />
             </button>
           </div>
         ) : null}

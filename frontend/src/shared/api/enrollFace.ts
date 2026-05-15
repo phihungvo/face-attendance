@@ -8,6 +8,11 @@ export async function enrollFaceForUser(userId: number, blob: Blob) {
   return !!res.data.result?.enrolled;
 }
 
+export async function resetFaceForUser(userId: number) {
+  const res = await api.post<ApiResponse<{ reset: boolean }>>(`/users/${userId}/reset-face`);
+  return !!res.data.result?.reset;
+}
+
 export type MyFaceStatus = {
   last_enrolled_at: string | null;
   next_allowed_at: string | null;

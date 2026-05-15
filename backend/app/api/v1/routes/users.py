@@ -55,6 +55,22 @@ async def enroll_face_for_user(
         raise AppException(BAD_REQUEST, detail=f"Không thể đăng ký khuôn mặt: {e}")
 
 
+@router.post("/{user_id:int}/reset-face", response_model=ApiResponse[dict[str, object]])
+def reset_face_for_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> ApiResponse[dict[str, object]]:
+    try:
+        keys = get_permission_keys(current_user)
+        if ("employees.read" not in keys) and (int(getattr(current_user, "id")) != int(user_id)):
+            raise AppException(FORBIDDEN)
+        service.reset_face(db, user_id=user_id)
+        return ok({"reset": True})
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=f"Không thể reset khuôn mặt: {e}")
+
+
 @router.get("/me/face-status", response_model=ApiResponse[FaceEnrollStatusOut])
 def my_face_status(
     db: Session = Depends(get_db),
