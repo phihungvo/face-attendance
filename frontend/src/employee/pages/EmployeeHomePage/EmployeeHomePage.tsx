@@ -7,10 +7,23 @@ import { getMyLeaveBalance } from "../../../shared/api/leaves";
 import { useTheme } from "../../../shared/theme/theme";
 import { listMyScheduleRegistrations, listSchedules, type WorkSchedule, type WorkScheduleRegistration } from "../../../shared/api/schedules";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import {
+  ArrowRightOutlined,
+  CalendarOutlined,
+  CameraOutlined,
+  ClockCircleOutlined,
+  DollarOutlined,
+  MedicineBoxOutlined,
+  MoonOutlined,
+  StopOutlined,
+  SunOutlined,
+  WarningOutlined
+} from "@ant-design/icons";
+import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
+import { empKeys } from "../../cacheKeys";
 
 export default function EmployeeHomePage() {
   const { resolvedTheme, toggle } = useTheme();
-  const [me, setMe] = useState<{ name: string; code?: string | null; department_name?: string | null } | null>(null);
   const [today, setToday] = useState<{ checkin: string; checkout: string; worked: string; status: "in" | "idle" }>({
     checkin: "—",
     checkout: "—",
@@ -30,128 +43,149 @@ export default function EmployeeHomePage() {
   const [todayShift, setTodayShift] = useState<{ name: string; start: string; end: string } | null>(null);
   const [todayShiftErr, setTodayShiftErr] = useState<string | null>(null);
 
+  const qMe = useCachedQuery({
+    key: empKeys.meProfile(),
+    ttlMs: 5 * 60_000,
+    fetcher: getMyProfile
+  });
+  const me = qMe.data;
+
+  const qSchedules = useCachedQuery({
+    key: empKeys.schedules(),
+    ttlMs: 5 * 60_000,
+    fetcher: () => listSchedules()
+  });
+  const schedules = qSchedules.data ?? [];
+
+  const qRegs = useCachedQuery({
+    key: empKeys.myScheduleRegs(),
+    ttlMs: 30_000,
+    fetcher: () => listMyScheduleRegistrations({ limit: 200, offset: 0 })
+  });
+  const regs = qRegs.data ?? [];
+
+  const qLeaveBalance = useCachedQuery({
+    key: empKeys.myLeaveBalance(null),
+    ttlMs: 2 * 60_000,
+    fetcher: () => getMyLeaveBalance()
+  });
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
   const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const monthKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+
+  const qMonth = useCachedQuery({
+    key: empKeys.myTimelogMonth(monthKey),
+    ttlMs: 60_000,
+    fetcher: async () => {
+      const d = new Date();
+      const from = `${monthKey}-01`;
+      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const to = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+      return listMyTimelog({ from_date: from, to_date: to });
+    }
+  });
 
   useEffect(() => {
-    (async () => {
-      try {
-        const prof = await getMyProfile();
-        setMe(prof);
-      } catch {
-        // ignore
-      }
-    })();
+    // `me` is cached via `useCachedQuery`.
   }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const d = new Date();
-        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        const from = `${ym}-01`;
-        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-        const to = `${ym}-${String(lastDay).padStart(2, "0")}`;
-        const rows: any[] = await listMyTimelog({ from_date: from, to_date: to });
+    const rows: any[] | null = (qMonth.data as any) ?? null;
+    if (!rows) return;
 
-        const todayRow = rows.find((r) => r.date === todayKey);
-        const fmtTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—");
-        const minutes = (r: any) => (typeof r.working_minutes === "number" ? r.working_minutes : Math.round((r.work_hours ?? 0) * 60));
-        const workedMin = todayRow ? minutes(todayRow) : 0;
-        const workedLabel = todayRow && !todayRow.absent ? `${Math.floor(workedMin / 60)}h ${String(workedMin % 60).padStart(2, "0")}m` : "—";
-        setToday({
-          checkin: todayRow?.checkin_time ? fmtTime(todayRow.checkin_time) : "—",
-          checkout: todayRow?.checkout_time ? fmtTime(todayRow.checkout_time) : "—",
-          worked: workedLabel,
-          status: todayRow?.checkin_time && !todayRow?.checkout_time ? "in" : "idle"
-        });
+    const todayRow = rows.find((r) => r.date === todayKey);
+    const fmtTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—");
+    const minutes = (r: any) => (typeof r.working_minutes === "number" ? r.working_minutes : Math.round((r.work_hours ?? 0) * 60));
+    const workedMin = todayRow ? minutes(todayRow) : 0;
+    const workedLabel = todayRow && !todayRow.absent ? `${Math.floor(workedMin / 60)}h ${String(workedMin % 60).padStart(2, "0")}m` : "—";
+    setToday({
+      checkin: todayRow?.checkin_time ? fmtTime(todayRow.checkin_time) : "—",
+      checkout: todayRow?.checkout_time ? fmtTime(todayRow.checkout_time) : "—",
+      worked: workedLabel,
+      status: todayRow?.checkin_time && !todayRow?.checkout_time ? "in" : "idle"
+    });
 
-        const days = rows.filter((r) => !r.absent).length;
-        const late = rows.filter((r) => !!r.late).length;
-        setMonthStats((s) => ({ ...s, days, late }));
+    const days = rows.filter((r) => !r.absent).length;
+    const late = rows.filter((r) => !!r.late).length;
+    setMonthStats((s) => ({ ...s, days, late }));
 
-        const rec = rows
-          .slice()
-          .filter((r) => !r.absent)
-          .sort((a, b) => (a.date < b.date ? 1 : -1))
-          .slice(0, 5)
-          .map((r) => {
-            const dt = new Date(`${r.date}T00:00:00`);
-            const checkin = r.checkin_time ? fmtTime(r.checkin_time) : "—";
-            const checkout = r.checkout_time ? fmtTime(r.checkout_time) : "—";
-            const mins = minutes(r);
-            const hrs = `${Math.round((mins / 60) * 10) / 10}`;
-            return {
-              id: r.date,
-              day: String(dt.getDate()),
-              dow: dt.toLocaleDateString("vi-VN", { weekday: "short" }),
-              checkin,
-              checkout,
-              hours: hrs,
-              status: r.late ? ("late" as const) : ("ok" as const)
-            };
-          });
-        setRecentLogs(rec);
+    const rec = rows
+      .slice()
+      .filter((r) => !r.absent)
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .slice(0, 5)
+      .map((r) => {
+        const dt = new Date(`${r.date}T00:00:00`);
+        const checkin = r.checkin_time ? fmtTime(r.checkin_time) : "—";
+        const checkout = r.checkout_time ? fmtTime(r.checkout_time) : "—";
+        const mins = minutes(r);
+        const hrs = `${Math.round((mins / 60) * 10) / 10}`;
+        return {
+          id: r.date,
+          day: String(dt.getDate()),
+          dow: dt.toLocaleDateString("vi-VN", { weekday: "short" }),
+          checkin,
+          checkout,
+          hours: hrs,
+          status: r.late ? ("late" as const) : ("ok" as const)
+        };
+      });
+    setRecentLogs(rec);
 
-        // streak: last 7 days
-        const last7: Array<{ label: string; state: "done" | "late" | "today" | "miss" }> = [];
-        let doneCount = 0;
-        for (let i = 6; i >= 0; i--) {
-          const x = new Date();
-          x.setDate(x.getDate() - i);
-          const key = x.toISOString().slice(0, 10);
-          const r = rows.find((z) => z.date === key);
-          const label = x.toLocaleDateString("vi-VN", { weekday: "short" }).replace(".", "");
-          if (i === 0) {
-            last7.push({ label, state: r && !r.absent ? "today" : "today" });
-          } else if (!r || r.absent) {
-            last7.push({ label, state: "miss" });
-          } else if (r.late) {
-            last7.push({ label, state: "late" });
-            doneCount++;
-          } else {
-            last7.push({ label, state: "done" });
-            doneCount++;
-          }
-        }
-        setStreak({
-          title: "Chuỗi chuyên cần",
-          countLabel: `${doneCount}/7`,
-          weekSummary: `${days} ngày công • ${late} lần muộn`,
-          days: last7
-        });
-      } catch {
-        // ignore
+    const last7: Array<{ label: string; state: "done" | "late" | "today" | "miss" }> = [];
+    let doneCount = 0;
+    for (let i = 6; i >= 0; i--) {
+      const x = new Date();
+      x.setDate(x.getDate() - i);
+      const key = x.toISOString().slice(0, 10);
+      const r = rows.find((z) => z.date === key);
+      const label = x.toLocaleDateString("vi-VN", { weekday: "short" }).replace(".", "");
+      if (i === 0) {
+        last7.push({ label, state: "today" });
+      } else if (!r || r.absent) {
+        last7.push({ label, state: "miss" });
+      } else if (r.late) {
+        last7.push({ label, state: "late" });
+        doneCount++;
+      } else {
+        last7.push({ label, state: "done" });
+        doneCount++;
       }
-    })();
-  }, [todayKey]);
+    }
+    setStreak({
+      title: "Chuỗi chuyên cần",
+      countLabel: `${doneCount}/7`,
+      weekSummary: `${days} ngày công • ${late} lần muộn`,
+      days: last7
+    });
+  }, [qMonth.data, todayKey]);
 
   useEffect(() => {
-    (async () => {
-      setTodayShiftErr(null);
-      try {
-        const [sch, regs] = await Promise.all([
-          listSchedules({ limit: 500, offset: 0, status: "active" }),
-          listMyScheduleRegistrations({ limit: 200, offset: 0 })
-        ]);
-        const byId = new Map<number, WorkSchedule>(sch.map((s) => [s.id, s]));
-        const todayRegs = (regs as WorkScheduleRegistration[])
-          .filter((r) => String(r.day).slice(0, 10) === todayKey)
-          .sort((a, b) => (a.status === b.status ? b.id - a.id : a.status === "approved" ? -1 : 1));
-        const pick = todayRegs[0];
-        const s = pick ? byId.get(pick.schedule_id) : null;
-        if (s && s.shift_start && s.shift_end) setTodayShift({ name: s.name, start: s.shift_start, end: s.shift_end });
-        else setTodayShift(null);
-      } catch (e) {
-        setTodayShiftErr(getApiErrorMessage(e));
-        setTodayShift(null);
-      }
-    })();
-  }, [todayKey]);
+    setTodayShiftErr(null);
+    if (qSchedules.error) setTodayShiftErr(qSchedules.error);
+    if (qRegs.error) setTodayShiftErr(qRegs.error);
+
+    if (!schedules.length || !regs.length) {
+      setTodayShift(null);
+      return;
+    }
+    const byId = new Map<number, WorkSchedule>(schedules.map((s: any) => [s.id, s]));
+    const todayRegs = (regs as any as WorkScheduleRegistration[])
+      .filter((r) => String(r.day).slice(0, 10) === todayKey)
+      .sort((a, b) => (a.status === b.status ? b.id - a.id : a.status === "approved" ? -1 : 1));
+    const pick = todayRegs[0];
+    const s = pick ? byId.get(pick.schedule_id) : null;
+    if (s && (s as any).shift_start && (s as any).shift_end) setTodayShift({ name: (s as any).name, start: (s as any).shift_start, end: (s as any).shift_end });
+    else setTodayShift(null);
+  }, [qSchedules.error, qRegs.error, regs, schedules, todayKey]);
 
   const hhmmToMinutes = (hhmm: string) => {
     const [h, m] = hhmm.split(":");
@@ -178,29 +212,24 @@ export default function EmployeeHomePage() {
 
   const primaryAttendanceAction = useMemo(() => {
     if (today.status === "in") {
-      return { label: "⏹ Ra ca", hint: todayShift ? `Ca: ${todayShift.start}–${todayShift.end}` : "Ra ca", disabled: !canCheckoutNow };
+      return { action: "checkout" as const, label: "Ra ca", hint: todayShift ? `Ca: ${todayShift.start}–${todayShift.end}` : "Ra ca", disabled: !canCheckoutNow };
     }
-    return { label: "📷 Vào ca", hint: todayShift ? `Ca: ${todayShift.start}–${todayShift.end}` : "Vào ca", disabled: !canCheckinNow };
+    return { action: "checkin" as const, label: "Vào ca", hint: todayShift ? `Ca: ${todayShift.start}–${todayShift.end}` : "Vào ca", disabled: !canCheckinNow };
   }, [today.status, todayShift, canCheckoutNow, canCheckinNow]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const b = await getMyLeaveBalance();
-        const annual = b.items.find((x) => x.type === "annual");
-        const sick = b.items.find((x) => x.type === "sick");
-        if (annual && sick) {
-          setLeaveBalance({
-            annual: { remaining: annual.remaining_days, percent: Math.round((annual.remaining_days / Math.max(1, annual.allowance_days)) * 100) },
-            sick: { remaining: sick.remaining_days, percent: Math.round((sick.remaining_days / Math.max(1, sick.allowance_days)) * 100) }
-          });
-          setMonthStats((s) => ({ ...s, leaveRemaining: annual.remaining_days }));
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
+    const b = qLeaveBalance.data ?? null;
+    if (!b) return;
+    const annual = b.items.find((x) => x.type === "annual");
+    const sick = b.items.find((x) => x.type === "sick");
+    if (annual && sick) {
+      setLeaveBalance({
+        annual: { remaining: annual.remaining_days, percent: Math.round((annual.remaining_days / Math.max(1, annual.allowance_days)) * 100) },
+        sick: { remaining: sick.remaining_days, percent: Math.round((sick.remaining_days / Math.max(1, sick.allowance_days)) * 100) }
+      });
+      setMonthStats((s) => ({ ...s, leaveRemaining: annual.remaining_days }));
+    }
+  }, [qLeaveBalance.data]);
 
   const clock = useMemo(() => {
     const h = String(now.getHours()).padStart(2, "0");
@@ -232,12 +261,12 @@ export default function EmployeeHomePage() {
         <div className={`${styles.headerOrb} ${styles.ho2}`} />
         <div className={styles.headerTop}>
           <div className={styles.greetingWrap}>
-            <div className={styles.greetingName}>Xin chào, {(me?.name || "Bạn").split(" ").slice(-1)[0]}! 👋</div>
+            <div className={styles.greetingName}>Xin chào, {(me?.name || "Bạn").split(" ").slice(-1)[0]}!</div>
             <div className={styles.greetingSub}>{greetingSub}</div>
           </div>
           <div className={styles.headerActions}>
             <button className={styles.themeBtn} type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện">
-              {resolvedTheme === "dark" ? "🌙" : "☀️"}
+              {resolvedTheme === "dark" ? <MoonOutlined /> : <SunOutlined />}
             </button>
             <Link to="/employee/profile" className={styles.headerAvatar} aria-label="Hồ sơ">
               {initials || "ME"}
@@ -288,37 +317,47 @@ export default function EmployeeHomePage() {
             }}
             title={primaryAttendanceAction.hint}
           >
-            {primaryAttendanceAction.label}
+            {primaryAttendanceAction.action === "checkout" ? <StopOutlined /> : <CameraOutlined />} {primaryAttendanceAction.label}
           </Link>
           <Link to="/employee/leave" className={`${styles.btnCi} ${styles.btnBreak}`} title="Tạo đơn xin nghỉ">
-            🌴 Xin nghỉ
+            <CalendarOutlined /> Xin nghỉ
           </Link>
         </div>
         {todayShift ? <div className={styles.shiftHint}>Hôm nay: <span className={styles.mono}>{todayShift.start}–{todayShift.end}</span> • {todayShift.name}</div> : null}
-        {todayShiftErr ? <div className={styles.shiftHint} style={{ color: "var(--rose)" }}>⚠️ {todayShiftErr}</div> : null}
+        {todayShiftErr ? (
+          <div className={styles.shiftHint} style={{ color: "var(--rose)" }}>
+            <WarningOutlined /> {todayShiftErr}
+          </div>
+        ) : null}
       </div>
 
       <div className={styles.scrollArea}>
         <div className={styles.sectionHead} style={{ marginTop: 24 }}>
           <div className={styles.sectionTitle}>Tháng này</div>
           <Link to="/employee/timesheet" className={styles.sectionLink}>
-            Xem chi tiết →
+            Xem chi tiết <ArrowRightOutlined />
           </Link>
         </div>
 
         <div className={styles.statsRow}>
           <div className={styles.statPill}>
-            <div className={styles.statPillIcon}>📅</div>
+            <div className={styles.statPillIcon}>
+              <CalendarOutlined />
+            </div>
             <div className={styles.statPillVal} style={{ color: "var(--indigo)" }}>{monthStats.days}</div>
             <div className={styles.statPillLbl}>Ngày công</div>
           </div>
           <div className={styles.statPill}>
-            <div className={styles.statPillIcon}>⏰</div>
+            <div className={styles.statPillIcon}>
+              <ClockCircleOutlined />
+            </div>
             <div className={styles.statPillVal} style={{ color: "var(--amber)" }}>{monthStats.late}</div>
             <div className={styles.statPillLbl}>Muộn</div>
           </div>
           <div className={styles.statPill}>
-            <div className={styles.statPillIcon}>🌴</div>
+            <div className={styles.statPillIcon}>
+              <CalendarOutlined />
+            </div>
             <div className={styles.statPillVal} style={{ color: "var(--green)" }}>{monthStats.leaveRemaining}</div>
             <div className={styles.statPillLbl}>Phép còn</div>
           </div>
@@ -363,25 +402,25 @@ export default function EmployeeHomePage() {
         <div className={styles.actionsGrid}>
           <Link to="/employee/leave" className={styles.actionBtn}>
             <div className={styles.actionBtnIcon} style={{ background: "#FDE8ED" }}>
-              🌴
+              <CalendarOutlined />
             </div>
             <div className={styles.actionBtnLbl}>Xin nghỉ phép</div>
           </Link>
           <button type="button" className={styles.actionBtn}>
             <div className={styles.actionBtnIcon} style={{ background: "var(--amber-light)" }}>
-              ⏰
+              <ClockCircleOutlined />
             </div>
             <div className={styles.actionBtnLbl}>Đăng ký tăng ca</div>
           </button>
           <button type="button" className={styles.actionBtn}>
             <div className={styles.actionBtnIcon} style={{ background: "var(--green-light)" }}>
-              💰
+              <DollarOutlined />
             </div>
             <div className={styles.actionBtnLbl}>Xem lương</div>
           </button>
           <Link to="/employee/checkin" className={styles.actionBtn}>
             <div className={styles.actionBtnIcon} style={{ background: "var(--indigo-light)" }}>
-              📷
+              <CameraOutlined />
             </div>
             <div className={styles.actionBtnLbl}>Chấm công nhanh</div>
           </Link>
@@ -390,12 +429,14 @@ export default function EmployeeHomePage() {
         <div className={styles.sectionHead}>
           <div className={styles.sectionTitle}>Ngày phép</div>
           <Link to="/employee/leave" className={styles.sectionLink}>
-            Xin nghỉ →
+            Xin nghỉ <ArrowRightOutlined />
           </Link>
         </div>
         <div className={styles.leaveRow}>
           <div className={styles.leavePill}>
-            <div className={styles.leavePillIcon}>🌴</div>
+            <div className={styles.leavePillIcon}>
+              <CalendarOutlined />
+            </div>
             <div className={styles.leavePillVal} style={{ color: "var(--indigo)" }}>
               {leaveBalance?.annual.remaining ?? 0}
             </div>
@@ -405,7 +446,9 @@ export default function EmployeeHomePage() {
             </div>
           </div>
           <div className={styles.leavePill}>
-            <div className={styles.leavePillIcon}>🤒</div>
+            <div className={styles.leavePillIcon}>
+              <MedicineBoxOutlined />
+            </div>
             <div className={styles.leavePillVal} style={{ color: "var(--rose)" }}>
               {leaveBalance?.sick.remaining ?? 0}
             </div>
@@ -419,7 +462,7 @@ export default function EmployeeHomePage() {
         <div className={styles.sectionHead}>
           <div className={styles.sectionTitle}>Gần đây</div>
           <Link to="/employee/timesheet" className={styles.sectionLink}>
-            Tất cả →
+            Tất cả <ArrowRightOutlined />
           </Link>
         </div>
 

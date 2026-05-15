@@ -13,6 +13,19 @@ import {
 } from "../../../shared/api/schedules";
 import { viStatusLabel } from "../../../shared/i18n/vi";
 import styles from "./EmployeeSchedulesPage.module.scss";
+import {
+  CalendarOutlined,
+  ExclamationCircleOutlined,
+  LeftOutlined,
+  MoonOutlined,
+  PlusOutlined,
+  ProfileOutlined,
+  RightOutlined,
+  SunOutlined
+} from "@ant-design/icons";
+import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
+import { invalidateKey, setCached } from "../../../shared/lib/queryCache";
+import { empKeys } from "../../cacheKeys";
 
 function todayYmd() {
   const d = new Date();
@@ -125,9 +138,9 @@ export default function EmployeeSchedulesPage() {
 
   const shiftVisual = (hhmm: string | undefined) => {
     const h = Number(String(hhmm ?? "09:00").slice(0, 2));
-    if (h < 12) return { icon: "🌅", cls: styles.vMorning, label: "Sáng" };
-    if (h < 18) return { icon: "☀️", cls: styles.vAfternoon, label: "Chiều" };
-    return { icon: "🌙", cls: styles.vNight, label: "Tối" };
+    if (h < 12) return { icon: <SunOutlined />, cls: styles.vMorning, label: "Sáng" };
+    if (h < 18) return { icon: <SunOutlined />, cls: styles.vAfternoon, label: "Chiều" };
+    return { icon: <MoonOutlined />, cls: styles.vNight, label: "Tối" };
   };
 
   const regsSorted = useMemo(() => {
@@ -158,9 +171,13 @@ export default function EmployeeSchedulesPage() {
     setLoading(true);
     if (!opts?.keepError) setError(null);
     try {
+      invalidateKey(empKeys.schedules());
+      invalidateKey(empKeys.myScheduleRegs());
       const [sch, my] = await Promise.all([listSchedules({ limit: 500, offset: 0, status: "active" }), listMyScheduleRegistrations({ limit: 200, offset: 0 })]);
       setSchedules(sch);
       setRegs(my);
+      setCached(empKeys.schedules(), sch, 5 * 60_000);
+      setCached(empKeys.myScheduleRegs(), my, 30_000);
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -169,9 +186,27 @@ export default function EmployeeSchedulesPage() {
   };
 
   useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // initial load via cache
   }, []);
+
+  const qSchedules = useCachedQuery({
+    key: empKeys.schedules(),
+    ttlMs: 5 * 60_000,
+    fetcher: () => listSchedules({ limit: 500, offset: 0, status: "active" })
+  });
+  const qRegs = useCachedQuery({
+    key: empKeys.myScheduleRegs(),
+    ttlMs: 30_000,
+    fetcher: () => listMyScheduleRegistrations({ limit: 200, offset: 0 })
+  });
+
+  useEffect(() => {
+    if (qSchedules.data) setSchedules(qSchedules.data);
+    if (qRegs.data) setRegs(qRegs.data);
+    if (qSchedules.error) setError(qSchedules.error);
+    if (qRegs.error) setError(qRegs.error);
+    setLoading(qSchedules.loading || qRegs.loading);
+  }, [qRegs.data, qRegs.error, qRegs.loading, qSchedules.data, qSchedules.error, qSchedules.loading]);
 
   const addToCart = (schedule_id: number) => {
     const s = schedules.find((x) => x.id === schedule_id);
@@ -304,23 +339,34 @@ export default function EmployeeSchedulesPage() {
 
   return (
     <div className={styles.page}>
-      {error && tab !== "register" ? <div className={styles.errorBox}>⚠️ {error}</div> : null}
+      {error && tab !== "register" ? (
+        <div className={styles.errorBox}>
+          <ExclamationCircleOutlined /> {error}
+        </div>
+      ) : null}
 
       <div className={styles.tabs}>
         <button type="button" className={tab === "register" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => setTab("register")}>
-          ➕ Đăng ký ca
+          <PlusOutlined /> Đăng ký ca
         </button>
         <button type="button" className={tab === "calendar" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => setTab("calendar")}>
-          📅 Lịch của tôi
+          <CalendarOutlined /> Lịch của tôi
         </button>
         <button type="button" className={tab === "details" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => setTab("details")}>
-          📋 Chi tiết
+          <ProfileOutlined /> Chi tiết
         </button>
       </div>
 
       {tab === "register" ? (
         <div className={styles.gridRegister}>
-          <Card title="🗓️ Chọn ca làm" sub={loading ? "Đang tải..." : `${scheduleOptions.length} ca khả dụng`}>
+          <Card
+            title={
+              <span>
+                <CalendarOutlined /> Chọn ca làm
+              </span>
+            }
+            sub={loading ? "Đang tải..." : `${scheduleOptions.length} ca khả dụng`}
+          >
             <div className={styles.shiftList}>
               {scheduleOptions.map((s) => (
                 <div key={s.id} className={styles.shiftItem}>
@@ -344,7 +390,7 @@ export default function EmployeeSchedulesPage() {
                         <>
                           <span className={styles.dot}>•</span>
                           <span className={styles.muted}>
-                            {s.date_start ? s.date_start : "…"} → {s.date_end ? s.date_end : "…"}
+                            {s.date_start ? s.date_start : "…"} <RightOutlined /> {s.date_end ? s.date_end : "…"}
                           </span>
                         </>
                       ) : null}
@@ -450,10 +496,14 @@ export default function EmployeeSchedulesPage() {
 
               <div className={styles.actions}>
                 <button className={styles.btnPrimary} type="button" onClick={submitCart} disabled={loading || !cart.length}>
-                  Gửi đăng ký →
+                  Gửi đăng ký <RightOutlined />
                 </button>
               </div>
-              {error ? <div className={styles.inlineError}>⚠️ {error}</div> : null}
+              {error ? (
+                <div className={styles.inlineError}>
+                  <ExclamationCircleOutlined /> {error}
+                </div>
+              ) : null}
             </div>
           </Card>
         </div>
@@ -462,7 +512,11 @@ export default function EmployeeSchedulesPage() {
       {tab === "calendar" ? (
         <>
           <Card
-            title="📅 Lịch làm của tôi"
+            title={
+              <span>
+                <CalendarOutlined /> Lịch làm của tôi
+              </span>
+            }
             sub={loading ? "Đang tải..." : `${regs.length} đăng ký`}
             right={
               <div className={styles.calNav}>
@@ -476,7 +530,7 @@ export default function EmployeeSchedulesPage() {
                     setCalMonth(d.getMonth());
                   }}
                 >
-                  ‹
+                  <LeftOutlined />
                 </button>
                 <div className={styles.calLabel}>{new Date(calYear, calMonth, 1).toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}</div>
                 <button
@@ -489,22 +543,28 @@ export default function EmployeeSchedulesPage() {
                     setCalMonth(d.getMonth());
                   }}
                 >
-                  ›
+                  <RightOutlined />
                 </button>
               </div>
             }
           >
             <div className={styles.legend}>
               <div className={styles.legendItem}>
-                <div className={[styles.legendIcon, styles.vMorning].join(" ")}>🌅</div>
+                <div className={[styles.legendIcon, styles.vMorning].join(" ")}>
+                  <SunOutlined />
+                </div>
                 <div className={styles.legendText}>Ca sáng</div>
               </div>
               <div className={styles.legendItem}>
-                <div className={[styles.legendIcon, styles.vAfternoon].join(" ")}>☀️</div>
+                <div className={[styles.legendIcon, styles.vAfternoon].join(" ")}>
+                  <SunOutlined />
+                </div>
                 <div className={styles.legendText}>Ca chiều</div>
               </div>
               <div className={styles.legendItem}>
-                <div className={[styles.legendIcon, styles.vNight].join(" ")}>🌙</div>
+                <div className={[styles.legendIcon, styles.vNight].join(" ")}>
+                  <MoonOutlined />
+                </div>
                 <div className={styles.legendText}>Ca tối</div>
               </div>
             </div>
@@ -569,7 +629,17 @@ export default function EmployeeSchedulesPage() {
 
           <Modal
             open={!!selectedDay}
-            title={selectedDay ? `🗓️ ${formatDateVi(selectedDay)}` : "🗓️ Chi tiết"}
+            title={
+              selectedDay ? (
+                <span>
+                  <CalendarOutlined /> {formatDateVi(selectedDay)}
+                </span>
+              ) : (
+                <span>
+                  <CalendarOutlined /> Chi tiết
+                </span>
+              )
+            }
             onClose={() => setSelectedDay(null)}
             modalClassName={styles.dayModal}
             footer={
@@ -628,13 +698,17 @@ export default function EmployeeSchedulesPage() {
 
       {tab === "details" ? (
         <Card
-          title="📋 Chi tiết ca làm đã đăng ký"
+          title={
+            <span>
+              <ProfileOutlined /> Chi tiết ca làm đã đăng ký
+            </span>
+          }
           sub={loading ? "Đang tải..." : `${regs.length} mục`}
           right={
             regsSorted.length ? (
               <div className={styles.pager} aria-label="Phân trang">
                 <button className={styles.pageBtn} type="button" onClick={() => setDetailPage((p) => Math.max(1, p - 1))} disabled={detailPageSafe <= 1}>
-                  ←
+                  <LeftOutlined />
                 </button>
                 <div className={styles.pageHint}>
                   Trang {detailPageSafe}/{detailTotalPages}
@@ -645,7 +719,7 @@ export default function EmployeeSchedulesPage() {
                   onClick={() => setDetailPage((p) => Math.min(detailTotalPages, p + 1))}
                   disabled={detailPageSafe >= detailTotalPages}
                 >
-                  →
+                  <RightOutlined />
                 </button>
               </div>
             ) : null

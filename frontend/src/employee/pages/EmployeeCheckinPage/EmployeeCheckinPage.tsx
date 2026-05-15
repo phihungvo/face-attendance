@@ -5,6 +5,9 @@ import { listMyAttendanceLogs, scanMyAttendanceFromImage, type AttendanceLog } f
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { useAutoScan } from "../../../shared/hooks/useAutoScan";
+import { CameraOutlined, CheckCircleOutlined, LeftOutlined, PauseCircleOutlined, PlayCircleOutlined, StopOutlined, SwapOutlined } from "@ant-design/icons";
+import { cached, invalidateKey } from "../../../shared/lib/queryCache";
+import { empKeys } from "../../cacheKeys";
 
 export default function EmployeeCheckinPage() {
   const nav = useNavigate();
@@ -18,7 +21,8 @@ export default function EmployeeCheckinPage() {
 
   async function refreshLogs() {
     try {
-      const data = await listMyAttendanceLogs({ limit: 20, offset: 0 });
+      const key = empKeys.myAttendanceLogs(20, 0);
+      const data = await cached(key, () => listMyAttendanceLogs({ limit: 20, offset: 0 }), 5_000);
       setLogs(data);
     } catch {
       // ignore
@@ -72,6 +76,7 @@ export default function EmployeeCheckinPage() {
     onResult: async (res) => {
       setResult({ user: res.user_name, action: res.action, confidence: res.confidence, time: res.time });
       setError(null);
+      invalidateKey(empKeys.myAttendanceLogs(20, 0));
       await refreshLogs();
     },
     onError: (e) => {
@@ -89,7 +94,7 @@ export default function EmployeeCheckinPage() {
     <div className={styles.page}>
       <div className={styles.screenHeader}>
         <button className={styles.backBtn} type="button" onClick={() => nav(-1)}>
-          ‹
+          <LeftOutlined />
         </button>
         <div className={styles.screenHeaderTitle}>Chấm công</div>
       </div>
@@ -101,7 +106,11 @@ export default function EmployeeCheckinPage() {
         </div>
 
         <div className={styles.camera}>
-          {!cam.state.ready ? <div className={styles.cameraInner}>📷 Camera chưa bật</div> : null}
+          {!cam.state.ready ? (
+            <div className={styles.cameraInner}>
+              <CameraOutlined /> Camera chưa bật
+            </div>
+          ) : null}
           <video ref={cam.videoRef} className={styles.video} playsInline muted />
         </div>
 
@@ -109,16 +118,20 @@ export default function EmployeeCheckinPage() {
         {error ? <div className={styles.errBox}>{error}</div> : null}
         {result ? (
           <div className={styles.infoBox}>
-            ✅ <b>{result.user}</b> • {result.action === "checkout" ? "Ra ca" : "Vào ca"} • conf={result.confidence.toFixed(3)} •{" "}
+            <CheckCircleOutlined /> <b>{result.user}</b> • {result.action === "checkout" ? "Ra ca" : "Vào ca"} • conf={result.confidence.toFixed(3)} •{" "}
             {new Date(result.time).toLocaleString("vi-VN")}
           </div>
         ) : null}
-        {completed ? <div className={styles.infoBox}>✅ Hôm nay bạn đã check-in và check-out rồi. Không thể chấm công thêm.</div> : null}
+        {completed ? (
+          <div className={styles.infoBox}>
+            <CheckCircleOutlined /> Hôm nay bạn đã check-in và check-out rồi. Không thể chấm công thêm.
+          </div>
+        ) : null}
 
         <div className={styles.actions}>
           {!cam.state.ready ? (
             <button className={styles.primary} type="button" disabled={busy} onClick={() => cam.start()}>
-              📷 Bật camera
+              <CameraOutlined /> Bật camera
             </button>
           ) : (
             <button
@@ -129,14 +142,22 @@ export default function EmployeeCheckinPage() {
                 setAuto((v) => !v);
               }}
             >
-              {auto ? "⏸ Tạm dừng auto" : "▶︎ Bật auto"}
+              {auto ? (
+                <>
+                  <PauseCircleOutlined /> Tạm dừng auto
+                </>
+              ) : (
+                <>
+                  <PlayCircleOutlined /> Bật auto
+                </>
+              )}
             </button>
           )}
           <button className={styles.ghost} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.switchCamera()}>
-            🔄 Đổi camera
+            <SwapOutlined /> Đổi camera
           </button>
           <button className={styles.danger} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.stop()}>
-            ⏹ Tắt camera
+            <StopOutlined /> Tắt camera
           </button>
         </div>
 
@@ -144,7 +165,9 @@ export default function EmployeeCheckinPage() {
         <div className={styles.logList}>
           {logs.map((l) => (
             <div key={l.id} className={styles.logRow}>
-              <div className={styles.logType}>{l.type === "checkin" ? "✅ Vào" : "⛔ Ra"}</div>
+              <div className={styles.logType}>
+                {l.type === "checkin" ? <CheckCircleOutlined /> : <StopOutlined />} {l.type === "checkin" ? "Vào" : "Ra"}
+              </div>
               <div className={styles.logTime}>{new Date(l.timestamp).toLocaleString("vi-VN")}</div>
               <div className={styles.logConf}>{l.confidence.toFixed(3)}</div>
             </div>

@@ -2,12 +2,30 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../shared/auth/auth";
 import styles from "./EmployeeProfilePage.module.scss";
 import { useCamera } from "../../../shared/hooks/useCamera";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { enrollMyFace, getMyFaceStatus } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { getMyProfile } from "../../../shared/api/users";
 import { listMyTimelog } from "../../../shared/api/attendance";
 import { useTheme } from "../../../shared/theme/theme";
+import { getMyCompany, type Company } from "../../../shared/api/companies";
+import {
+  BankOutlined,
+  CameraOutlined,
+  CheckCircleOutlined,
+  LockOutlined,
+  LogoutOutlined,
+  MoonOutlined,
+  RightOutlined,
+  SafetyOutlined,
+  StopOutlined,
+  SunOutlined,
+  SwapOutlined,
+  UserOutlined
+} from "@ant-design/icons";
+import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
+import { invalidateKey } from "../../../shared/lib/queryCache";
+import { empKeys } from "../../cacheKeys";
 
 export default function EmployeeProfilePage() {
   const auth = useAuth();
@@ -17,12 +35,31 @@ export default function EmployeeProfilePage() {
   const [busy, setBusy] = useState(false);
   const [faceError, setFaceError] = useState<string | null>(null);
   const [faceInfo, setFaceInfo] = useState<string | null>(null);
-  const [lastFace, setLastFace] = useState<string | null>(null);
-  const [nextAllowed, setNextAllowed] = useState<string | null>(null);
-  const [me, setMe] = useState<{ name: string; code?: string | null; department_name?: string | null; created_at?: string } | null>(null);
   const [monthDays, setMonthDays] = useState<number | null>(null);
   const [attendancePct, setAttendancePct] = useState<number | null>(null);
   const [expLabel, setExpLabel] = useState<string>("—");
+
+  const qMe = useCachedQuery({
+    key: empKeys.meProfile(),
+    ttlMs: 5 * 60_000,
+    fetcher: getMyProfile
+  });
+  const me = qMe.data;
+
+  const qCompany = useCachedQuery<Company>({
+    key: empKeys.myCompany(),
+    ttlMs: 5 * 60_000,
+    fetcher: getMyCompany
+  });
+  const company = qCompany.data;
+
+  const qFace = useCachedQuery({
+    key: empKeys.myFaceStatus(),
+    ttlMs: 60_000,
+    fetcher: getMyFaceStatus
+  });
+  const lastFace = qFace.data?.last_enrolled_at ?? null;
+  const nextAllowed = qFace.data?.next_allowed_at ?? null;
 
   const initials = (me?.name || auth.username || "ME")
     .split(" ")
@@ -32,45 +69,35 @@ export default function EmployeeProfilePage() {
     .join("");
 
   useEffect(() => {
-    (async () => {
-      try {
-        const st = await getMyFaceStatus();
-        setLastFace(st.last_enrolled_at);
-        setNextAllowed(st.next_allowed_at);
-      } catch {
-        // ignore - employee profile can still render
-      }
-    })();
-  }, []);
+    if (!me?.created_at) return;
+    const created = new Date(me.created_at);
+    const now = new Date();
+    const months = Math.max(0, (now.getFullYear() - created.getFullYear()) * 12 + (now.getMonth() - created.getMonth()));
+    const years = Math.floor(months / 12);
+    setExpLabel(years > 0 ? `${years} năm` : `${months} tháng`);
+  }, [me?.created_at]);
+
+  const now = useMemo(() => new Date(), []);
+  const ym = useMemo(() => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`, [now]);
+  const qMonth = useCachedQuery({
+    key: empKeys.myTimelogMonth(ym),
+    ttlMs: 60_000,
+    fetcher: async () => {
+      const from = `${ym}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const to = `${ym}-${String(lastDay).padStart(2, "0")}`;
+      return listMyTimelog({ from_date: from, to_date: to });
+    }
+  });
 
   useEffect(() => {
-    (async () => {
-      try {
-        const prof = await getMyProfile();
-        setMe(prof);
-        if (prof.created_at) {
-          const created = new Date(prof.created_at);
-          const now = new Date();
-          const months = Math.max(0, (now.getFullYear() - created.getFullYear()) * 12 + (now.getMonth() - created.getMonth()));
-          const years = Math.floor(months / 12);
-          setExpLabel(years > 0 ? `${years} năm` : `${months} tháng`);
-        }
-
-        const now = new Date();
-        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const from = `${ym}-01`;
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const to = `${ym}-${String(lastDay).padStart(2, "0")}`;
-        const rows = await listMyTimelog({ from_date: from, to_date: to });
-        const present = rows.filter((r: any) => !r.absent).length;
-        const total = rows.length || 0;
-        setMonthDays(present);
-        setAttendancePct(total > 0 ? Math.round((present / total) * 100) : null);
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
+    const rows = qMonth.data ?? null;
+    if (!rows) return;
+    const present = rows.filter((r: any) => !r.absent).length;
+    const total = rows.length || 0;
+    setMonthDays(present);
+    setAttendancePct(total > 0 ? Math.round((present / total) * 100) : null);
+  }, [qMonth.data]);
 
   return (
     <div className={styles.page}>
@@ -108,33 +135,54 @@ export default function EmployeeProfilePage() {
           <div className={styles.profileRow}>
             <div className={styles.profileItem}>
               <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
-                👤
+                <UserOutlined />
               </div>
               <div>
                 <div className={styles.profileItemKey}>Username</div>
                 <div className={styles.profileItemVal}>{auth.username ?? "—"}</div>
               </div>
-              <div className={styles.profileItemArrow}>›</div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
             </div>
             <div className={styles.profileItem}>
               <div className={styles.profileItemIcon} style={{ background: "var(--amber-light)" }}>
-                🛡️
+                <SafetyOutlined />
               </div>
               <div>
                 <div className={styles.profileItemKey}>Roles</div>
                 <div className={styles.profileItemVal}>{auth.roleKeys.join(", ") || "—"}</div>
               </div>
-              <div className={styles.profileItemArrow}>›</div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
             </div>
             <div className={styles.profileItem}>
               <div className={styles.profileItemIcon} style={{ background: "var(--green-light)" }}>
-                ✅
+                <CheckCircleOutlined />
               </div>
               <div>
                 <div className={styles.profileItemKey}>Quyền</div>
                 <div className={styles.profileItemVal}>{auth.permissionKeys.length} permissions</div>
               </div>
-              <div className={styles.profileItemArrow}>›</div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
+            </div>
+            <div className={styles.profileItem}>
+              <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
+                <BankOutlined />
+              </div>
+              <div>
+                <div className={styles.profileItemKey}>Công ty</div>
+                <div className={styles.profileItemVal}>
+                  {company ? `${company.name}${company.code ? ` (${company.code})` : ""}` : "—"}
+                  {company?.address ? ` • ${company.address}` : ""}
+                </div>
+              </div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
             </div>
           </div>
         </div>
@@ -143,7 +191,11 @@ export default function EmployeeProfilePage() {
           <div className={styles.profileSectionTitle}>Đăng ký khuôn mặt</div>
           <div className={styles.faceCard} id="face-section">
             <div className={styles.faceCamera}>
-              {!cam.state.ready ? <div className={styles.facePlaceholder}>📷 Camera chưa bật</div> : null}
+              {!cam.state.ready ? (
+                <div className={styles.facePlaceholder}>
+                  <CameraOutlined /> Camera chưa bật
+                </div>
+              ) : null}
               <video ref={cam.videoRef} className={styles.faceVideo} playsInline muted />
             </div>
 
@@ -154,7 +206,7 @@ export default function EmployeeProfilePage() {
             <div className={styles.faceActions}>
               {!cam.state.ready ? (
                 <button className={styles.faceBtnPrimary} type="button" disabled={busy} onClick={() => cam.start()}>
-                  📷 Bật camera
+                  <CameraOutlined /> Bật camera
                 </button>
               ) : (
                 <button
@@ -168,10 +220,9 @@ export default function EmployeeProfilePage() {
                       setFaceInfo(null);
                       const blob = await cam.capture({ quality: 0.9, type: "image/jpeg" });
                       const res = await enrollMyFace(blob);
-                      setFaceInfo("✅ Đăng ký khuôn mặt thành công");
-                      const st = await getMyFaceStatus();
-                      setLastFace(st.last_enrolled_at);
-                      setNextAllowed(st.next_allowed_at);
+                      setFaceInfo("Đăng ký khuôn mặt thành công");
+                      invalidateKey(empKeys.myFaceStatus());
+                      qFace.refresh();
                       return res;
                     } catch (e) {
                       setFaceError(getApiErrorMessage(e));
@@ -180,14 +231,14 @@ export default function EmployeeProfilePage() {
                     }
                   }}
                 >
-                  {busy ? "Đang đăng ký..." : "✅ Đăng ký / Cập nhật"}
+                  {busy ? "Đang đăng ký..." : "Đăng ký / Cập nhật"}
                 </button>
               )}
               <button className={styles.faceBtnGhost} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.switchCamera()}>
-                🔄 Đổi camera
+                <SwapOutlined /> Đổi camera
               </button>
               <button className={styles.faceBtnGhost} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.stop()}>
-                ⏹ Tắt camera
+                <StopOutlined /> Tắt camera
               </button>
             </div>
             <div className={styles.faceHint}>Giới hạn: mỗi tài khoản chỉ được đăng ký khuôn mặt 1 lần / tháng.</div>
@@ -199,7 +250,7 @@ export default function EmployeeProfilePage() {
           <div className={styles.profileRow}>
             <button className={`${styles.profileItem} ${styles.clickable}`} type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối">
               <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
-                {resolvedTheme === "dark" ? "🌙" : "☀️"}
+                {resolvedTheme === "dark" ? <MoonOutlined /> : <SunOutlined />}
               </div>
               <div>
                 <div className={styles.profileItemKey}>Giao diện</div>
@@ -207,7 +258,9 @@ export default function EmployeeProfilePage() {
                   {resolvedTheme === "dark" ? "Đang tối" : "Đang sáng"}
                 </div>
               </div>
-              <div className={styles.profileItemArrow}>›</div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
             </button>
             <button
               className={`${styles.profileItem} ${styles.clickable}`}
@@ -215,7 +268,7 @@ export default function EmployeeProfilePage() {
               onClick={() => document.getElementById("face-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
             >
               <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
-                🤳
+                <CameraOutlined />
               </div>
               <div>
                 <div className={styles.profileItemKey}>Khuôn mặt đã đăng ký</div>
@@ -224,11 +277,13 @@ export default function EmployeeProfilePage() {
                   {nextAllowed ? ` • Có thể đăng ký lại sau: ${new Date(nextAllowed).toLocaleString("vi-VN")}` : ""}
                 </div>
               </div>
-              <div className={styles.profileItemArrow}>›</div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
             </button>
             <button className={`${styles.profileItem} ${styles.clickable}`} type="button" onClick={() => nav("/employee/change-password")}>
               <div className={styles.profileItemIcon} style={{ background: "#FFE9E9" }}>
-                🔒
+                <LockOutlined />
               </div>
               <div>
                 <div className={styles.profileItemKey}>Đổi mật khẩu</div>
@@ -236,7 +291,9 @@ export default function EmployeeProfilePage() {
                   Thay đổi
                 </div>
               </div>
-              <div className={styles.profileItemArrow}>›</div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
             </button>
             <button
               className={`${styles.profileItem} ${styles.clickable}`}
@@ -247,7 +304,7 @@ export default function EmployeeProfilePage() {
               }}
             >
               <div className={styles.profileItemIcon} style={{ background: "#FFE9E9" }}>
-                🚪
+                <LogoutOutlined />
               </div>
               <div>
                 <div className={styles.profileItemKey}>Đăng xuất</div>
@@ -255,7 +312,9 @@ export default function EmployeeProfilePage() {
                   Thoát khỏi tài khoản
                 </div>
               </div>
-              <div className={styles.profileItemArrow}>›</div>
+              <div className={styles.profileItemArrow}>
+                <RightOutlined />
+              </div>
             </button>
           </div>
         </div>

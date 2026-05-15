@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import styles from "./EmployeeChangePasswordPage.module.scss";
 import { changeMyPassword } from "../../../shared/api/auth";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { ArrowLeftOutlined, LockOutlined } from "@ant-design/icons";
 
 export default function EmployeeChangePasswordPage() {
   const nav = useNavigate();
@@ -23,9 +24,11 @@ export default function EmployeeChangePasswordPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.wrap}>
-        <div className={styles.card}>
-          <div className={styles.h1}>🔒 Đổi mật khẩu</div>
+        <div className={styles.wrap}>
+          <div className={styles.card}>
+          <div className={styles.h1}>
+            <LockOutlined /> Đổi mật khẩu
+          </div>
           <div className={styles.muted}>Áp dụng cho tài khoản đang đăng nhập (Nhân viên).</div>
 
           <label className={styles.label}>Mật khẩu hiện tại</label>
@@ -42,7 +45,7 @@ export default function EmployeeChangePasswordPage() {
 
           <div className={styles.row}>
             <button className={styles.btnGhost} type="button" onClick={() => nav(-1)} disabled={loading}>
-              ← Quay lại
+              <ArrowLeftOutlined /> Quay lại
             </button>
             <button
               className={styles.btnPrimary}
@@ -57,7 +60,7 @@ export default function EmployeeChangePasswordPage() {
                   setCurrentPassword("");
                   setNewPassword("");
                   setNewPassword2("");
-                  setOk("✅ Đổi mật khẩu thành công");
+                  setOk("Đổi mật khẩu thành công");
                 } catch (e) {
                   setErr(getApiErrorMessage(e));
                 } finally {

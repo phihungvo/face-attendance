@@ -5,13 +5,14 @@ import Table from "../../components/Table/Table";
 import Modal from "../../components/Modal/Modal";
 import { createUser, deleteUser, listUsers, updateUser } from "../../../shared/api/users";
 import { listDepartments } from "../../../shared/api/departments";
-import { enrollFaceForUser } from "../../../shared/api/enrollFace";
+import { enrollFaceForUser, resetFaceForUser } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { exportExcelHtml } from "../../../shared/lib/excelExport";
 import type { User } from "../../../shared/types/user";
 import type { Department } from "../../../shared/types/department";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { viStatusLabel } from "../../../shared/i18n/vi";
+import { ReloadOutlined } from "@ant-design/icons";
 import styles from "./EmployeesPage.module.scss";
 
 function initialsFromName(name: string) {
@@ -574,6 +575,30 @@ export default function EmployeesPage() {
         }}
         footer={
           <>
+            <button
+              className={styles.btnGhost}
+              type="button"
+              disabled={loading || !faceUser}
+              onClick={async () => {
+                try {
+                  if (!faceUser) return;
+                  const ok = confirm(`Reset khuôn mặt của "${faceUser.name}" về trống?`);
+                  if (!ok) return;
+                  setLoading(true);
+                  setError(null);
+                  await resetFaceForUser(faceUser.id);
+                  alert("Đã reset khuôn mặt về trống");
+                  setFaceModalOpen(false);
+                  cam.stop();
+                } catch (e) {
+                  setError(getApiErrorMessage(e));
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              <ReloadOutlined /> Reset khuôn mặt
+            </button>
             {!cam.state.ready ? (
               <button className={styles.btnGhost} type="button" onClick={() => cam.start()} disabled={loading}>
                 📷 Bật camera

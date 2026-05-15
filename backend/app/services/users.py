@@ -80,6 +80,15 @@ class UserService:
         db.commit()
         return {"enrolled": True, "face_enrolled_at": now}
 
+    def reset_face(self, db: Session, *, user_id: int) -> None:
+        user = self._users.get(db, user_id)
+        if user is None:
+            raise ValueError("User not found")
+
+        self._embeddings.delete_by_user(db, user_id=user_id)
+        setattr(user, "face_enrolled_at", None)
+        db.commit()
+
     def get_face_enroll_status(self, db: Session, *, user_id: int) -> dict[str, object]:
         user = self._users.get(db, user_id)
         if user is None:
