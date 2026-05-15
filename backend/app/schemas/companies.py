@@ -14,6 +14,7 @@ class CompanyOut(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     geo_radius_meters: float | None = None
+    require_gps_on_attendance: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -27,6 +28,7 @@ class CompanyCreateRequest(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     geo_radius_meters: float | None = None
+    require_gps_on_attendance: bool = False
 
 
 class CompanyUpdateRequest(BaseModel):
@@ -37,3 +39,4 @@ class CompanyUpdateRequest(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     geo_radius_meters: float | None = None
+    require_gps_on_attendance: bool | None = None

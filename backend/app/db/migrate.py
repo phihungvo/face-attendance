@@ -136,8 +136,10 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
             _exec(engine, "ALTER TABLE companies ADD COLUMN latitude DOUBLE NULL")
         if not _column_exists(engine, table="companies", column="longitude", schema=schema):
             _exec(engine, "ALTER TABLE companies ADD COLUMN longitude DOUBLE NULL")
-        if not _column_exists(engine, table="companies", column="geo_radius_meters", schema=schema):
-            _exec(engine, "ALTER TABLE companies ADD COLUMN geo_radius_meters DOUBLE NULL")
+    if not _column_exists(engine, table="companies", column="geo_radius_meters", schema=schema):
+        _exec(engine, "ALTER TABLE companies ADD COLUMN geo_radius_meters DOUBLE NULL")
+    if not _column_exists(engine, table="companies", column="require_gps_on_attendance", schema=schema):
+        _exec(engine, "ALTER TABLE companies ADD COLUMN require_gps_on_attendance TINYINT(1) NOT NULL DEFAULT 0")
 
     # IAM join tables (new): user_roles, user_permissions
     if not _table_exists(engine, table="user_roles", schema=schema):

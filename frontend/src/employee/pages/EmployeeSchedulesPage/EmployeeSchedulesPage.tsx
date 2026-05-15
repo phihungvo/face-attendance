@@ -507,7 +507,6 @@ export default function EmployeeSchedulesPage() {
                 <div className={[styles.legendIcon, styles.vNight].join(" ")}>🌙</div>
                 <div className={styles.legendText}>Ca tối</div>
               </div>
-              <div className={styles.legendHint}>Nhấn vào một ngày để xem chi tiết.</div>
             </div>
             <div className={styles.calendar}>
               {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((l) => (

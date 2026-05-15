@@ -11,7 +11,7 @@ export type GeoState = {
   refresh(): void;
 };
 
-export function useGeoPosition(options?: { watch?: boolean; timeoutMs?: number; maximumAgeMs?: number }) {
+export function useGeoPosition(options?: { watch?: boolean; auto?: boolean; timeoutMs?: number; maximumAgeMs?: number }) {
   const supported = typeof navigator !== "undefined" && !!navigator.geolocation;
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -40,8 +40,9 @@ export function useGeoPosition(options?: { watch?: boolean; timeoutMs?: number; 
 
   useEffect(() => {
     if (!supported) return;
+    if (options?.auto === false) return;
     refresh();
-  }, [refresh, supported]);
+  }, [options?.auto, refresh, supported]);
 
   useEffect(() => {
     if (!supported) return;
@@ -71,4 +72,3 @@ export function useGeoPosition(options?: { watch?: boolean; timeoutMs?: number; 
     refresh
   } satisfies GeoState;
 }
-
