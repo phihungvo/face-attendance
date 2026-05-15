@@ -25,6 +25,7 @@ import {
 } from "@ant-design/icons";
 import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
 import { invalidateKey, setCached } from "../../../shared/lib/queryCache";
+import { useSearchParams } from "react-router-dom";
 import { empKeys } from "../../cacheKeys";
 
 function todayYmd() {
@@ -118,7 +119,17 @@ export default function EmployeeSchedulesPage() {
   const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
   const [regs, setRegs] = useState<WorkScheduleRegistration[]>([]);
 
-  const [tab, setTab] = useState<TabKey>("register");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [tab, setTab] = useState<TabKey>(() => {
+    const urlTab = searchParams.get("tab") as TabKey;
+    if (urlTab && ["register", "calendar", "details"].includes(urlTab)) {
+        return urlTab;
+    }
+    return "calendar"; // Mặc định là Lịch của tôi
+});
+
+  // const [tab, setTab] = useState<TabKey>("register");
   const [note, setNote] = useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
 
@@ -324,6 +335,11 @@ export default function EmployeeSchedulesPage() {
     return regsSorted.filter((r) => normalizeYmd(r.day) === selectedDay);
   }, [regsSorted, selectedDay]);
 
+  const handleTabChange = (newTab: TabKey) => {
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+};
+
   const [detailPage, setDetailPage] = useState(1);
   const detailPageSize = 12;
   const detailTotalPages = Math.max(1, Math.ceil(regsSorted.length / detailPageSize));
@@ -346,13 +362,13 @@ export default function EmployeeSchedulesPage() {
       ) : null}
 
       <div className={styles.tabs}>
-        <button type="button" className={tab === "register" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => setTab("register")}>
+        <button type="button" className={tab === "register" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => handleTabChange("register")}>
           <PlusOutlined /> Đăng ký ca
         </button>
-        <button type="button" className={tab === "calendar" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => setTab("calendar")}>
+        <button type="button" className={tab === "calendar" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => handleTabChange("calendar")}>
           <CalendarOutlined /> Lịch của tôi
         </button>
-        <button type="button" className={tab === "details" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => setTab("details")}>
+        <button type="button" className={tab === "details" ? `${styles.tab} ${styles.active}` : styles.tab} onClick={() => handleTabChange("details")}>
           <ProfileOutlined /> Chi tiết
         </button>
       </div>
