@@ -3,6 +3,20 @@ from __future__ import annotations
 from sqlalchemy import Engine, text
 
 
+def _get_column_meta(engine: Engine, *, table: str, column: str, schema: str) -> dict[str, object] | None:
+    q = text(
+        """
+        SELECT COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :table AND COLUMN_NAME = :column
+        LIMIT 1
+        """
+    )
+    with engine.connect() as conn:
+        row = conn.execute(q, {"schema": schema, "table": table, "column": column}).mappings().first()
+        return dict(row) if row is not None else None
+
+
 def _column_exists(engine: Engine, *, table: str, column: str, schema: str) -> bool:
     q = text(
         """
@@ -320,5 +334,215 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
                 _exec(engine, "ALTER TABLE work_schedules ADD COLUMN date_end DATE NULL")
             if not _column_exists(engine, table="work_schedules", column="note", schema=schema):
                 _exec(engine, "ALTER TABLE work_schedules ADD COLUMN note VARCHAR(255) NULL")
+    except Exception:
+        pass
+
+    # notifications tables
+    try:
+        if not _table_exists(engine, table="notifications", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE notifications (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    company_id INT NULL,
+                    type VARCHAR(64) NOT NULL,
+                    category VARCHAR(32) NOT NULL,
+                    severity VARCHAR(16) NOT NULL DEFAULT 'info',
+                    title VARCHAR(255) NOT NULL,
+                    body TEXT NULL,
+                    entity_type VARCHAR(64) NULL,
+                    entity_id INT NULL,
+                    action_url VARCHAR(255) NULL,
+                    created_by_user_id INT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY ix_notifications_company_id (company_id),
+                    KEY ix_notifications_type (type),
+                    KEY ix_notifications_category (category),
+                    KEY ix_notifications_severity (severity),
+                    KEY ix_notifications_created_by_user_id (created_by_user_id),
+                    KEY ix_notifications_created_at (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+        if not _column_exists(engine, table="notifications", column="company_id", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN company_id INT NULL, ADD KEY ix_notifications_company_id (company_id)")
+        if not _column_exists(engine, table="notifications", column="type", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN type VARCHAR(64) NOT NULL DEFAULT 'system.notice', ADD KEY ix_notifications_type (type)")
+        else:
+            type_meta = _get_column_meta(engine, table="notifications", column="type", schema=schema) or {}
+            if "varchar" not in str(type_meta.get("COLUMN_TYPE", "")).lower():
+                _exec(engine, "ALTER TABLE notifications MODIFY COLUMN type VARCHAR(64) NOT NULL")
+            if not _index_exists(engine, table="notifications", index="ix_notifications_type", schema=schema):
+                _exec(engine, "ALTER TABLE notifications ADD KEY ix_notifications_type (type)")
+        if not _column_exists(engine, table="notifications", column="category", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN category VARCHAR(32) NOT NULL DEFAULT 'system', ADD KEY ix_notifications_category (category)")
+        if not _column_exists(engine, table="notifications", column="severity", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN severity VARCHAR(16) NOT NULL DEFAULT 'info', ADD KEY ix_notifications_severity (severity)")
+        else:
+            severity_meta = _get_column_meta(engine, table="notifications", column="severity", schema=schema) or {}
+            if "varchar" not in str(severity_meta.get("COLUMN_TYPE", "")).lower():
+                _exec(engine, "ALTER TABLE notifications MODIFY COLUMN severity VARCHAR(16) NOT NULL DEFAULT 'info'")
+            if not _index_exists(engine, table="notifications", index="ix_notifications_severity", schema=schema):
+                _exec(engine, "ALTER TABLE notifications ADD KEY ix_notifications_severity (severity)")
+        if not _column_exists(engine, table="notifications", column="title", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN title VARCHAR(255) NOT NULL DEFAULT 'Thông báo'")
+        if not _column_exists(engine, table="notifications", column="body", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN body TEXT NULL")
+        else:
+            body_meta = _get_column_meta(engine, table="notifications", column="body", schema=schema) or {}
+            if "text" not in str(body_meta.get("COLUMN_TYPE", "")).lower():
+                _exec(engine, "ALTER TABLE notifications MODIFY COLUMN body TEXT NULL")
+        if not _column_exists(engine, table="notifications", column="entity_type", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN entity_type VARCHAR(64) NULL")
+        if not _column_exists(engine, table="notifications", column="entity_id", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN entity_id INT NULL")
+        if not _column_exists(engine, table="notifications", column="action_url", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN action_url VARCHAR(255) NULL")
+        if not _column_exists(engine, table="notifications", column="created_by_user_id", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN created_by_user_id INT NULL, ADD KEY ix_notifications_created_by_user_id (created_by_user_id)")
+        if not _column_exists(engine, table="notifications", column="created_at", schema=schema):
+            _exec(engine, "ALTER TABLE notifications ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD KEY ix_notifications_created_at (created_at)")
+        else:
+            created_at_meta = _get_column_meta(engine, table="notifications", column="created_at", schema=schema) or {}
+            if str(created_at_meta.get("IS_NULLABLE", "")).upper() != "NO" or created_at_meta.get("COLUMN_DEFAULT") != "CURRENT_TIMESTAMP":
+                _exec(engine, "ALTER TABLE notifications MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+            if not _index_exists(engine, table="notifications", index="ix_notifications_created_at", schema=schema):
+                _exec(engine, "ALTER TABLE notifications ADD KEY ix_notifications_created_at (created_at)")
+        if _column_exists(engine, table="notifications", column="user_id", schema=schema):
+            user_id_meta = _get_column_meta(engine, table="notifications", column="user_id", schema=schema) or {}
+            if str(user_id_meta.get("IS_NULLABLE", "")).upper() != "YES":
+                _exec(engine, "ALTER TABLE notifications MODIFY COLUMN user_id INT NULL")
+        if not _table_exists(engine, table="notification_recipients", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE notification_recipients (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    notification_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    is_read TINYINT(1) NOT NULL DEFAULT 0,
+                    read_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_notification_recipient_user (notification_id, user_id),
+                    KEY ix_notification_recipients_notification_id (notification_id),
+                    KEY ix_notification_recipients_user_id (user_id),
+                    KEY ix_notification_recipients_is_read (is_read)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+        if not _column_exists(engine, table="notification_recipients", column="notification_id", schema=schema):
+            _exec(engine, "ALTER TABLE notification_recipients ADD COLUMN notification_id INT NOT NULL, ADD KEY ix_notification_recipients_notification_id (notification_id)")
+        if not _column_exists(engine, table="notification_recipients", column="user_id", schema=schema):
+            _exec(engine, "ALTER TABLE notification_recipients ADD COLUMN user_id INT NOT NULL, ADD KEY ix_notification_recipients_user_id (user_id)")
+        if not _column_exists(engine, table="notification_recipients", column="is_read", schema=schema):
+            _exec(engine, "ALTER TABLE notification_recipients ADD COLUMN is_read TINYINT(1) NOT NULL DEFAULT 0, ADD KEY ix_notification_recipients_is_read (is_read)")
+        if not _column_exists(engine, table="notification_recipients", column="read_at", schema=schema):
+            _exec(engine, "ALTER TABLE notification_recipients ADD COLUMN read_at DATETIME NULL")
+        if not _column_exists(engine, table="notification_recipients", column="created_at", schema=schema):
+            _exec(engine, "ALTER TABLE notification_recipients ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if not _column_exists(engine, table="notification_recipients", column="archived_at", schema=schema):
+            _exec(engine, "ALTER TABLE notification_recipients ADD COLUMN archived_at DATETIME NULL, ADD KEY ix_notification_recipients_archived_at (archived_at)")
+        if _column_exists(engine, table="notifications", column="user_id", schema=schema):
+            _exec(
+                engine,
+                """
+                INSERT IGNORE INTO notification_recipients (notification_id, user_id, is_read, read_at, created_at)
+                SELECT
+                    n.id,
+                    n.user_id,
+                    COALESCE(n.read, 0),
+                    CASE WHEN COALESCE(n.read, 0) = 1 THEN COALESCE(n.created_at, CURRENT_TIMESTAMP) ELSE NULL END,
+                    COALESCE(n.created_at, CURRENT_TIMESTAMP)
+                FROM notifications n
+                WHERE n.user_id IS NOT NULL
+                """,
+            )
+        if not _table_exists(engine, table="notification_preferences", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE notification_preferences (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    user_id INT NOT NULL,
+                    realtime_toast_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    attendance_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    leave_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    schedule_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    settings_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    iam_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    system_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_notification_preferences_user (user_id),
+                    KEY ix_notification_preferences_user_id (user_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+        if not _column_exists(engine, table="notification_preferences", column="user_id", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN user_id INT NOT NULL, ADD KEY ix_notification_preferences_user_id (user_id)")
+        if not _column_exists(engine, table="notification_preferences", column="realtime_toast_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN realtime_toast_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="notification_preferences", column="attendance_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN attendance_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="notification_preferences", column="leave_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN leave_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="notification_preferences", column="schedule_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN schedule_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="notification_preferences", column="settings_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN settings_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="notification_preferences", column="iam_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN iam_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="notification_preferences", column="system_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN system_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="notification_preferences", column="created_at", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if not _column_exists(engine, table="notification_preferences", column="updated_at", schema=schema):
+            _exec(engine, "ALTER TABLE notification_preferences ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+        if not _table_exists(engine, table="company_notification_policies", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE company_notification_policies (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    company_id INT NOT NULL,
+                    late_attendance_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    absent_attendance_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    new_leave_request_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    daily_report_enabled TINYINT(1) NOT NULL DEFAULT 0,
+                    overtime_request_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    attendance_policy_change_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    gps_policy_change_enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_company_notification_policies_company (company_id),
+                    KEY ix_company_notification_policies_company_id (company_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+        if not _column_exists(engine, table="company_notification_policies", column="company_id", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN company_id INT NOT NULL, ADD KEY ix_company_notification_policies_company_id (company_id)")
+        if not _column_exists(engine, table="company_notification_policies", column="late_attendance_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN late_attendance_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="company_notification_policies", column="absent_attendance_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN absent_attendance_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="company_notification_policies", column="new_leave_request_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN new_leave_request_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="company_notification_policies", column="daily_report_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN daily_report_enabled TINYINT(1) NOT NULL DEFAULT 0")
+        if not _column_exists(engine, table="company_notification_policies", column="overtime_request_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN overtime_request_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="company_notification_policies", column="attendance_policy_change_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN attendance_policy_change_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="company_notification_policies", column="gps_policy_change_enabled", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN gps_policy_change_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if not _column_exists(engine, table="company_notification_policies", column="created_at", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if not _column_exists(engine, table="company_notification_policies", column="updated_at", schema=schema):
+            _exec(engine, "ALTER TABLE company_notification_policies ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     except Exception:
         pass

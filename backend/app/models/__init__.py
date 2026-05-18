@@ -6,6 +6,7 @@ from app.models.attendance_log import AttendanceLog
 from app.models.attendance_policy import AttendancePolicy
 from app.models.company_attendance_policy import CompanyAttendancePolicy
 from app.models.leave_request import LeaveRequest
+from app.models.notification import CompanyNotificationPolicy, Notification, NotificationPreference, NotificationRecipient
 from app.models.work_schedule import WorkSchedule
 from app.models.work_schedule_registration_request import WorkScheduleRegistrationRequest
 from app.models.work_schedule_registration import WorkScheduleRegistration
@@ -20,6 +21,10 @@ __all__ = [
     "AttendancePolicy",
     "CompanyAttendancePolicy",
     "LeaveRequest",
+    "Notification",
+    "NotificationRecipient",
+    "NotificationPreference",
+    "CompanyNotificationPolicy",
     "WorkSchedule",
     "WorkScheduleRegistration",
     "WorkScheduleRegistrationRequest",

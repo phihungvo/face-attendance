@@ -22,6 +22,7 @@ import RequirePermission from "../shared/rbac/RequirePermission";
 import CompaniesPage from "./pages/CompaniesPage/CompaniesPage";
 import SchedulesPage from "./pages/SchedulesPage/SchedulesPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage/ChangePasswordPage";
+import NotificationRealtimeBridge from "../shared/notifications/NotificationRealtimeBridge";
 
 function PrivateRoutes() {
   const auth = useAuth();
@@ -40,16 +41,32 @@ function PrivateRoutes() {
   const isManager = auth.roleKeys.includes("manager");
   const isEmployee = auth.roleKeys.includes("employee");
 
-  if (isEmployee && !isManager) return <EmployeeApp />;
+  if (isEmployee && !isManager) {
+    return (
+      <>
+        <NotificationRealtimeBridge />
+        <EmployeeApp />
+      </>
+    );
+  }
 
   // Back-compat fallback for accounts that only have permissions (no roles).
   const canManager = auth.permissionKeys.includes("dashboard.read");
   const canEmployee = auth.permissionKeys.includes("employee.portal");
-  if (canEmployee && !canManager) return <EmployeeApp />;
+  if (canEmployee && !canManager) {
+    return (
+      <>
+        <NotificationRealtimeBridge />
+        <EmployeeApp />
+      </>
+    );
+  }
 
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
+    <>
+      <NotificationRealtimeBridge />
+      <Routes>
+        <Route element={<AppLayout />}>
         <Route
           path="/"
           element={
@@ -195,8 +212,9 @@ function PrivateRoutes() {
 
         <Route path="/employee/*" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+        </Route>
+      </Routes>
+    </>
   );
 }
 

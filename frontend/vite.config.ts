@@ -14,7 +14,11 @@ export default defineConfig(({ mode }) => {
       host: true,
       allowedHosts: [".trycloudflare.com"],
       proxy: {
-        "/api": backendTarget,
+        "/api": {
+          target: backendTarget,
+          changeOrigin: true,
+          ws: true
+        },
         "/docs": backendTarget,
         "/openapi.json": backendTarget
       }

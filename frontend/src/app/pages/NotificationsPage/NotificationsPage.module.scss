@@ -25,20 +25,76 @@
   gap: 10px;
 }
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.select {
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.filterBtn {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.filterBtnActive {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 .item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 10px 12px;
   border-radius: 12px;
   background: var(--surface2);
   border: 1px solid var(--border);
   position: relative;
+  width: 100%;
 }
 
 .unread {
   background: var(--info-bg);
   border-color: var(--info-border);
+}
+
+.itemMain {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
 }
 
 .icon {
@@ -55,6 +111,14 @@
 
 .main {
   min-width: 0;
+  flex: 1;
+}
+
+.itemTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .title {
@@ -63,10 +127,28 @@
   color: var(--text);
 }
 
+.categoryPill {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .sub {
   font-size: 12px;
   color: var(--text3);
   margin-top: 2px;
+  font-weight: 700;
+}
+
+.time {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 6px;
   font-weight: 700;
 }
 
@@ -77,4 +159,128 @@
   background: var(--danger);
   box-shadow: 0 0 0 4px var(--danger-bg-soft);
   margin-left: auto;
+}
+
+.btnLight {
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text2);
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.empty,
+.error {
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text3);
+}
+
+.error {
+  border-style: solid;
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  margin-bottom: 12px;
+}
+
+.loadMore {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.prefGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prefRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.prefTitle {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.prefSub {
+  margin-top: 3px;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.prefToggle {
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  border: none;
+  background: var(--border2);
+  padding: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.18s ease;
+  flex-shrink: 0;
+}
+
+.prefToggleOn {
+  background: var(--primary);
+}
+
+.prefToggleThumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  transform: translateX(0);
+  transition: transform 0.18s ease;
+}
+
+.prefToggleOn .prefToggleThumb {
+  transform: translateX(24px);
+}
+
+.prefSaving {
+  margin-top: 10px;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 599px) {
+  .item {
+    align-items: flex-start;
+  }
+
+  .btnLight {
+    align-self: center;
+  }
+
+  .prefRow {
+    align-items: flex-start;
+  }
 }
