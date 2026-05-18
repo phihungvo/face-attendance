@@ -30,7 +30,10 @@
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--surface2) 60%, transparent), transparent);
+  background: var(
+    --modal-header-bg,
+    linear-gradient(180deg, color-mix(in oklab, var(--surface2) 60%, transparent), transparent)
+  );
 }
 
 .title {
@@ -73,7 +76,10 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  background: linear-gradient(0deg, color-mix(in oklab, var(--surface2) 55%, transparent), transparent);
+  background: var(
+    --modal-footer-bg,
+    linear-gradient(0deg, color-mix(in oklab, var(--surface2) 55%, transparent), transparent)
+  );
   position: sticky;
   bottom: 0;
 }

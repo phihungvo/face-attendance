@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceWork — Lịch Ca Làm</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0e14;
+  --s1:#12151f;
+  --s2:#191d2b;
+  --s3:#1f2437;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --text:#e2e6f0;
+  --muted:#64748b;
+  --muted2:#94a3b8;
+
+  --morning:#f59e0b;
+  --morning-bg:rgba(245,158,11,0.12);
+  --morning-border:rgba(245,158,11,0.25);
+
+  --afternoon:#10b981;
+  --afternoon-bg:rgba(16,185,129,0.12);
+  --afternoon-border:rgba(16,185,129,0.25);
+
+  --evening:#8b5cf6;
+  --evening-bg:rgba(139,92,246,0.12);
+  --evening-border:rgba(139,92,246,0.25);
+
+  --night:#3b82f6;
+  --night-bg:rgba(59,130,246,0.12);
+  --night-border:rgba(59,130,246,0.25);
+
+  --danger:#ef4444;
+  --danger-bg:rgba(239,68,68,0.1);
+  --success:#22c55e;
+  --success-bg:rgba(34,197,94,0.1);
+  --warn:#f59e0b;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  font-family:'Space Grotesk',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+
+/* HEADER */
+.header{
+  background:var(--s1);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;
+  height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;
+  top:0;
+  z-index:50;
+}
+.logo{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.3px;}
+.logo span{color:#10b981;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;border:none;transition:all .18s;font-family:'Space Grotesk',sans-serif;
+  white-space:nowrap;
+}
+.btn-primary{background:#10b981;color:#fff;}
+.btn-primary:hover{background:#0d9268;transform:translateY(-1px);}
+.btn-ghost{background:var(--s2);color:var(--text);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--s3);border-color:var(--border2);}
+.btn-sm{padding:6px 11px;font-size:12px;}
+
+/* TOOLBAR */
+.toolbar{
+  padding:16px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;
+  border-bottom:1px solid var(--border);
+  background:var(--s1);
+}
+.cal-nav{display:flex;align-items:center;gap:8px;}
+.cal-month{font-size:18px;font-weight:700;min-width:180px;letter-spacing:-0.5px;}
+.nav-btn{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--s2);border:1px solid var(--border);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:15px;transition:all .15s;
+}
+.nav-btn:hover{background:var(--s3);border-color:var(--border2);}
+
+.view-toggle{
+  display:flex;background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;padding:3px;gap:2px;
+}
+.vtbtn{
+  padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;
+  cursor:pointer;border:none;background:transparent;color:var(--muted);
+  font-family:'Space Grotesk',sans-serif;transition:all .15s;
+}
+.vtbtn.active{background:var(--s3);color:var(--text);}
+
+/* LEGEND */
+.legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted2);}
+.ldot{width:8px;height:8px;border-radius:2px;}
+
+/* MAIN */
+.main{padding:20px 24px;}
+
+/* MONTH GRID */
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.cal-day-name{
+  text-align:center;font-size:11px;font-weight:600;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--muted);padding:6px 0;
+}
+.cal-day-name.weekend{color:var(--danger);opacity:.6;}
+
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+
+.cal-cell{
+  background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  min-height:108px;padding:8px;cursor:pointer;transition:all .18s;
+  position:relative;overflow:hidden;
+}
+.cal-cell:hover{border-color:var(--border2);background:var(--s2);}
+.cal-cell.today{border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.03);}
+.cal-cell.today .date-num{background:rgba(16,185,129,.2);color:#10b981;}
+.cal-cell.other{opacity:.3;}
+.cal-cell.weekend-cell{background:rgba(239,68,68,.02);}
+.cal-cell.has-shifts:hover{border-color:rgba(16,185,129,.3);}
+
+.date-num{
+  font-size:13px;font-weight:700;width:24px;height:24px;
+  border-radius:6px;display:flex;align-items:center;justify-content:center;
+  margin-bottom:6px;font-family:'JetBrains Mono',monospace;
+}
+
+.pill{
+  display:flex;align-items:center;gap:3px;
+  padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;
+  margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;cursor:pointer;transition:opacity .15s;border:1px solid transparent;
+}
+.pill:hover{opacity:.8;}
+.pill.morning{background:var(--morning-bg);color:var(--morning);border-color:var(--morning-border);}
+.pill.afternoon{background:var(--afternoon-bg);color:var(--afternoon);border-color:var(--afternoon-border);}
+.pill.evening{background:var(--evening-bg);color:var(--evening);border-color:var(--evening-border);}
+.pill.night{background:var(--night-bg);color:var(--night);border-color:var(--night-border);}
+
+.pill-dot{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.more-tag{font-size:10px;color:var(--muted);padding:1px 4px;}
+.cell-count{
+  position:absolute;top:7px;right:7px;
+  font-size:10px;font-weight:600;color:var(--muted);
+  background:var(--s2);padding:1px 4px;border-radius:3px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* WEEK VIEW */
+.week-wrap{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:auto;
+}
+.week-grid{
+  display:grid;grid-template-columns:56px repeat(7,1fr);min-width:640px;
+}
+.wh-empty{border-bottom:1px solid var(--border);}
+.wh-cell{
+  padding:10px 6px;text-align:center;border-bottom:1px solid var(--border);
+  border-left:1px solid var(--border);font-size:12px;
+}
+.wh-cell.today-col{background:rgba(16,185,129,.04);color:#10b981;}
+.wh-day-num{font-size:17px;font-weight:700;display:block;font-family:'JetBrains Mono',monospace;}
+.wh-day-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+
+.wt-cell{
+  padding:5px 0;text-align:right;padding-right:8px;
+  border-bottom:1px solid var(--border);border-right:1px solid var(--border);
+  font-size:10px;color:var(--muted);min-height:48px;
+  font-family:'JetBrains Mono',monospace;display:flex;align-items:flex-start;justify-content:flex-end;
+}
+.wr-cell{
+  border-bottom:1px solid var(--border);border-left:1px solid var(--border);
+  padding:3px;min-height:48px;position:relative;
+}
+.wr-cell.today-col{background:rgba(16,185,129,.02);}
+.we-block{
+  border-radius:5px;padding:3px 6px;font-size:10px;font-weight:600;
+  cursor:pointer;margin-bottom:2px;transition:opacity .15s;border-left:2px solid currentColor;
+}
+.we-block:hover{opacity:.8;}
+.we-block.morning{background:var(--morning-bg);color:var(--morning);}
+.we-block.afternoon{background:var(--afternoon-bg);color:var(--afternoon);}
+.we-block.evening{background:var(--evening-bg);color:var(--evening);}
+.we-block.night{background:var(--night-bg);color:var(--night);}
+
+/* MODAL OVERLAY */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:200;display:flex;align-items:center;justify-content:center;
+  padding:16px;opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.overlay.open{opacity:1;pointer-events:all;}
+.overlay.open .modal{transform:scale(1) translateY(0);}
+
+.modal{
+  background:var(--s1);border:1px solid var(--border2);border-radius:16px;
+  width:100%;max-width:560px;max-height:90vh;overflow-y:auto;
+  transform:scale(.96) translateY(12px);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+.modal::-webkit-scrollbar{width:4px;}
+.modal::-webkit-scrollbar-thumb{background:var(--s3);border-radius:4px;}
+
+.modal-header{
+  padding:20px 20px 0;display:flex;align-items:flex-start;
+  justify-content:space-between;position:sticky;top:0;
+  background:var(--s1);z-index:5;padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.modal-title{font-size:17px;font-weight:700;letter-spacing:-.3px;}
+.modal-subtitle{font-size:12px;color:var(--muted);margin-top:2px;}
+.modal-close{
+  width:30px;height:30px;border-radius:7px;background:var(--s2);
+  border:1px solid var(--border);color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  transition:all .15s;flex-shrink:0;margin-left:12px;
+}
+.modal-close:hover{color:var(--text);background:var(--s3);}
+.modal-body{padding:20px;}
+.modal-footer{padding:0 20px 20px;display:flex;gap:8px;justify-content:flex-end;}
+
+/* FORM */
+.form-group{margin-bottom:14px;}
+.form-label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+.form-input{
+  width:100%;padding:9px 12px;background:var(--s2);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font-size:13px;font-family:'Space Grotesk',sans-serif;outline:none;transition:border-color .15s;
+}
+.form-input:focus{border-color:rgba(16,185,129,.5);box-shadow:0 0 0 3px rgba(16,185,129,.08);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+select.form-input{cursor:pointer;}
+textarea.form-input{resize:none;}
+
+/* SHIFT CARDS IN MODAL */
+.shift-detail-card{
+  background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  padding:14px;margin-bottom:10px;
+}
+.sdc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sdc-name{font-size:14px;font-weight:700;}
+.sdc-badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.sdc-badge.morning{background:var(--morning-bg);color:var(--morning);}
+.sdc-badge.afternoon{background:var(--afternoon-bg);color:var(--afternoon);}
+.sdc-badge.evening{background:var(--evening-bg);color:var(--evening);}
+.sdc-badge.night{background:var(--night-bg);color:var(--night);}
+.sdc-meta{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;}
+.sdc-meta-item{font-size:12px;color:var(--muted);}
+.sdc-meta-item strong{color:var(--text);font-weight:600;}
+
+.prog-bar{height:4px;background:var(--s3);border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.prog-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+
+.emp-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.emp-chip{
+  display:flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:20px;
+  background:var(--bg);border:1px solid var(--border);font-size:11px;
+}
+.emp-status{width:5px;height:5px;border-radius:50%;}
+.emp-status.ok{background:#22c55e;}
+.emp-status.late{background:#f59e0b;}
+.emp-status.absent{background:#ef4444;}
+
+/* STATS ROW */
+.stats-row{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;
+}
+.stat-mini{
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;text-align:center;
+}
+.stat-mini-num{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.stat-mini-label{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.4px;}
+
+/* APPROVE BUTTONS */
+.approve-row{display:flex;gap:6px;margin-top:8px;}
+.a-btn{
+  padding:5px 11px;border-radius:6px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid;transition:all .15s;font-family:'Space Grotesk',sans-serif;
+  display:inline-flex;align-items:center;gap:4px;
+}
+.a-btn.approve{border-color:rgba(34,197,94,.3);color:#22c55e;background:rgba(34,197,94,.08);}
+.a-btn.approve:hover{background:rgba(34,197,94,.18);}
+.a-btn.reject{border-color:rgba(239,68,68,.3);color:#ef4444;background:rgba(239,68,68,.08);}
+.a-btn.reject:hover{background:rgba(239,68,68,.18);}
+.a-btn.edit{border-color:var(--border);color:var(--muted2);background:var(--s3);}
+.a-btn.edit:hover{border-color:var(--border2);color:var(--text);}
+
+/* REQUESTS */
+.req-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:8px;background:var(--bg);
+  border:1px solid var(--border);margin-bottom:6px;transition:all .2s;
+}
+.req-item.approved{border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04);}
+.req-item.rejected{border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04);}
+.req-avatar{
+  width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;
+}
+.req-info{flex:1;min-width:0;}
+.req-name{font-size:13px;font-weight:600;}
+.req-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+.req-actions{display:flex;gap:4px;flex-shrink:0;}
+.raq-btn{
+  width:28px;height:28px;border-radius:6px;border:1px solid;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:13px;background:transparent;transition:all .15s;
+}
+.raq-btn.ok{border-color:rgba(34,197,94,.3);color:#22c55e;}
+.raq-btn.ok:hover{background:rgba(34,197,94,.12);}
+.raq-btn.no{border-color:rgba(239,68,68,.3);color:#ef4444;}
+.raq-btn.no:hover{background:rgba(239,68,68,.12);}
+
+/* SECTION LABEL */
+.sec-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:14px 0;}
+
+/* TABS */
+.modal-tabs{display:flex;gap:2px;background:var(--s2);border-radius:8px;padding:3px;margin-bottom:16px;}
+.tab{
+  flex:1;padding:6px;text-align:center;font-size:12px;font-weight:600;
+  border-radius:6px;cursor:pointer;border:none;background:transparent;
+  color:var(--muted);font-family:'Space Grotesk',sans-serif;transition:all .15s;
+}
+.tab.active{background:var(--s3);color:var(--text);}
+
+/* COLOR SWATCHES */
+.swatches{display:flex;gap:6px;flex-wrap:wrap;}
+.swatch{
+  width:24px;height:24px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:all .15s;
+}
+.swatch.sel{border-color:white;transform:scale(1.15);}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  padding:10px 18px;font-size:13px;font-weight:600;z-index:9999;
+  opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.green{border-color:rgba(34,197,94,.4);color:#22c55e;}
+.toast.red{border-color:rgba(239,68,68,.4);color:#ef4444;}
+.toast.blue{border-color:rgba(59,130,246,.4);color:#60a5fa;}
+
+/* MINI MODAL (create shift) */
+.mini-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:300;display:flex;align-items:center;justify-content:center;
+  padding:16px;opacity:0;pointer-events:none;transition:opacity .22s;
+}
+.mini-modal-overlay.open{opacity:1;pointer-events:all;}
+.mini-modal-overlay.open .mini-modal{transform:scale(1) translateY(0);}
+.mini-modal{
+  background:var(--s1);border:1px solid var(--border2);border-radius:14px;
+  width:100%;max-width:460px;max-height:90vh;overflow-y:auto;
+  transform:scale(.96) translateY(10px);transition:transform .25s;
+}
+.mini-modal-header{
+  padding:18px 18px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:var(--s1);z-index:5;
+}
+.mini-modal-title{font-size:15px;font-weight:700;}
+.mini-modal-body{padding:16px 18px;}
+.mini-modal-footer{padding:0 18px 16px;display:flex;gap:8px;justify-content:flex-end;}
+
+/* PULSE */
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.5);}70%{box-shadow:0 0 0 7px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse 1.8s infinite;flex-shrink:0;}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .header{padding:0 14px;}
+  .toolbar{padding:12px 14px;}
+  .main{padding:14px;}
+  .cal-cell{min-height:72px;padding:6px;}
+  .date-num{font-size:12px;width:22px;height:22px;}
+  .pill{font-size:9px;padding:2px 4px;}
+  .btn-text-hide{display:none;}
+  .legend{gap:8px;}
+  .stats-row{grid-template-columns:repeat(3,1fr);}
+  .form-row{grid-template-columns:1fr;}
+  .cal-month{font-size:15px;min-width:0;}
+}
+@media(max-width:480px){
+  .legend{display:none;}
+  .header-right .btn-ghost{display:none;}
+  .cal-cell{min-height:60px;}
+  .pill{display:none;}
+  .cell-count{display:flex;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">Face<span>Work</span></div>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#10b981;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);padding:5px 10px;border-radius:7px;">
+      <div class="live-dot"></div> Hệ thống hoạt động
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="openCreateShift(null)">+ Tạo ca</button>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="cal-nav">
+    <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+    <div class="cal-month" id="calMonth"></div>
+    <button class="nav-btn" onclick="changeMonth(1)">›</button>
+    <button class="btn btn-ghost btn-sm" onclick="goToday()">Hôm nay</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background:var(--morning)"></div>Ca Sáng</div>
+      <div class="legend-item"><div class="ldot" style="background:var(--afternoon)"></div>Ca Chiều</div>
+      <div class="legend-item"><div class="ldot" style="background:var(--evening)"></div>Ca Tối</div>
+      <div class="legend-item"><div class="ldot" style="background:var(--night)"></div>Ca Đêm</div>
+    </div>
+    <div class="view-toggle">
+      <button class="vtbtn active" onclick="setView('month',this)">Tháng</button>
+      <button class="vtbtn" onclick="setView('week',this)">Tuần</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CALENDAR -->
+<div class="main" id="mainContent"></div>
+
+<!-- DAY DETAIL MODAL -->
+<div class="overlay" id="dayOverlay">
+  <div class="modal" id="dayModal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-subtitle" id="modalSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeDay()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- CREATE SHIFT MODAL -->
+<div class="mini-modal-overlay" id="createOverlay">
+  <div class="mini-modal" id="createModal">
+    <div class="mini-modal-header">
+      <div class="mini-modal-title" id="createTitle">Tạo ca làm mới</div>
+      <button class="modal-close" onclick="closeCreate()">×</button>
+    </div>
+    <div class="mini-modal-body">
+      <input type="hidden" id="editShiftId">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ngày</label>
+          <input class="form-input" type="date" id="cs-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Loại ca</label>
+          <select class="form-input" id="cs-type">
+            <option value="morning">🌅 Ca Sáng (06:00–14:00)</option>
+            <option value="afternoon">☀️ Ca Chiều (14:00–22:00)</option>
+            <option value="evening">🌆 Ca Tối (18:00–02:00)</option>
+            <option value="night">🌙 Ca Đêm (22:00–06:00)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Giờ bắt đầu</label>
+          <input class="form-input" type="time" id="cs-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giờ kết thúc</label>
+          <input class="form-input" type="time" id="cs-end">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phòng ban</label>
+        <select class="form-input" id="cs-dept">
+          <option>Tất cả phòng ban</option>
+          <option>Kho vận</option>
+          <option>Sản xuất</option>
+          <option>Bán hàng</option>
+          <option>Kế toán</option>
+          <option>Bảo vệ</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số NV tối đa</label>
+        <input class="form-input" type="number" id="cs-max" value="20" min="1" max="200">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ghi chú</label>
+        <textarea class="form-input" id="cs-note" rows="2" placeholder="Ghi chú thêm..."></textarea>
+      </div>
+    </div>
+    <div class="mini-modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeCreate()">Hủy</button>
+      <button class="btn btn-primary btn-sm" onclick="saveShift()">✓ Lưu ca</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const SHIFT_META = {
+  morning:   {label:'Ca Sáng',  emoji:'🌅', time:'06:00–14:00', start:'06:00', end:'14:00'},
+  afternoon: {label:'Ca Chiều', emoji:'☀️', time:'14:00–22:00', start:'14:00', end:'22:00'},
+  evening:   {label:'Ca Tối',   emoji:'🌆', time:'18:00–02:00', start:'18:00', end:'02:00'},
+  night:     {label:'Ca Đêm',   emoji:'🌙', time:'22:00–06:00', start:'22:00', end:'06:00'},
+};
+
+const EMP_POOL = [
+  {n:'Nguyễn Văn An',   i:'AN', c:'#10b981'},
+  {n:'Trần Thị Bích',   i:'BI', c:'#8b5cf6'},
+  {n:'Lê Minh Cường',   i:'CU', c:'#f59e0b'},
+  {n:'Phạm Thị Dung',   i:'DU', c:'#ef4444'},
+  {n:'Hoàng Văn Em',    i:'EM', c:'#3b82f6'},
+  {n:'Vũ Thị Phương',   i:'PH', c:'#06b6d4'},
+  {n:'Nguyễn Thị Hoa',  i:'HO', c:'#ec4899'},
+  {n:'Lê Văn Kiên',     i:'KI', c:'#f97316'},
+  {n:'Phạm Văn Nam',    i:'NA', c:'#84cc16'},
+  {n:'Trần Thị Lan',    i:'LA', c:'#a855f7'},
+  {n:'Nguyễn Minh Tuấn',i:'TU', c:'#14b8a6'},
+  {n:'Vũ Văn Hùng',    i:'HU', c:'#fb923c'},
+  {n:'Đặng Thị Mai',    i:'MA', c:'#f43f5e'},
+  {n:'Bùi Văn Long',    i:'LO', c:'#22d3ee'},
+  {n:'Lý Thị Trang',   i:'TR', c:'#a3e635'},
+];
+
+// Generate pseudo-realistic shift data
+let shifts = {};
+let pendingRequests = [];
+let shiftIdCounter = 1000;
+
+function mkId(){return 'S'+(++shiftIdCounter);}
+
+function seedData(){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  // Seed 2 months of data
+  [-1,0,1].forEach(mo=>{
+    const dm = new Date(y, m+mo+1, 0).getDate();
+    for(let d=1;d<=dm;d++){
+      const key = dateKey(new Date(y,m+mo,d));
+      const count = Math.floor(Math.random()*3)+1;
+      const types = shuffle(['morning','afternoon','evening','night']).slice(0,count);
+      shifts[key] = types.map(t=>{
+        const emps = Math.floor(Math.random()*10)+5;
+        const pool = shuffle(EMP_POOL).slice(0,Math.min(emps,EMP_POOL.length));
+        const empList = pool.map(e=>({
+          ...e,
+          status: Math.random()<.75?'ok': Math.random()<.5?'late':'absent',
+          checkin: Math.random()<.8 ? randomTime(SHIFT_META[t].start) : null
+        }));
+        return {
+          id: mkId(), type:t,
+          dept: ['Kho vận','Sản xuất','Bán hàng','Kế toán','Bảo vệ'][Math.floor(Math.random()*5)],
+          max: Math.floor(Math.random()*10)+12,
+          emps: empList, note:'',
+          start: SHIFT_META[t].start, end: SHIFT_META[t].end,
+          status: 'approved'
+        };
+      });
+    }
+  });
+
+  // Seed pending requests
+  const reqEmps = shuffle(EMP_POOL).slice(0,5);
+  reqEmps.forEach((e,i)=>{
+    const d = new Date(y,m, now.getDate()+i+1);
+    pendingRequests.push({
+      id:'R'+(i+1), emp:e,
+      shiftType: ['morning','afternoon','evening','night'][i%4],
+      date: dateKey(d), dateLabel: fmtDate(d),
+      reason: ['Đổi ca theo yêu cầu','Nghỉ đột xuất bù ca','Nhờ người thay','Đăng ký ca thêm','Điều chỉnh lịch cá nhân'][i],
+      status:'pending'
+    });
+  });
+}
+
+function shuffle(a){return [...a].sort(()=>Math.random()-.5);}
+function randomTime(base){
+  const [h,m]=base.split(':').map(Number);
+  const delta=Math.floor(Math.random()*20)-5;
+  const tot=h*60+m+delta;
+  return `${String(Math.floor(tot/60)%24).padStart(2,'0')}:${String(((tot%60)+60)%60).padStart(2,'0')}`;
+}
+function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmtDate(d){
+  const dn=['CN','T2','T3','T4','T5','T6','T7'];
+  return `${dn[d.getDay()]}, ${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+}
+function parseDateKey(k){const[y,mo,d]=k.split('-').map(Number);return new Date(y,mo-1,d);}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let curY = new Date().getFullYear();
+let curM = new Date().getMonth();
+let viewMode = 'month';
+let activeDayKey = null;
+let activeTab = 0;
+
+const MONTH_VI = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+
+// ── RENDER CALENDAR ───────────────────────────────────────────────────────────
+function render(){
+  document.getElementById('calMonth').textContent = `${MONTH_VI[curM]} · ${curY}`;
+  viewMode==='month' ? renderMonth() : renderWeek();
+}
+
+function renderMonth(){
+  const content = document.getElementById('mainContent');
+  const first = new Date(curY,curM,1).getDay();
+  const days = new Date(curY,curM+1,0).getDate();
+  const prevDays = new Date(curY,curM,0).getDate();
+  const offset = first===0?6:first-1;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html=`<div class="cal-head">
+    <div class="cal-day-name">T2</div><div class="cal-day-name">T3</div>
+    <div class="cal-day-name">T4</div><div class="cal-day-name">T5</div>
+    <div class="cal-day-name">T6</div>
+    <div class="cal-day-name weekend">T7</div><div class="cal-day-name weekend">CN</div>
+  </div><div class="cal-grid">`;
+
+  for(let i=0;i<42;i++){
+    let day,mo,yr,other=false;
+    if(i<offset){day=prevDays-offset+i+1;mo=curM-1;yr=curY;other=true;}
+    else if(i-offset<days){day=i-offset+1;mo=curM;yr=curY;}
+    else{day=i-offset-days+1;mo=curM+1;yr=curY;other=true;}
+    if(mo<0){mo=11;yr--;}if(mo>11){mo=0;yr++;}
+
+    const d=new Date(yr,mo,day);
+    const key=dateKey(d);
+    const dow=d.getDay();
+    const isWeekend=dow===0||dow===6;
+    const isToday=d.getTime()===today.getTime();
+    const dayShifts=shifts[key]||[];
+    const totalEmps=dayShifts.reduce((a,s)=>a+s.emps.length,0);
+    const hasShifts=dayShifts.length>0;
+
+    let cls=`cal-cell${isToday?' today':''}${other?' other':''}${isWeekend&&!other?' weekend-cell':''}${hasShifts?' has-shifts':''}`;
+    let pills=dayShifts.slice(0,2).map(s=>`
+      <div class="pill ${s.type}"><div class="pill-dot"></div>${SHIFT_META[s.type].label}·${s.emps.length}</div>
+    `).join('');
+    if(dayShifts.length>2) pills+=`<div class="more-tag">+${dayShifts.length-2} ca</div>`;
+
+    html+=`<div class="${cls}" onclick="openDay('${key}')">
+      <div class="date-num">${day}</div>
+      ${totalEmps>0?`<div class="cell-count">${totalEmps}</div>`:''}
+      ${pills}
+    </div>`;
+  }
+  html+='</div>';
+  content.innerHTML=html;
+}
+
+function renderWeek(){
+  const content = document.getElementById('mainContent');
+  const today = new Date(); today.setHours(0,0,0,0);
+  // Find Monday of current week (based on today or current month view)
+  const ref = new Date(curY,curM,15);
+  const dow = ref.getDay();
+  const monday = new Date(ref); monday.setDate(ref.getDate()-(dow===0?6:dow-1));
+
+  const days=[];
+  for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(monday.getDate()+i);days.push(d);}
+
+  const dayLabels=['T2','T3','T4','T5','T6','T7','CN'];
+  const timeSlots=['06:00','08:00','10:00','12:00','14:00','16:00','18:00','20:00','22:00','00:00'];
+
+  let html=`<div class="week-wrap"><div class="week-grid">
+    <div class="wh-empty" style="border-bottom:1px solid var(--border);padding:10px 6px;"></div>`;
+
+  days.forEach((d,i)=>{
+    const isT=d.getTime()===today.getTime();
+    html+=`<div class="wh-cell${isT?' today-col':''}">
+      <span class="wh-day-num">${d.getDate()}</span>
+      <span class="wh-day-label">${dayLabels[i]}</span>
+    </div>`;
+  });
+
+  timeSlots.forEach(t=>{
+    html+=`<div class="wt-cell">${t}</div>`;
+    days.forEach(d=>{
+      const key=dateKey(d);
+      const isT=d.getTime()===today.getTime();
+      const dayShifts=shifts[key]||[];
+      const matching=dayShifts.filter(s=>{
+        const sh=SHIFT_META[s.type];
+        return sh.start===t||(t==='00:00'&&s.type==='night');
+      });
+      let inner=matching.map(s=>`
+        <div class="we-block ${s.type}" onclick="openDay('${key}');event.stopPropagation()">
+          ${SHIFT_META[s.type].emoji} ${SHIFT_META[s.type].label} · ${s.emps.length}NV
+        </div>`).join('');
+      html+=`<div class="wr-cell${isT?' today-col':''}" onclick="openDay('${key}')">${inner}</div>`;
+    });
+  });
+
+  html+='</div></div>';
+  content.innerHTML=html;
+}
+
+// ── DAY MODAL ─────────────────────────────────────────────────────────────────
+function openDay(key){
+  activeDayKey=key;
+  activeTab=0;
+  const d=parseDateKey(key);
+  document.getElementById('modalTitle').textContent=fmtDate(d);
+  const isT=d.toDateString()===new Date().toDateString();
+  document.getElementById('modalSubtitle').textContent=isT?'Hôm nay':'';
+  renderModalContent();
+  document.getElementById('dayOverlay').classList.add('open');
+}
+
+function closeDay(){
+  document.getElementById('dayOverlay').classList.remove('open');
+  activeDayKey=null;
+}
+
+function renderModalContent(){
+  const key=activeDayKey;
+  const dayShifts=shifts[key]||[];
+  const pending=pendingRequests.filter(r=>r.date===key&&r.status==='pending');
+  const d=parseDateKey(key);
+  const isPast=d<new Date() && d.toDateString()!==new Date().toDateString();
+  const isFuture=d>new Date();
+
+  const tabs=['Ca làm việc','Đơn chờ duyệt','Thêm ca'];
+  let html=`<div class="modal-tabs">${tabs.map((t,i)=>`
+    <button class="tab${activeTab===i?' active':''}" onclick="switchTab(${i})">${t}${i===1&&pending.length?` (${pending.length})`:''}</button>
+  `).join('')}</div>`;
+
+  if(activeTab===0){
+    // Shifts tab
+    if(dayShifts.length===0){
+      html+=`<div style="text-align:center;padding:32px 0;color:var(--muted);">
+        <div style="font-size:36px;margin-bottom:10px;">📭</div>
+        <div style="font-size:13px;">Chưa có ca làm ngày này</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px;" onclick="switchTab(2)">+ Thêm ca</button>
+      </div>`;
+    } else {
+      const total=dayShifts.reduce((a,s)=>a+s.emps.length,0);
+      const ok=dayShifts.reduce((a,s)=>a+s.emps.filter(e=>e.status==='ok').length,0);
+      const late=dayShifts.reduce((a,s)=>a+s.emps.filter(e=>e.status==='late').length,0);
+      const absent=dayShifts.reduce((a,s)=>a+s.emps.filter(e=>e.status==='absent').length,0);
+
+      html+=`<div class="stats-row">
+        <div class="stat-mini"><div class="stat-mini-num" style="color:#10b981">${ok}</div><div class="stat-mini-label">Đúng giờ</div></div>
+        <div class="stat-mini"><div class="stat-mini-num" style="color:#f59e0b">${late}</div><div class="stat-mini-label">Muộn</div></div>
+        <div class="stat-mini"><div class="stat-mini-num" style="color:#ef4444">${absent}</div><div class="stat-mini-label">Vắng</div></div>
+      </div>`;
+
+      html+=dayShifts.map((s,si)=>{
+        const sm=SHIFT_META[s.type];
+        const okE=s.emps.filter(e=>e.status==='ok').length;
+        const pct=Math.round(okE/s.emps.length*100)||0;
+        const chips=s.emps.slice(0,6).map(e=>`
+          <div class="emp-chip">
+            <div class="emp-status ${e.status}"></div>
+            <span style="font-size:11px;font-weight:600;color:${e.c}">${e.i}</span>
+            <span>${e.n.split(' ').pop()}</span>
+            ${e.checkin?`<span style="color:var(--muted);font-family:'JetBrains Mono',monospace;">${e.checkin}</span>`:''}
+          </div>`).join('');
+
+        return `<div class="shift-detail-card">
+          <div class="sdc-header">
+            <div class="sdc-name">${sm.emoji} ${sm.label}</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span class="sdc-badge ${s.type}">${sm.time}</span>
+            </div>
+          </div>
+          <div class="sdc-meta">
+            <div class="sdc-meta-item">👥 <strong>${s.emps.length}/${s.max}</strong> NV</div>
+            <div class="sdc-meta-item">🏢 <strong>${s.dept}</strong></div>
+            <div class="sdc-meta-item">✅ <strong style="color:#10b981">${pct}%</strong> chuyên cần</div>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${pct>85?'#10b981':pct>65?'#f59e0b':'#ef4444'}"></div></div>
+          <div class="emp-chips" style="margin-bottom:10px;">${chips}${s.emps.length>6?`<div class="emp-chip" style="color:var(--muted)">+${s.emps.length-6}</div>`:''}</div>
+          ${s.note?`<div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:6px 8px;background:var(--s3);border-radius:5px;">📝 ${s.note}</div>`:''}
+          <div class="approve-row">
+            ${!isFuture?`<button class="a-btn edit" onclick="exportShift('${key}',${si})">📊 Xuất báo cáo</button>`:''}
+            <button class="a-btn edit" onclick="editShift('${key}',${si})">✎ Sửa</button>
+            <button class="a-btn reject" onclick="deleteShift('${key}',${si})">✕ Xóa ca</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      html+=`<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px;justify-content:center;" onclick="switchTab(2)">+ Thêm ca cho ngày này</button>`;
+    }
+  }
+  else if(activeTab===1){
+    // Requests tab
+    const allReqs=pendingRequests.filter(r=>r.date===key);
+    if(allReqs.length===0){
+      html+=`<div style="text-align:center;padding:28px 0;color:var(--muted);font-size:13px;">📭 Không có đơn nào cho ngày này</div>`;
+    } else {
+      html+=`<div class="sec-label">Đơn xin ca / đổi ca</div>`;
+      html+=allReqs.map((r,ri)=>{
+        const sm=SHIFT_META[r.shiftType];
+        let statusBadge='';
+        if(r.status==='approved') statusBadge=`<span style="font-size:10px;color:#22c55e;background:rgba(34,197,94,.1);padding:2px 7px;border-radius:10px;">✓ Đã duyệt</span>`;
+        else if(r.status==='rejected') statusBadge=`<span style="font-size:10px;color:#ef4444;background:rgba(239,68,68,.1);padding:2px 7px;border-radius:10px;">✕ Từ chối</span>`;
+
+        return `<div class="req-item ${r.status!=='pending'?r.status:''}" id="req-${r.id}">
+          <div class="req-avatar" style="background:${r.emp.c}20;color:${r.emp.c}">${r.emp.i}</div>
+          <div class="req-info">
+            <div class="req-name">${r.emp.n}</div>
+            <div class="req-meta">${sm.emoji} ${sm.label} · ${sm.time}</div>
+            <div class="req-meta" style="font-style:italic;">"${r.reason}"</div>
+          </div>
+          ${r.status==='pending'?`
+          <div class="req-actions">
+            <button class="raq-btn ok" onclick="approveReq('${r.id}')" title="Duyệt">✓</button>
+            <button class="raq-btn no" onclick="rejectReq('${r.id}')" title="Từ chối">✕</button>
+          </div>`:`<div>${statusBadge}</div>`}
+        </div>`;
+      }).join('');
+    }
+  }
+  else if(activeTab===2){
+    // Add shift form
+    const dateStr=key;
+    html+=`<div class="form-group">
+      <label class="form-label">Loại ca</label>
+      <select class="form-input" id="qs-type">
+        <option value="morning">🌅 Ca Sáng (06:00–14:00)</option>
+        <option value="afternoon">☀️ Ca Chiều (14:00–22:00)</option>
+        <option value="evening">🌆 Ca Tối (18:00–02:00)</option>
+        <option value="night">🌙 Ca Đêm (22:00–06:00)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Giờ bắt đầu</label>
+        <input class="form-input" type="time" id="qs-start" value="06:00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giờ kết thúc</label>
+        <input class="form-input" type="time" id="qs-end" value="14:00">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phòng ban</label>
+      <select class="form-input" id="qs-dept">
+        <option>Tất cả phòng ban</option>
+        <option>Kho vận</option>
+        <option>Sản xuất</option>
+        <option>Bán hàng</option>
+        <option>Kế toán</option>
+        <option>Bảo vệ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Số NV tối đa</label>
+      <input class="form-input" type="number" id="qs-max" value="20" min="1" max="200">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ghi chú</label>
+      <textarea class="form-input" id="qs-note" rows="2" placeholder="Ghi chú..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+      <button class="btn btn-ghost btn-sm" onclick="switchTab(0)">Hủy</button>
+      <button class="btn btn-primary btn-sm" onclick="saveQuickShift()">✓ Thêm ca</button>
+    </div>`;
+
+    // auto-update times on type change
+    html+=`<script>
+      document.getElementById('qs-type').addEventListener('change',function(){
+        const m={morning:['06:00','14:00'],afternoon:['14:00','22:00'],evening:['18:00','02:00'],night:['22:00','06:00']};
+        const v=m[this.value];
+        document.getElementById('qs-start').value=v[0];
+        document.getElementById('qs-end').value=v[1];
+      });
+    <\/script>`;
+  }
+
+  document.getElementById('modalBody').innerHTML=html;
+}
+
+function switchTab(i){activeTab=i;renderModalContent();}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function approveReq(id){
+  const r=pendingRequests.find(x=>x.id===id);
+  if(!r) return;
+  r.status='approved';
+  // Add shift for this employee
+  if(!shifts[r.date]) shifts[r.date]=[];
+  const existing=shifts[r.date].find(s=>s.type===r.shiftType);
+  if(existing){
+    if(!existing.emps.find(e=>e.i===r.emp.i)){
+      existing.emps.push({...r.emp,status:'pending',checkin:null});
+    }
+  } else {
+    shifts[r.date].push({
+      id:mkId(),type:r.shiftType,dept:'Tất cả',max:20,note:'',
+      start:SHIFT_META[r.shiftType].start,end:SHIFT_META[r.shiftType].end,
+      emps:[{...r.emp,status:'pending',checkin:null}],status:'approved'
+    });
+  }
+  showToast('✓ Đã duyệt đơn của '+r.emp.n,'green');
+  renderModalContent();
+  render();
+}
+
+function rejectReq(id){
+  const r=pendingRequests.find(x=>x.id===id);
+  if(r){r.status='rejected';showToast('Đã từ chối đơn của '+r.emp.n,'red');renderModalContent();}
+}
+
+function deleteShift(key,si){
+  if(!confirm('Xóa ca này?')) return;
+  shifts[key].splice(si,1);
+  if(shifts[key].length===0) delete shifts[key];
+  showToast('Đã xóa ca làm','red');
+  renderModalContent();
+  render();
+}
+
+function editShift(key,si){
+  const s=shifts[key][si];
+  closeDay();
+  // Open create modal pre-filled
+  setTimeout(()=>{
+    openCreateShift(key);
+    document.getElementById('editShiftId').value=key+'|'+si;
+    document.getElementById('createTitle').textContent='Chỉnh sửa ca';
+    document.getElementById('cs-type').value=s.type;
+    document.getElementById('cs-date').value=key;
+    document.getElementById('cs-start').value=s.start;
+    document.getElementById('cs-end').value=s.end;
+    document.getElementById('cs-max').value=s.max;
+    document.getElementById('cs-note').value=s.note||'';
+  },50);
+}
+
+function exportShift(key,si){
+  const s=shifts[key][si];
+  const sm=SHIFT_META[s.type];
+  const d=parseDateKey(key);
+  showToast('📊 Đã xuất báo cáo '+sm.label+' '+d.getDate()+'/'+( d.getMonth()+1),'blue');
+}
+
+function saveQuickShift(){
+  const type=document.getElementById('qs-type').value;
+  const dept=document.getElementById('qs-dept').value;
+  const max=parseInt(document.getElementById('qs-max').value)||20;
+  const note=document.getElementById('qs-note').value;
+  const start=document.getElementById('qs-start').value;
+  const end=document.getElementById('qs-end').value;
+
+  if(!shifts[activeDayKey]) shifts[activeDayKey]=[];
+  const emps=shuffle(EMP_POOL).slice(0,Math.floor(Math.random()*5)+3).map(e=>({...e,status:'pending',checkin:null}));
+  shifts[activeDayKey].push({id:mkId(),type,dept,max,start,end,note,emps,status:'approved'});
+
+  showToast('✓ Đã thêm '+SHIFT_META[type].label,'green');
+  activeTab=0;
+  renderModalContent();
+  render();
+}
+
+// ── CREATE SHIFT MODAL ────────────────────────────────────────────────────────
+function openCreateShift(dateStr){
+  document.getElementById('createTitle').textContent='Tạo ca làm mới';
+  document.getElementById('editShiftId').value='';
+  const today=dateStr||dateKey(new Date());
+  document.getElementById('cs-date').value=today;
+  document.getElementById('cs-type').value='morning';
+  document.getElementById('cs-start').value='06:00';
+  document.getElementById('cs-end').value='14:00';
+  document.getElementById('cs-max').value='20';
+  document.getElementById('cs-note').value='';
+  document.getElementById('createOverlay').classList.add('open');
+}
+
+function closeCreate(){document.getElementById('createOverlay').classList.remove('open');}
+
+function saveShift(){
+  const editId=document.getElementById('editShiftId').value;
+  const type=document.getElementById('cs-type').value;
+  const key=document.getElementById('cs-date').value;
+  const max=parseInt(document.getElementById('cs-max').value)||20;
+  const note=document.getElementById('cs-note').value;
+  const start=document.getElementById('cs-start').value;
+  const end=document.getElementById('cs-end').value;
+  const dept=document.getElementById('cs-dept').value;
+
+  if(!key){showToast('Vui lòng chọn ngày','red');return;}
+
+  if(editId){
+    const[k,si]=editId.split('|');
+    if(shifts[k]&&shifts[k][parseInt(si)]){
+      const s=shifts[k][parseInt(si)];
+      s.type=type;s.start=start;s.end=end;s.max=max;s.note=note;s.dept=dept;
+    }
+    showToast('✓ Đã cập nhật ca','green');
+  } else {
+    if(!shifts[key]) shifts[key]=[];
+    const emps=shuffle(EMP_POOL).slice(0,Math.floor(Math.random()*6)+4).map(e=>({...e,status:'pending',checkin:null}));
+    shifts[key].push({id:mkId(),type,dept,max,start,end,note,emps,status:'approved'});
+    showToast('✓ Đã tạo '+SHIFT_META[type].label,'green');
+  }
+
+  closeCreate();
+  render();
+  // Re-open day modal if it was a create from within
+  if(activeDayKey&&editId){
+    setTimeout(()=>openDay(activeDayKey),80);
+  }
+}
+
+// Update times when type changes in create modal
+document.getElementById('cs-type').addEventListener('change',function(){
+  const m={morning:['06:00','14:00'],afternoon:['14:00','22:00'],evening:['18:00','02:00'],night:['22:00','06:00']};
+  const v=m[this.value];
+  document.getElementById('cs-start').value=v[0];
+  document.getElementById('cs-end').value=v[1];
+});
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function changeMonth(dir){
+  curM+=dir;
+  if(curM>11){curM=0;curY++;}
+  if(curM<0){curM=11;curY--;}
+  render();
+}
+
+function goToday(){
+  const n=new Date();
+  curY=n.getFullYear();curM=n.getMonth();
+  render();
+}
+
+function setView(v,btn){
+  viewMode=v;
+  document.querySelectorAll('.vtbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show '+(type||'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{t.className='toast';},2800);
+}
+
+// ── CLOSE ON OVERLAY CLICK ────────────────────────────────────────────────────
+document.getElementById('dayOverlay').addEventListener('click',function(e){
+  if(e.target===this) closeDay();
+});
+document.getElementById('createOverlay').addEventListener('click',function(e){
+  if(e.target===this) closeCreate();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+seedData();
+render();
+</script>
+</body>
+</html>
