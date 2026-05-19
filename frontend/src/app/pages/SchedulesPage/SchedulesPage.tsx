@@ -3,13 +3,13 @@ import {
   CalendarOutlined,
   CheckCircleOutlined,
   CheckOutlined,
+  CloudOutlined,
   TeamOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
-  FileDoneOutlined,
   FileTextOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -25,7 +25,6 @@ import {
   approveScheduleRegistration,
   approveRegistrationRequest,
   createSchedule,
-  deleteScheduleRegistration,
   deleteSchedule,
   listRegistrationRequests,
   listScheduleRegistrations,
@@ -64,6 +63,21 @@ function defaultScheduleForm(): Partial<WorkSchedule> {
   };
 }
 
+function statusTone(status: string) {
+  if (status === "approved") return "approved";
+  if (status === "rejected") return "rejected";
+  return "pending";
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "??";
+  return parts
+    .slice(-2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 const DOW_LABEL: Record<number, string> = { 0: "T2", 1: "T3", 2: "T4", 3: "T5", 4: "T6", 5: "T7", 6: "CN" };
 const REQ_STATUSES: Array<{ key: string; label: string }> = [
   { key: "pending", label: viStatusLabel("pending") },
@@ -86,7 +100,7 @@ export default function SchedulesPage() {
   const canReadDepartments = useMemo(() => auth.permissionKeys.includes("departments.read"), [auth.permissionKeys]);
 
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"schedules" | "calendar" | "requests" | "registrations">("calendar");
+  const [tab, setTab] = useState<"schedules" | "calendar" | "requests">("calendar");
 
   const [schedulesLoading, setSchedulesLoading] = useState(true);
   const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
@@ -98,13 +112,6 @@ export default function SchedulesPage() {
   const [scheduleStatusFilter, setScheduleStatusFilter] = useState<"" | "active" | "inactive">("");
   const [schedulePageSize, setSchedulePageSize] = useState<number>(12);
   const [schedulePage, setSchedulePage] = useState<number>(0);
-
-  const [regLoading, setRegLoading] = useState(true);
-  const [regItems, setRegItems] = useState<WorkScheduleRegistrationListItem[]>([]);
-  const [regStatus, setRegStatus] = useState<string>("pending");
-  const [regLimit, setRegLimit] = useState<number>(12);
-  const [regOffset, setRegOffset] = useState<number>(0);
-  const [regTotal, setRegTotal] = useState<number>(0);
 
   const [reqLoading, setReqLoading] = useState(true);
   const [reqItems, setReqItems] = useState<WorkScheduleRegistrationRequestListItem[]>([]);
@@ -249,20 +256,6 @@ export default function SchedulesPage() {
     }
   };
 
-  const reloadRegs = async () => {
-    setRegLoading(true);
-    setError(null);
-    try {
-      const res = await listScheduleRegistrations({ limit: regLimit, offset: regOffset, status: regStatus || undefined });
-      setRegItems(res.items ?? []);
-      setRegTotal(Number(res.total ?? 0));
-    } catch (e) {
-      setError(getApiErrorMessage(e));
-    } finally {
-      setRegLoading(false);
-    }
-  };
-
   const reloadReqs = async () => {
     setReqLoading(true);
     setError(null);
@@ -346,11 +339,6 @@ export default function SchedulesPage() {
   }, []);
 
   useEffect(() => {
-    reloadRegs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regStatus, regLimit, regOffset]);
-
-  useEffect(() => {
     reloadReqs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqStatus, reqLimit, reqOffset]);
@@ -368,10 +356,6 @@ export default function SchedulesPage() {
   useEffect(() => {
     setReqOffset(0);
   }, [reqStatus, reqLimit]);
-
-  useEffect(() => {
-    setRegOffset(0);
-  }, [regStatus, regLimit]);
 
   const openCreateSchedule = () => {
     setEditingSchedule(null);
@@ -430,55 +414,12 @@ export default function SchedulesPage() {
     }
   };
 
-  const approve = async (r: WorkScheduleRegistrationListItem) => {
-    if (!canApprove) return;
-    setError(null);
-    try {
-      await approveScheduleRegistration(r.id);
-      await reloadRegs();
-    } catch (e) {
-      setError(getApiErrorMessage(e));
-    }
-  };
-
-  const approveAllPending = async () => {
-    if (!canApprove) return;
-    const pending = regItems.filter((x) => x.status === "pending");
-    if (!pending.length) return;
-    // eslint-disable-next-line no-alert
-    if (!confirm(`Duyệt tất cả ${pending.length} yêu cầu ${viStatusLabel("pending").toLowerCase()}?`)) return;
-    setError(null);
-    try {
-      for (const r of pending) await approveScheduleRegistration(r.id);
-      await reloadRegs();
-    } catch (e) {
-      setError(getApiErrorMessage(e));
-    }
-  };
-
-  const reject = async (r: WorkScheduleRegistrationListItem) => {
-    if (!canApprove) return;
-    // eslint-disable-next-line no-alert
-    const note = prompt("Phản hồi / lý do từ chối (tuỳ chọn):") || "";
-    setError(null);
-    try {
-      await rejectScheduleRegistration(r.id, note.trim() || undefined);
-      // eslint-disable-next-line no-alert
-      const shouldDelete = confirm("Đã từ chối. Bạn có muốn xoá yêu cầu này khỏi hệ thống không?");
-      if (shouldDelete) await deleteScheduleRegistration(r.id);
-      await reloadRegs();
-    } catch (e) {
-      setError(getApiErrorMessage(e));
-    }
-  };
-
   const approveReq = async (r: WorkScheduleRegistrationRequestListItem) => {
     if (!canApprove) return;
     setError(null);
     try {
       await approveRegistrationRequest(r.id);
       await reloadReqs();
-      await reloadRegs();
     } catch (e) {
       setError(getApiErrorMessage(e));
     }
@@ -492,7 +433,6 @@ export default function SchedulesPage() {
     try {
       await rejectRegistrationRequest(r.id, note.trim() || undefined);
       await reloadReqs();
-      await reloadRegs();
     } catch (e) {
       setError(getApiErrorMessage(e));
     }
@@ -515,6 +455,14 @@ export default function SchedulesPage() {
     }
     if (Number(s.max_registrations ?? 0) > 0) parts.push(`Tối đa ${Number(s.max_registrations)} người`);
     return parts.join(" • ");
+  };
+
+  const scheduleHeaderIcon = (s?: WorkSchedule | null) => {
+    if (!s) return <ClockCircleOutlined />;
+    const kind = scheduleIconKind(s);
+    if (kind === "morning") return <SunOutlined />;
+    if (kind === "night") return <MoonOutlined />;
+    return <CloudOutlined />;
   };
 
   const goPrevMonth = () => {
@@ -605,24 +553,6 @@ export default function SchedulesPage() {
       {error ? <div className={styles.errorBox}>⚠️ {error}</div> : null}
 
       <div className={styles.shell}>
-        <div className={styles.hero}>
-          <div className={styles.heroLeft}>
-            <div className={styles.heroTitle}>
-              <CalendarOutlined /> Ca làm
-            </div>
-            <div className={styles.heroSub}>
-              {schedulesLoading
-                ? "Đang tải dữ liệu…"
-                : `${schedules.length} ca • ${scheduleStats.active} ${viStatusLabel("active")} • ${scheduleStats.inactive} ${viStatusLabel("inactive")}`}
-            </div>
-          </div>
-          {canManage ? (
-            <button className={styles.heroCta} type="button" onClick={openCreateSchedule}>
-              <PlusOutlined /> Thêm ca
-            </button>
-          ) : null}
-        </div>
-
         <div className={styles.topTabs} role="tablist" aria-label="Chế độ xem">
           <button
             type="button"
@@ -655,18 +585,6 @@ export default function SchedulesPage() {
           >
             <FileTextOutlined /> Duyệt theo đợt
             <span className={styles.topTabCount}>{reqLoading ? "…" : String(reqItems.length)}</span>
-          </button>
-          <button
-            type="button"
-            className={tab === "registrations" ? `${styles.topTab} ${styles.topTabActive}` : styles.topTab}
-            onClick={() => setTab("registrations")}
-            role="tab"
-            aria-selected={tab === "registrations"}
-            disabled={!canApprove}
-            title={!canApprove ? "Bạn không có quyền phê duyệt" : undefined}
-          >
-            <FileDoneOutlined /> Duyệt theo lẻ
-            <span className={styles.topTabCount}>{regLoading ? "…" : String(regItems.length)}</span>
           </button>
         </div>
 
@@ -904,6 +822,11 @@ export default function SchedulesPage() {
                     );
                   })}
                 </div>
+                {canManage ? (
+                  <button className={styles.primaryBtn} type="button" onClick={openCreateSchedule}>
+                    <PlusOutlined /> Thêm ca
+                  </button>
+                ) : null}
               </div>
             }
           >
@@ -1107,116 +1030,7 @@ export default function SchedulesPage() {
               </div>
             ) : null}
           </Card>
-        ) : (
-          <Card
-            title={
-              <>
-                <FileDoneOutlined /> Duyệt theo lẻ
-              </>
-            }
-            sub={regLoading ? "Đang tải..." : `${regTotal} yêu cầu • ${regItems.length} hiển thị`}
-            right={
-              <div className={styles.headerTools}>
-                <div className={styles.segmented} role="tablist" aria-label="Lọc trạng thái">
-                  {REG_STATUSES.map((s) => {
-                    const active = regStatus === s.key;
-                    return (
-                      <button
-                        key={s.key || "all"}
-                        type="button"
-                        className={active ? `${styles.segBtn} ${styles.segActive}` : styles.segBtn}
-                        onClick={() => setRegStatus(s.key)}
-                        role="tab"
-                        aria-selected={active}
-                      >
-                        {s.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {canApprove && regItems.some((x) => x.status === "pending") ? (
-                  <button className={styles.primaryBtn} type="button" onClick={approveAllPending} disabled={regLoading || regStatus !== "pending"}>
-                    <CheckCircleOutlined /> Duyệt tất cả {viStatusLabel("pending").toLowerCase()}
-                  </button>
-                ) : null}
-              </div>
-            }
-          >
-            <div className={styles.cardsGrid}>
-              {regItems.map((r) => (
-                <div key={r.id} className={styles.reqCard}>
-                  <div className={styles.reqMain}>
-                    <div className={styles.reqTitleRow}>
-                      <div className={styles.reqTitle}>
-                        {r.user_name} {r.user_code ? <span className={styles.reqMuted}>({r.user_code})</span> : null}{" "}
-                        <span className={styles.reqId}>#{r.id}</span>
-                      </div>
-                      <span className={styles.reqRange}>{r.day}</span>
-                    </div>
-                    <div className={styles.reqSub}>
-                      <span className={styles.reqSchedule}>
-                        {r.schedule_name} <span className={styles.reqMuted}>({r.schedule_code})</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className={styles.reqRight}>
-                    <span className={r.status === "approved" ? `${styles.tag} ${styles.good}` : r.status === "pending" ? styles.tag : `${styles.tag} ${styles.bad}`}>
-                      {viStatusLabel(r.status)}
-                    </span>
-                    <div className={styles.cardActions}>
-                      <button className={styles.iconBtn} type="button" disabled={!canApprove || r.status !== "pending"} onClick={() => approve(r)} aria-label={`Duyệt yêu cầu ${r.id}`}>
-                        <CheckOutlined />
-                      </button>
-                      <button
-                        className={styles.iconBtnDanger}
-                        type="button"
-                        disabled={!canApprove || r.status !== "pending"}
-                        onClick={() => reject(r)}
-                        aria-label={`Từ chối yêu cầu ${r.id}`}
-                      >
-                        <CloseOutlined />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {!regLoading && regItems.length === 0 ? <div className={styles.emptyState}>Không có dữ liệu</div> : null}
-            </div>
-
-            {!regLoading && regTotal > 0 ? (
-              <div className={styles.pager}>
-                <div className={styles.pagerLeft}>
-                  <button className={styles.pageBtn} type="button" onClick={() => setRegOffset((o) => Math.max(0, o - regLimit))} disabled={regOffset <= 0}>
-                    ← Trước
-                  </button>
-                  <button
-                    className={styles.pageBtn}
-                    type="button"
-                    onClick={() => setRegOffset((o) => (o + regLimit < regTotal ? o + regLimit : o))}
-                    disabled={regOffset + regLimit >= regTotal}
-                  >
-                    Sau →
-                  </button>
-                </div>
-                <div className={styles.pagerMid}>
-                  <span className={styles.pagerHint}>
-                    {regOffset + 1}–{Math.min(regOffset + regLimit, regTotal)} / {regTotal}
-                  </span>
-                </div>
-                <div className={styles.pagerRight}>
-                  <select className={styles.pageSelect} value={String(regLimit)} onChange={(e) => setRegLimit(Number(e.target.value))} aria-label="Số dòng mỗi trang">
-                    {[8, 12, 20, 36].map((n) => (
-                      <option key={n} value={String(n)}>
-                        {n}/trang
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            ) : null}
-          </Card>
-        )}
+        ) : null}
       </div>
 
       <Modal
@@ -1227,11 +1041,22 @@ export default function SchedulesPage() {
       >
         {selectedDay ? (
           <div className={styles.dayModal}>
-            <div className={styles.dayModalTop}>
+            <div className={styles.dayModalHeader}>
               <div className={styles.dayMeta}>
-                <div className={styles.dayMetaTitle}>{formatDateVi(selectedDay)}</div>
-                <div className={styles.dayMetaSub}>
-                  {daySummary.total} nhân sự • {dayGroups.length} ca • {daySummary.pending} chờ duyệt
+                <div className={styles.dayMetaLead}>
+                  <span className={styles.dayMetaIcon}>
+                    <CalendarOutlined />
+                  </span>
+                  <div>
+                    <div className={styles.dayMetaTitle}>{formatDateVi(selectedDay)}</div>
+                    <div className={styles.dayMetaSub}>
+                      <span>{daySummary.total} nhân sự</span>
+                      <span>·</span>
+                      <span>{dayGroups.length} ca</span>
+                      <span>·</span>
+                      <span>{daySummary.pending} chờ duyệt</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className={styles.dayActions}>
@@ -1241,6 +1066,30 @@ export default function SchedulesPage() {
                   </button>
                 ) : null}
               </div>
+            </div>
+
+            <div className={styles.daySummaryBar}>
+              <span className={`${styles.daySummaryPill} ${styles.daySummaryNeutral}`}>
+                <TeamOutlined /> {daySummary.total} nhân sự
+              </span>
+              <span className={`${styles.daySummaryPill} ${styles.daySummaryNeutral}`}>
+                <CalendarOutlined /> {dayGroups.length} ca
+              </span>
+              {daySummary.pending ? (
+                <span className={`${styles.daySummaryPill} ${styles.daySummaryPending}`}>
+                  <ClockCircleOutlined /> {daySummary.pending} chờ duyệt
+                </span>
+              ) : null}
+              {daySummary.approved ? (
+                <span className={`${styles.daySummaryPill} ${styles.daySummaryApproved}`}>
+                  <CheckCircleOutlined /> {daySummary.approved} đã duyệt
+                </span>
+              ) : null}
+              {daySummary.rejected ? (
+                <span className={`${styles.daySummaryPill} ${styles.daySummaryRejected}`}>
+                  <CloseCircleOutlined /> {daySummary.rejected} từ chối
+                </span>
+              ) : null}
             </div>
 
             {dayGroups.length ? (
@@ -1254,23 +1103,38 @@ export default function SchedulesPage() {
                   return (
                     <div key={sid} className={styles.dayGroup}>
                       <div className={styles.dayGroupHead}>
-                        <div className={styles.dayGroupTitle}>{s ? s.name : `Ca #${sid}`}</div>
-                        <div className={styles.dayGroupSub}>
-                          {s ? `${s.shift_start}–${s.shift_end}` : ""} • {stats.total} nhân sự • {capText}
-                          {shortage > 0 ? ` • Thiếu ${shortage}` : ""}
-                        </div>
-                        <div className={styles.dayGroupStats}>
-                          <span className={`${styles.statChip} ${styles.chipTotal}`} title="Tổng đăng ký">
-                            Tổng {stats.total}
+                        <div className={styles.dayGroupHeadMain}>
+                          <span
+                            className={
+                              s && scheduleIconKind(s) === "morning"
+                                ? `${styles.dayShiftIcon} ${styles.dayShiftMorning}`
+                                : s && scheduleIconKind(s) === "night"
+                                  ? `${styles.dayShiftIcon} ${styles.dayShiftNight}`
+                                  : `${styles.dayShiftIcon} ${styles.dayShiftDay}`
+                            }
+                          >
+                            {scheduleHeaderIcon(s)}
                           </span>
+                          <div className={styles.dayGroupInfo}>
+                            <div className={styles.dayGroupTitleRow}>
+                              <div className={styles.dayGroupTitle}>{s ? s.name : `Ca #${sid}`}</div>
+                              {s ? <span className={styles.dayTimePill}>{s.shift_start}–{s.shift_end}</span> : null}
+                              <span className={styles.dayInlineMeta}>
+                                <TeamOutlined />
+                                {stats.total}
+                              </span>
+                              <span className={styles.dayInlineMeta}>
+                                <CheckCircleOutlined />
+                                {capText}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className={styles.dayGroupAssistRow}>
+                          {shortage > 0 ? <span className={styles.dayShortagePill}>Thiếu {shortage}</span> : null}
                           {stats.pending ? (
                             <span className={`${styles.statChip} ${styles.chipPending}`} title="Chờ duyệt">
                               Chờ {stats.pending}
-                            </span>
-                          ) : null}
-                          {stats.approved ? (
-                            <span className={`${styles.statChip} ${styles.chipApproved}`} title="Đã duyệt">
-                              Duyệt {stats.approved}
                             </span>
                           ) : null}
                           {stats.rejected ? (
@@ -1280,50 +1144,68 @@ export default function SchedulesPage() {
                           ) : null}
                         </div>
                       </div>
+                      <div className={styles.dayTableHead}>
+                        <span>Nhân sự</span>
+                        <span>Thông tin</span>
+                        <span>Trạng thái</span>
+                        <span>Thao tác</span>
+                      </div>
                       <div className={styles.dayList}>
-                        {items.map((r) => (
-                          <div key={r.id} className={styles.dayRow}>
-                            <div className={styles.dayRowLeft}>
-                              <div className={styles.dayEmpName}>{r.user_name}</div>
-                              <div className={styles.dayEmpMeta}>
-                                {r.user_code ? r.user_code : `#${r.user_id}`} {r.note ? ` • ${r.note}` : ""}
+                        {items.map((r) => {
+                          const tone = statusTone(r.status);
+                          return (
+                            <div key={r.id} className={`${styles.dayRow} ${styles[`dayRow_${tone}`]}`}>
+                              <div className={styles.dayRowIdentity}>
+                                <span className={`${styles.dayAvatar} ${styles[`dayAvatar_${tone}`]}`}>{getInitials(r.user_name)}</span>
+                                <div>
+                                  <div className={styles.dayEmpName}>{r.user_name}</div>
+                                  <div className={styles.dayEmpMeta}>{r.user_code ? r.user_code : `#${r.user_id}`}</div>
+                                </div>
+                              </div>
+                              <div className={styles.dayRowInfo}>
+                                <span className={styles.dayInfoItem}>#{r.id}</span>
+                                {r.note ? <span className={styles.dayInfoItem}>{r.note}</span> : <span className={styles.dayInfoItem}>Không có ghi chú</span>}
+                              </div>
+                              <div className={styles.dayRowStatus}>
+                                <span
+                                  className={
+                                    tone === "approved"
+                                      ? `${styles.statusPill} ${styles.pillApproved}`
+                                      : tone === "rejected"
+                                        ? `${styles.statusPill} ${styles.pillRejected}`
+                                        : `${styles.statusPill} ${styles.pillPending}`
+                                  }
+                                >
+                                  {viStatusLabel(r.status)}
+                                </span>
+                              </div>
+                              <div className={styles.dayRowActions}>
+                                {canApprove && r.status === "pending" ? (
+                                  <div className={styles.dayRowBtns}>
+                                    <button
+                                      type="button"
+                                      className={styles.dayBtnApprove}
+                                      onClick={() => dayApproveOne(r.id)}
+                                      disabled={dayActionLoading}
+                                    >
+                                      <CheckCircleOutlined /> Duyệt
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={styles.dayBtnReject}
+                                      onClick={() => dayRejectOne(r.id)}
+                                      disabled={dayActionLoading}
+                                    >
+                                      <CloseOutlined /> Từ chối
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className={styles.dayActionPlaceholder}>-</span>
+                                )}
                               </div>
                             </div>
-                            <div className={styles.dayRowRight}>
-                              <span
-                                className={
-                                  r.status === "approved"
-                                    ? `${styles.statusPill} ${styles.pillApproved}`
-                                    : r.status === "rejected"
-                                      ? `${styles.statusPill} ${styles.pillRejected}`
-                                      : `${styles.statusPill} ${styles.pillPending}`
-                                }
-                              >
-                                {viStatusLabel(r.status)}
-                              </span>
-                              {canApprove && r.status === "pending" ? (
-                                <div className={styles.dayRowBtns}>
-                                  <button
-                                    type="button"
-                                    className={styles.dayBtnApprove}
-                                    onClick={() => dayApproveOne(r.id)}
-                                    disabled={dayActionLoading}
-                                  >
-                                    <CheckCircleOutlined /> Duyệt
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={styles.dayBtnReject}
-                                    onClick={() => dayRejectOne(r.id)}
-                                    disabled={dayActionLoading}
-                                  >
-                                    <CloseOutlined /> Từ chối
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
