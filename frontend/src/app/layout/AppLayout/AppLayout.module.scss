@@ -11,12 +11,19 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  transition: padding 0.22s ease;
+}
+
+.mainCollapsed {
+  padding-left: 0;
 }
 
 .content {
   flex: 1;
   overflow-y: auto;
   padding: var(--content-pad);
+  min-width: 0;
 }
 
 .backdrop {

@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../../components/Card/Card";
-import { archiveNotification, getMyNotificationPreferences, listNotifications, markAllNotificationsRead, markNotificationRead, type NotificationItem, type NotificationPreferences, updateMyNotificationPreferences } from "../../../shared/api/notifications";
+import {
+  archiveNotification,
+  deleteNotification,
+  getMyNotificationPreferences,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type NotificationItem,
+  type NotificationPreferences,
+  updateMyNotificationPreferences
+} from "../../../shared/api/notifications";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { formatDateTimeVi } from "../../../shared/lib/date";
 import styles from "./NotificationsPage.module.scss";
@@ -41,6 +51,7 @@ export default function NotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"all" | "unread" | "archived">("all");
   const [category, setCategory] = useState<string>("all");
+  const [severity, setSeverity] = useState<string>("all");
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
@@ -59,6 +70,17 @@ export default function NotificationsPage() {
     []
   );
 
+  const severityOptions = useMemo(
+    () => [
+      { value: "all", label: "Mọi mức độ" },
+      { value: "info", label: "Thông tin" },
+      { value: "success", label: "Thành công" },
+      { value: "warning", label: "Cảnh báo" },
+      { value: "critical", label: "Khẩn cấp" }
+    ],
+    []
+  );
+
   async function loadPreferences() {
     try {
       const data = await getMyNotificationPreferences();
@@ -68,13 +90,14 @@ export default function NotificationsPage() {
     }
   }
 
-  async function reload(nextStatus = status, nextCategory = category, nextOffset = 0, append = false) {
+  async function reload(nextStatus = status, nextCategory = category, nextSeverity = severity, nextOffset = 0, append = false) {
     try {
       setLoading(true);
       setError(null);
       const data = await listNotifications({
         status: nextStatus,
         category: nextCategory === "all" ? undefined : nextCategory,
+        severity: nextSeverity === "all" ? undefined : nextSeverity,
         limit: pageSize,
         offset: nextOffset
       });
@@ -89,12 +112,12 @@ export default function NotificationsPage() {
   }
 
   useEffect(() => {
-    void reload(status, category, 0, false);
-  }, [status, category]);
+    void reload(status, category, severity, 0, false);
+  }, [status, category, severity]);
 
   useEffect(() => {
     void loadPreferences();
-    const onChanged = () => void reload(status, category, 0, false);
+    const onChanged = () => void reload(status, category, severity, 0, false);
     const onPrefsChanged = () => void loadPreferences();
     window.addEventListener("fa:notifications-changed", onChanged);
     window.addEventListener("fa:notification-preferences-changed", onPrefsChanged);
@@ -102,14 +125,14 @@ export default function NotificationsPage() {
       window.removeEventListener("fa:notifications-changed", onChanged);
       window.removeEventListener("fa:notification-preferences-changed", onPrefsChanged);
     };
-  }, [status, category]);
+  }, [status, category, severity]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void reload(status, category, 0, false);
+      void reload(status, category, severity, 0, false);
     }, 15_000);
     return () => window.clearInterval(timer);
-  }, [status, category]);
+  }, [status, category, severity]);
 
   async function handleRead(item: NotificationItem) {
     try {
@@ -135,6 +158,16 @@ export default function NotificationsPage() {
   async function handleArchive(item: NotificationItem) {
     try {
       await archiveNotification(item.id);
+      setItems((prev) => prev.filter((x) => x.id !== item.id));
+      setTotal((prev) => Math.max(0, prev - 1));
+    } catch (e) {
+      setError(getApiErrorMessage(e));
+    }
+  }
+
+  async function handleDelete(item: NotificationItem) {
+    try {
+      await deleteNotification(item.id);
       setItems((prev) => prev.filter((x) => x.id !== item.id));
       setTotal((prev) => Math.max(0, prev - 1));
     } catch (e) {
@@ -178,13 +211,22 @@ export default function NotificationsPage() {
               Đã ẩn
             </button>
           </div>
-          <select className={styles.select} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Lọc theo nhóm">
-            {categoryOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <div className={styles.filters}>
+            <select className={styles.select} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Lọc theo nhóm">
+              {categoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select className={styles.select} value={severity} onChange={(e) => setSeverity(e.target.value)} aria-label="Lọc theo mức độ">
+              {severityOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         {error ? <div className={styles.error}>{error}</div> : null}
         <div className={styles.list}>
@@ -196,23 +238,27 @@ export default function NotificationsPage() {
                 <div className={styles.main}>
                   <div className={styles.itemTopRow}>
                     <div className={styles.title}>{item.title}</div>
-                    <span className={styles.categoryPill}>{item.category}</span>
+                    <span className={styles.categoryPill}>{item.category} · {item.severity}</span>
                   </div>
                   <div className={styles.sub}>{item.body || "Thông báo hệ thống"}</div>
                   <div className={styles.time}>{formatDateTimeVi(new Date(item.created_at))}</div>
                 </div>
                 {!item.is_read ? <span className={styles.dot} /> : null}
               </button>
-              {status !== "archived" ? (
+              {status === "archived" ? (
+                <button className={styles.btnLight} type="button" onClick={() => void handleDelete(item)}>
+                  Xóa
+                </button>
+              ) : (
                 <button className={styles.btnLight} type="button" onClick={() => void handleArchive(item)}>
                   Ẩn
                 </button>
-              ) : null}
+              )}
             </div>
           ))}
         </div>
         {!loading && items.length < total ? (
-          <button className={styles.loadMore} type="button" onClick={() => void reload(status, category, offset + pageSize, true)}>
+          <button className={styles.loadMore} type="button" onClick={() => void reload(status, category, severity, offset + pageSize, true)}>
             Tải thêm
           </button>
         ) : null}
@@ -251,14 +297,24 @@ export default function NotificationsPage() {
             </div>
             <div className={styles.prefRow}>
               <div>
-                <div className={styles.prefTitle}>Cài đặt và tài khoản</div>
-                <div className={styles.prefSub}>Thay đổi policy, quyền truy cập, mật khẩu</div>
+                <div className={styles.prefTitle}>Cài đặt hệ thống</div>
+                <div className={styles.prefSub}>Thay đổi policy chấm công, GPS, cấu hình công ty</div>
               </div>
-              <Toggle
-                checked={prefs.settings_enabled && prefs.iam_enabled}
-                onChange={(next) => void savePrefs({ ...prefs, settings_enabled: next, iam_enabled: next })}
-                label="Thông báo cài đặt và tài khoản"
-              />
+              <Toggle checked={prefs.settings_enabled} onChange={(next) => void savePrefs({ ...prefs, settings_enabled: next })} label="Thông báo cài đặt hệ thống" />
+            </div>
+            <div className={styles.prefRow}>
+              <div>
+                <div className={styles.prefTitle}>Tài khoản và phân quyền</div>
+                <div className={styles.prefSub}>Kích hoạt tài khoản, đổi mật khẩu, thay đổi quyền truy cập</div>
+              </div>
+              <Toggle checked={prefs.iam_enabled} onChange={(next) => void savePrefs({ ...prefs, iam_enabled: next })} label="Thông báo tài khoản và phân quyền" />
+            </div>
+            <div className={styles.prefRow}>
+              <div>
+                <div className={styles.prefTitle}>Thông báo hệ thống</div>
+                <div className={styles.prefSub}>Cảnh báo chung, sự cố và bản tin hệ thống</div>
+              </div>
+              <Toggle checked={prefs.system_enabled} onChange={(next) => void savePrefs({ ...prefs, system_enabled: next })} label="Thông báo hệ thống" />
             </div>
           </div>
         ) : (

@@ -16,6 +16,7 @@ from app.schemas.attendance import (
     CheckOutResponse,
     ScanResponse,
     DailyAttendanceRow,
+    ManagerDashboardSummary,
     MonthlyReportRow,
     TimelogRow,
     TimelogUpsertRequest,
@@ -44,6 +45,8 @@ def _notify_attendance_success(
     actor_user_id: int | None,
     action: str,
     ts,
+    user_name: str | None = None,
+    late_minutes: int | None = None,
 ) -> None:
     event_type = "attendance.checkin.success" if action == "checkin" else "attendance.checkout.success"
     title = "Chấm công vào ca thành công" if action == "checkin" else "Chấm công ra ca thành công"
@@ -61,6 +64,26 @@ def _notify_attendance_success(
             action_url="/employee/checkin",
             created_by_user_id=actor_user_id,
             user_ids=[int(user_id)],
+        )
+    )
+    if action != "checkin" or company_id is None or int(late_minutes or 0) <= 0:
+        return
+    employee_name = (user_name or f"#{user_id}").strip()
+    _safe_notify(
+        lambda: notification_service.create_for_permission(
+            db,
+            company_id=int(company_id),
+            permission_key="attendance.read",
+            type="attendance.late_detected",
+            category="attendance",
+            severity="warning",
+            title=f"{employee_name} check-in muộn {int(late_minutes or 0)} phút",
+            body=f"Thời gian check-in: {ts}",
+            entity_type="attendance_log",
+            entity_id=None,
+            action_url="/timelog",
+            created_by_user_id=int(actor_user_id) if actor_user_id is not None else int(user_id),
+            exclude_user_ids=[int(user_id)],
         )
     )
 
@@ -127,6 +150,8 @@ async def checkin(
             actor_user_id=None,
             action="checkin",
             ts=result["time"],
+            user_name=str(result["user_name"]),
+            late_minutes=int(result.get("late_minutes", 0) or 0),
         )
         return ok(CheckInResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"]))
     except ValueError as e:
@@ -157,6 +182,8 @@ async def checkout(
             actor_user_id=None,
             action="checkout",
             ts=result["time"],
+            user_name=str(result["user_name"]),
+            late_minutes=int(result.get("late_minutes", 0) or 0),
         )
         return ok(CheckOutResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"]))
     except ValueError as e:
@@ -187,6 +214,8 @@ async def scan(
             actor_user_id=None,
             action=str(result["action"]),
             ts=result["time"],
+            user_name=str(result["user_name"]),
+            late_minutes=int(result.get("late_minutes", 0) or 0),
         )
         return ok(ScanResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"], action=str(result["action"])))
     except ValueError as e:
@@ -214,6 +243,8 @@ async def scan_me(
             actor_user_id=int(user.id),
             action=str(result["action"]),
             ts=result["time"],
+            user_name=str(result["user_name"]),
+            late_minutes=int(result.get("late_minutes", 0) or 0),
         )
         return ok(ScanResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"], action=str(result["action"])))
     except ValueError as e:
@@ -415,3 +446,12 @@ def stats(
         return ok(AttendanceStats(**data))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.get("/dashboard/summary", response_model=ApiResponse[ManagerDashboardSummary])
+def dashboard_summary(
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[ManagerDashboardSummary]:
+    return ok(ManagerDashboardSummary(**service.manager_dashboard_summary(db, company_id=company_id)))

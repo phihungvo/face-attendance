@@ -326,6 +326,179 @@
     gap: 8px;
   }
 
+  .desktopNotifWrap {
+    position: relative;
+  }
+
+  .desktopNotifIcon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .desktopNotifBadge {
+    position: absolute;
+    top: -10px;
+    right: -12px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 3px var(--surface);
+  }
+
+  .desktopNotifDropdown {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 12px);
+    width: min(360px, calc(100vw - 320px));
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 40;
+  }
+
+  .desktopNotifHead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .desktopNotifTitle {
+    font-size: 14px;
+    font-weight: 1000;
+    color: var(--ink);
+  }
+
+  .desktopNotifSub {
+    font-size: 12px;
+    color: var(--ink3);
+    font-weight: 800;
+    margin-top: 2px;
+  }
+
+  .desktopNotifGhost {
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--ink2);
+    border-radius: 12px;
+    padding: 8px 10px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .desktopNotifGhost:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .desktopNotifState,
+  .desktopNotifStateError {
+    border-radius: 14px;
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .desktopNotifState {
+    background: var(--surface2);
+    color: var(--ink3);
+  }
+
+  .desktopNotifStateError {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+  }
+
+  .desktopNotifList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 360px;
+    overflow: auto;
+  }
+
+  .desktopNotifItem {
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--ink);
+    border-radius: 16px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: flex-start;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .desktopNotifItemUnread {
+    border-color: rgba(91, 79, 232, 0.25);
+    background: rgba(91, 79, 232, 0.08);
+  }
+
+  .desktopNotifGlyph {
+    font-size: 16px;
+    line-height: 1.2;
+    padding-top: 2px;
+  }
+
+  .desktopNotifMain {
+    min-width: 0;
+  }
+
+  .desktopNotifItemTitle {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--ink);
+  }
+
+  .desktopNotifItemBody {
+    font-size: 12px;
+    color: var(--ink2);
+    margin-top: 2px;
+    line-height: 1.45;
+  }
+
+  .desktopNotifItemTime {
+    font-size: 11px;
+    color: var(--ink4);
+    margin-top: 6px;
+    font-weight: 800;
+  }
+
+  .desktopNotifDot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--indigo);
+    margin-top: 4px;
+  }
+
+  .desktopNotifFooter {
+    border: none;
+    background: rgba(91, 79, 232, 0.12);
+    color: var(--indigo);
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-weight: 1000;
+    cursor: pointer;
+  }
+
   .desktopToolBtnPrimary {
     border: none;
     background: linear-gradient(135deg, var(--indigo), var(--indigo-mid));

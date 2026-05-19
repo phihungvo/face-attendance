@@ -1,7 +1,15 @@
 .page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.errorBox {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 28%, transparent);
+  color: var(--danger);
+  font-weight: 800;
 }
 
 .statsGrid {
@@ -10,276 +18,525 @@
   gap: 14px;
 }
 
-.grid2 {
+.statCard {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.errorBox {
-  background: var(--danger-bg);
-  border: 1px solid var(--danger-border);
-  color: var(--danger-text);
+.statCard::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -55% auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  opacity: 0.08;
+  background: currentColor;
+  pointer-events: none;
+}
+
+.toneBlue {
+  color: #1677ff;
+}
+
+.toneGreen {
+  color: #16a34a;
+}
+
+.toneAmber {
+  color: #d97706;
+}
+
+.toneRose {
+  color: #e11d48;
+}
+
+.statIcon {
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
-  padding: 10px 12px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, currentColor 12%, white);
+  border: 1px solid color-mix(in oklab, currentColor 22%, var(--border));
+  font-size: 20px;
+}
+
+.statHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.statHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface2) 84%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.statHint strong {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.statValue {
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 950;
+  color: var(--text);
+}
+
+.statLabel {
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.mainGrid > :first-child {
+  grid-column: 1 / -1;
+}
+
+.sectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
   font-size: 13px;
+  font-weight: 900;
+}
+
+.sectionTitle :global(.anticon) {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--primary) 10%, var(--surface2));
+  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  color: var(--primary);
+  font-size: 17px;
+}
+
+.softBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary) 9%, var(--surface2));
+  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.chartLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 18px;
+}
+
+.chartPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.chartSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chartSummaryMain {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.chartSummaryValue {
+  font-size: 44px;
+  line-height: 0.95;
+  font-weight: 950;
+  color: var(--text);
+  letter-spacing: -0.05em;
+}
+
+.chartSummaryText {
+  display: grid;
+  gap: 3px;
+}
+
+.chartSummaryText span {
+  color: var(--text3);
+  font-size: 12px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chartSummaryText strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.chartSummarySide {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.summaryPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface2) 86%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.chartCanvas {
+  position: relative;
+  min-height: 240px;
+  padding: 10px 10px 6px 42px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(420px 180px at 0% 0%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 68%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface2) 82%, transparent), var(--surface));
+  overflow: hidden;
+}
+
+.chartYAxis {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  bottom: 18px;
+  width: 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.chartYAxis span {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.chartSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.chartGridLine {
+  stroke: color-mix(in oklab, var(--border) 80%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.chartArea {
+  fill: url(#dashboardTrendArea);
+}
+
+.chartLine {
+  fill: none;
+  stroke: url(#dashboardTrendLine);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 8px 14px rgba(22, 119, 255, 0.14));
+}
+
+.chartPointOuter {
+  fill: white;
+  stroke: #1677ff;
+  stroke-width: 3;
+}
+
+.chartPointInner {
+  fill: #14b8a6;
+}
+
+.chartAxisRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.chartAxisItem {
+  padding: 8px 6px 0;
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.chartAxisItem strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.chartAxisItem span {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sideMetrics {
+  display: grid;
+  gap: 12px;
+}
+
+.metricCard {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 68%, transparent);
+  display: grid;
+  gap: 6px;
+}
+
+.metricIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--primary);
+  font-size: 16px;
+}
+
+.metricLabel {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metricValue {
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 900;
+}
+
+.metricSub {
+  color: var(--text2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.leaveList,
+.activityList {
+  display: grid;
+  gap: 12px;
+}
+
+.leaveRow,
+.activityRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 74%, transparent);
+}
+
+.leaveAvatar,
+.activityAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: color-mix(in oklab, var(--primary) 16%, white);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 950;
+  border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border));
+}
+
+.leaveMain,
+.activityMain {
+  min-width: 0;
+  flex: 1;
+}
+
+.leaveTop,
+.activityTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leaveTop strong,
+.activityTop strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.leaveSub,
+.leaveMeta,
+.activitySub {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.metaPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.iconBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in oklab, #f59e0b 12%, white);
+  color: #b45309;
+  border: 1px solid color-mix(in oklab, #f59e0b 24%, var(--border));
+  flex-shrink: 0;
+}
+
+.activityTime {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.emptyState {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed var(--border2);
+  background: color-mix(in oklab, var(--surface2) 70%, transparent);
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (max-width: 1199px) {
+  .mainGrid,
+  .chartLayout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 899px) {
   .statsGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .chartAxisRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 599px) {
+  .page {
+    gap: 14px;
+  }
+
   .statsGrid {
     grid-template-columns: 1fr;
   }
 
-  .grid2 {
-    grid-template-columns: 1fr;
+  .chartSummary {
+    flex-direction: column;
+    align-items: flex-start;
   }
-}
 
-.ghostBtn {
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  border-radius: 10px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
+  .chartSummaryValue {
+    font-size: 36px;
+  }
 
-.ghostBtn:hover {
-  background: var(--muted-bg);
-}
+  .chartSummarySide {
+    justify-content: flex-start;
+  }
 
-.chartBars {
-  height: 180px;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
-  align-items: end;
-}
+  .chartCanvas {
+    min-height: 220px;
+    padding: 12px 10px 10px 40px;
+    border-radius: 18px;
+  }
 
-.barCol {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.bar {
-  width: 100%;
-  border-radius: 10px 10px 8px 8px;
-  background: linear-gradient(180deg, rgba(10, 132, 255, 0.8), rgba(191, 90, 242, 0.6));
-  box-shadow: 0 10px 18px rgba(10, 132, 255, 0.15);
-}
-
-.barLabel {
-  font-size: 11px;
-  color: var(--text3);
-  font-weight: 700;
-}
-
-.feed {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.feedItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-}
-
-.feedIcon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: var(--info-bg);
-  color: var(--primary);
-  flex-shrink: 0;
-  font-size: 16px;
-}
-
-.feedMain {
-  min-width: 0;
-}
-
-.feedTitle {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.feedSub {
-  font-size: 12px;
-  color: var(--text3);
-  margin-top: 2px;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.listRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-}
-
-.listAvatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  color: #fff;
-  background: linear-gradient(135deg, #ff6b6b, #ffe66d);
-  flex-shrink: 0;
-}
-
-.listMain {
-  flex: 1;
-  min-width: 0;
-}
-
-.listTitle {
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.listSub {
-  font-size: 12px;
-  color: var(--text3);
-  margin-top: 2px;
-}
-
-.listTag {
-  font-size: 11px;
-  font-weight: 800;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--warning-bg);
-  border: 1px solid var(--warning-border);
-  color: var(--warning-text);
-}
-
-.empty {
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px dashed var(--border2);
-  background: var(--bg);
-  color: var(--text3);
-  font-weight: 800;
-  font-size: 12.5px;
-}
-
-.calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.calCell {
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text2);
-}
-
-.muted {
-  opacity: 0.45;
-}
-
-.employeeCell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.empAvatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  color: #fff;
-  background: linear-gradient(135deg, var(--primary), var(--purple));
-  flex-shrink: 0;
-  font-size: 11px;
-}
-
-.empText {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.empName {
-  font-weight: 800;
-  color: var(--text);
-}
-
-.empCode {
-  font-size: 11px;
-  color: var(--text3);
-  font-weight: 700;
-}
-
-.status {
-  font-size: 11px;
-  font-weight: 900;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border2);
-  background: var(--bg);
-}
-
-.good {
-  background: var(--success-bg);
-  border-color: var(--success-border);
-  color: var(--success-text);
-}
-
-.warn {
-  background: var(--warning-bg);
-  border-color: var(--warning-border);
-  color: var(--warning-text);
-}
-
-@media (max-width: 1100px) {
-  .statsGrid {
+  .chartAxisRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
 
-@media (max-width: 900px) {
-  .grid2 {
-    grid-template-columns: 1fr;
+  .leaveTop,
+  .activityTop {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .iconBadge,
+  .activityTime {
+    align-self: flex-start;
   }
 }
