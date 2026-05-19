@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import get_current_user, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -21,9 +21,11 @@ from app.schemas.iam import (
     RoleUpdateRequest,
 )
 from app.services.auth import AuthService
+from app.services.notifications import NotificationService
 
 router = APIRouter()
 auth_service = AuthService()
+notification_service = NotificationService()
 
 
 @router.get("/permissions", response_model=ApiResponse[list[PermissionOut]])
@@ -143,11 +145,14 @@ def update_iam_user(
     user_id: int,
     payload: AccountUpdateRequest,
     db: Session = Depends(get_db),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("iam.manage")),
 ) -> ApiResponse[AccountOut]:
     user = db.get(User, user_id)
     if user is None or not user.username:
         raise AppException(BAD_REQUEST, detail="Account không tồn tại")
+    before_roles = sorted([r.key for r in user.roles])
+    before_perms = sorted({p.key for p in user.permissions} | {p.key for r in user.roles for p in r.permissions})
     user.roles = list(db.execute(select(Role).where(Role.key.in_(payload.role_keys))).scalars().all()) if payload.role_keys else []
     user.permissions = list(db.execute(select(Permission).where(Permission.key.in_(payload.permission_keys))).scalars().all()) if payload.permission_keys else []
     db.add(user)
@@ -155,6 +160,24 @@ def update_iam_user(
     db.refresh(user)
     role_keys = [r.key for r in user.roles]
     perm_keys = sorted({p.key for p in user.permissions} | {p.key for r in user.roles for p in r.permissions})
+    if before_roles != sorted(role_keys) or before_perms != perm_keys:
+        try:
+            notification_service.create_for_users(
+                db,
+                company_id=int(getattr(user, "company_id", 0) or 0) or None,
+                type="user.permissions.changed",
+                category="iam",
+                severity="warning",
+                title="Quyền truy cập của bạn vừa được thay đổi",
+                body="Vai trò hoặc quyền truy cập của bạn đã được cập nhật bởi quản trị viên.",
+                entity_type="user",
+                entity_id=int(user.id),
+                action_url="/employee/profile" if "employee" in role_keys else "/",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(user.id)],
+            )
+        except Exception:
+            pass
     return ok(AccountOut(id=user.id, username=user.username or "", role_keys=role_keys, permission_keys=perm_keys))
 
 

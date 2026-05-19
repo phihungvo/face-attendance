@@ -846,12 +846,12 @@
 .good {
   background: linear-gradient(
       135deg,
-      color-mix(in oklab, var(--success) 14%, transparent),
+      color-mix(in oklab, var(--accent) 14%, transparent),
       color-mix(in oklab, var(--accent) 10%, transparent)
     )
-    color-mix(in oklab, var(--success) 9%, transparent);
-  border-color: color-mix(in oklab, var(--success) 30%, var(--border));
-  color: color-mix(in oklab, var(--success) 85%, black);
+    color-mix(in oklab, var(--accent) 9%, transparent);
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  color: color-mix(in oklab, var(--accent) 85%, black);
 }
 
 .bad {
@@ -955,4 +955,680 @@
   height: 1px;
   background: var(--border);
   margin: 2px 0 4px;
+}
+
+/* ─── Manager Calendar ─── */
+.calHeaderRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calTitle {
+  font-weight: 950;
+  color: var(--text);
+  min-width: 160px;
+  text-align: center;
+}
+
+.calNavBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: 950;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.calNavBtn:hover {
+  background: color-mix(in oklab, var(--surface2) 84%, var(--surface));
+  border-color: color-mix(in oklab, var(--text3) 26%, var(--border));
+}
+
+.calReload {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.calReload:hover {
+  background: color-mix(in oklab, var(--surface2) 84%, var(--surface));
+  border-color: color-mix(in oklab, var(--text3) 26%, var(--border));
+  color: var(--text);
+}
+
+.calFilters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.calFilters > * {
+  min-width: 220px;
+}
+
+.calSelectWrap {
+  flex: 0 0 240px;
+}
+
+.calSelect {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 10px 12px;
+  font-weight: 800;
+  outline: none;
+}
+.calSelect:focus {
+  border-color: color-mix(in oklab, var(--text3) 26%, var(--border));
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--surface2) 70%, transparent);
+}
+
+.calClearBtn {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.calClearBtn:hover {
+  background: color-mix(in oklab, var(--surface2) 84%, var(--surface));
+  border-color: color-mix(in oklab, var(--text3) 26%, var(--border));
+  color: var(--text);
+}
+
+.suggestBox {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  z-index: 20;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.suggestItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.suggestItem:hover {
+  background: color-mix(in oklab, var(--surface2) 70%, transparent);
+}
+
+.suggestName {
+  font-weight: 950;
+}
+.suggestMeta {
+  font-weight: 900;
+  font-size: 12px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+}
+
+.calGrid {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface2);
+  box-shadow: var(--shadow-sm);
+}
+
+.calWeekHead {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.calWeekCell {
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 950;
+  color: var(--text2);
+  font-size: 12px;
+}
+
+.calBody {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calDay {
+  --cal-accent: color-mix(in oklab, var(--text3) 22%, transparent);
+  --cal-bg: var(--surface);
+  --cal-ring: color-mix(in oklab, var(--cal-accent) 52%, transparent);
+  --cal-bg2: var(--cal-bg);
+  --cal-text: var(--text);
+  min-height: 104px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--cal-bg), var(--cal-bg2));
+  padding: 10px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  color: var(--cal-text);
+  position: relative;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--cal-ring) 28%, transparent),
+    0 10px 26px rgba(0, 0, 0, 0.10);
+}
+.calDay::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cal-accent), color-mix(in oklab, var(--cal-accent) 70%, white));
+  opacity: 0.95;
+  box-shadow: 0 0 12px color-mix(in oklab, var(--cal-accent) 42%, transparent);
+}
+.calDay::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  top: 7px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--cal-accent) 80%, white), var(--cal-accent));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--surface) 84%, transparent),
+    0 0 14px color-mix(in oklab, var(--cal-accent) 46%, transparent);
+  opacity: 0.9;
+}
+.calDay:nth-child(7n) {
+  border-right: 0;
+}
+.calDay:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--cal-ring) 40%, transparent),
+    0 16px 36px rgba(0, 0, 0, 0.16),
+    0 0 18px color-mix(in oklab, var(--cal-accent) 22%, transparent);
+}
+.calDay:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.calDayMuted {
+  --cal-bg: color-mix(in oklab, var(--surface2) 58%, var(--surface));
+  color: var(--text3);
+}
+
+.calDayActive {
+  outline: 2px solid color-mix(in oklab, var(--cal-accent) 88%, transparent);
+  outline-offset: -2px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--cal-ring) 56%, transparent),
+    0 18px 42px rgba(0, 0, 0, 0.18),
+    0 0 22px color-mix(in oklab, var(--cal-accent) 28%, transparent);
+}
+
+.calDayTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.calDayNum {
+  font-weight: 950;
+  font-size: 13px;
+  padding-top: 2px;
+  height: 24px;
+  min-width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in oklab, var(--cal-accent) 28%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface) 70%, transparent),
+    color-mix(in oklab, var(--surface2) 70%, transparent)
+  );
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--cal-accent) 10%, transparent),
+    0 0 16px color-mix(in oklab, var(--cal-accent) 18%, transparent);
+}
+.calDayNum_empty {
+  background: color-mix(in oklab, var(--surface2) 70%, transparent);
+}
+.calDayNum_pending {
+  background: color-mix(in oklab, var(--warning) 30%, var(--surface));
+  border-color: color-mix(in oklab, var(--warning) 34%, var(--border));
+}
+.calDayNum_approved {
+  background: color-mix(in oklab, var(--accent) 30%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--border));
+}
+.calDayNum_rejected {
+  background: color-mix(in oklab, var(--danger) 28%, var(--surface));
+  border-color: color-mix(in oklab, var(--danger) 32%, var(--border));
+}
+.calDayNum_mixed {
+  background: color-mix(in oklab, var(--primary) 26%, var(--surface));
+  border-color: color-mix(in oklab, var(--primary) 30%, var(--border));
+}
+
+.calBadges {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.calBadge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 950;
+  border: 1px solid color-mix(in oklab, var(--cal-accent) 18%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface) 74%, transparent),
+    color-mix(in oklab, var(--surface2) 74%, transparent)
+  );
+  box-shadow: 0 0 14px color-mix(in oklab, var(--cal-accent) 12%, transparent);
+}
+.calBadge :global(svg) {
+  font-size: 12px;
+}
+
+.badgePending {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--warning) 36%, var(--surface)),
+    color-mix(in oklab, var(--warning) 18%, var(--surface))
+  );
+  color: color-mix(in oklab, var(--text) 92%, white);
+  border-color: color-mix(in oklab, var(--warning) 36%, var(--border));
+}
+
+.badgeTotal {
+  background: color-mix(in oklab, var(--surface2) 70%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--text3) 18%, var(--border));
+}
+.badgeApproved {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 34%, var(--surface)),
+    color-mix(in oklab, var(--accent) 16%, var(--surface))
+  );
+  color: color-mix(in oklab, var(--text) 92%, white);
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--border));
+}
+.badgeRejected {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--danger) 32%, var(--surface)), color-mix(in oklab, var(--danger) 16%, var(--surface)));
+  color: color-mix(in oklab, var(--text) 92%, white);
+  border-color: color-mix(in oklab, var(--danger) 34%, var(--border));
+}
+
+.calTone_empty {
+  --cal-accent: color-mix(in oklab, var(--text3) 18%, transparent);
+  --cal-bg: color-mix(in oklab, var(--surface) 88%, var(--surface2));
+  --cal-bg2: color-mix(in oklab, var(--surface2) 88%, var(--surface));
+  --cal-text: var(--text);
+}
+.calTone_pending {
+  --cal-accent: color-mix(in oklab, var(--warning) 96%, var(--surface));
+  --cal-bg: color-mix(in oklab, var(--warning) 34%, var(--surface));
+  --cal-bg2: color-mix(in oklab, var(--warning) 16%, var(--surface2));
+  --cal-ring: color-mix(in oklab, var(--warning) 82%, transparent);
+  --cal-text: color-mix(in oklab, var(--text) 92%, white);
+}
+.calTone_approved {
+  --cal-accent: color-mix(in oklab, var(--accent) 96%, var(--surface));
+  --cal-bg: color-mix(in oklab, var(--accent) 30%, var(--surface));
+  --cal-bg2: color-mix(in oklab, var(--accent) 14%, var(--surface2));
+  --cal-ring: color-mix(in oklab, var(--accent) 82%, transparent);
+  --cal-text: color-mix(in oklab, var(--text) 92%, white);
+}
+.calTone_rejected {
+  --cal-accent: color-mix(in oklab, var(--danger) 96%, var(--surface));
+  --cal-bg: color-mix(in oklab, var(--danger) 28%, var(--surface));
+  --cal-bg2: color-mix(in oklab, var(--danger) 12%, var(--surface2));
+  --cal-ring: color-mix(in oklab, var(--danger) 82%, transparent);
+  --cal-text: color-mix(in oklab, var(--text) 92%, white);
+}
+.calTone_mixed {
+  --cal-accent: color-mix(in oklab, var(--primary) 96%, var(--surface));
+  --cal-bg: color-mix(in oklab, var(--primary) 28%, var(--surface));
+  --cal-bg2: color-mix(in oklab, var(--primary) 12%, var(--surface2));
+  --cal-ring: color-mix(in oklab, var(--primary) 80%, transparent);
+  --cal-text: color-mix(in oklab, var(--text) 92%, white);
+}
+
+.calMiniList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+.calMiniItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid color-mix(in oklab, var(--cal-accent) 18%, var(--border));
+}
+.calMiniName {
+  font-weight: 900;
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calMiniCount {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 950;
+  background: color-mix(in oklab, var(--surface2) 75%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text3) 16%, var(--border));
+  color: var(--text);
+}
+.calMiniMore {
+  font-weight: 900;
+  font-size: 12px;
+  color: var(--text3);
+  padding-left: 2px;
+}
+
+.calEmptyHint {
+  margin-top: 10px;
+  color: var(--text3);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* ─── Day Modal ─── */
+.dayDetailModalShell {
+  width: min(920px, 100%);
+  --modal-header-bg: color-mix(in oklab, var(--primary) 6%, var(--surface2));
+  --modal-footer-bg: var(--surface);
+}
+
+.dayModal {
+  display: grid;
+  gap: 12px;
+}
+
+.dayModalTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.dayMetaTitle {
+  font-weight: 950;
+  color: var(--text);
+}
+.dayMetaSub {
+  margin-top: 2px;
+  color: var(--text3);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.dayActions {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dayMeta {
+  min-width: 220px;
+}
+
+.dayApproveAll {
+  border: 0;
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 950;
+  cursor: pointer;
+  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
+}
+
+.dayApproveAll:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 18%, var(--surface));
+}
+.dayApproveAll:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.dayGroups {
+  display: grid;
+  gap: 12px;
+}
+
+.dayGroup {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.dayGroupHead {
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.dayGroupTitle {
+  font-weight: 950;
+  color: var(--text);
+}
+.dayGroupSub {
+  margin-top: 2px;
+  color: var(--text3);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.dayGroupStats {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statChip {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 950;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.chipTotal {
+  background: color-mix(in oklab, var(--surface2) 76%, var(--surface));
+  border-color: color-mix(in oklab, var(--text3) 18%, var(--border));
+}
+.chipPending {
+  background: color-mix(in oklab, var(--warning) 14%, var(--surface));
+  border-color: color-mix(in oklab, var(--warning) 22%, var(--border));
+  color: var(--text);
+}
+.chipApproved {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 20%, var(--border));
+  color: var(--text);
+}
+.chipRejected {
+  background: color-mix(in oklab, var(--danger) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--danger) 20%, var(--border));
+  color: var(--text);
+}
+
+.dayList {
+  display: grid;
+}
+
+.dayRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  transition: background 0.15s ease;
+}
+.dayRow:first-child {
+  border-top: 0;
+}
+.dayRow:hover {
+  background: color-mix(in oklab, var(--surface2) 78%, var(--surface));
+}
+
+.dayEmpName {
+  font-weight: 950;
+  color: var(--text);
+}
+.dayEmpMeta {
+  margin-top: 2px;
+  color: var(--text3);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.dayRowRight {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .dayRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .dayRowRight {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .dayRowBtns {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.statusPill {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 950;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+.pillPending {
+  background: color-mix(in oklab, var(--warning) 14%, var(--surface));
+  border-color: color-mix(in oklab, var(--warning) 22%, var(--border));
+  color: var(--text);
+}
+.pillApproved {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 20%, var(--border));
+  color: var(--text);
+}
+.pillRejected {
+  background: color-mix(in oklab, var(--danger) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--danger) 20%, var(--border));
+  color: var(--text);
+}
+
+.dayRowBtns {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dayBtnApprove {
+  border: 0;
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface2));
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-weight: 950;
+  cursor: pointer;
+  border: 1px solid color-mix(in oklab, var(--accent) 26%, var(--border));
+}
+
+.dayBtnReject {
+  border: 0;
+  background: color-mix(in oklab, var(--danger) 12%, var(--surface2));
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-weight: 950;
+  cursor: pointer;
+  border: 1px solid color-mix(in oklab, var(--danger) 22%, var(--border));
+}
+
+.dayEmpty {
+  padding: 14px 12px;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  color: var(--text3);
+  font-weight: 800;
 }

@@ -10,10 +10,12 @@ from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.companies import CompanyCreateRequest, CompanyOut, CompanyUpdateRequest
 from app.services.companies import CompanyService
+from app.services.notifications import NotificationService
 from app.api.deps import get_current_user
 
 router = APIRouter()
 service = CompanyService()
+notification_service = NotificationService()
 
 
 @router.get("", response_model=ApiResponse[list[CompanyOut]])
@@ -68,17 +70,45 @@ def update_company(
     company_id: int,
     payload: CompanyUpdateRequest,
     db: Session = Depends(get_db),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("companies.manage")),
 ) -> ApiResponse[CompanyOut]:
     try:
+        before = service.get_company(db, company_id=company_id)
         data = payload.model_dump(exclude_unset=True)
-        return ok(
-            service.update_company(
-                db,
-                company_id=company_id,
-                **data,
-            )
+        result = service.update_company(
+            db,
+            company_id=company_id,
+            **data,
         )
+        gps_changed = any(
+            [
+                getattr(before, "require_gps_on_attendance", None) != getattr(result, "require_gps_on_attendance", None),
+                getattr(before, "latitude", None) != getattr(result, "latitude", None),
+                getattr(before, "longitude", None) != getattr(result, "longitude", None),
+                getattr(before, "geo_radius_meters", None) != getattr(result, "geo_radius_meters", None),
+            ]
+        )
+        if gps_changed:
+            try:
+                notification_service.create_for_permission(
+                    db,
+                    company_id=company_id,
+                    permission_key="notifications.read",
+                    type="company.gps_policy.updated",
+                    category="settings",
+                    severity="warning",
+                    title="Cấu hình GPS chấm công vừa được cập nhật",
+                    body=f"GPS {'bật' if bool(getattr(result, 'require_gps_on_attendance', False)) else 'tắt'} • bán kính {int(getattr(result, 'geo_radius_meters', 0) or 0)}m",
+                    entity_type="company",
+                    entity_id=int(getattr(result, "id")),
+                    action_url="/settings",
+                    created_by_user_id=int(actor.id),
+                    exclude_user_ids=[],
+                )
+            except Exception:
+                pass
+        return ok(result)
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -109,14 +139,41 @@ def update_my_company(
     if cid is None:
         raise AppException(BAD_REQUEST, detail="User chưa gắn company")
     try:
+        before = service.get_company(db, company_id=int(cid))
         data = payload.model_dump(exclude_unset=True)
-        return ok(
-            service.update_company(
-                db,
-                company_id=int(cid),
-                **data,
-            )
+        result = service.update_company(
+            db,
+            company_id=int(cid),
+            **data,
         )
+        gps_changed = any(
+            [
+                getattr(before, "require_gps_on_attendance", None) != getattr(result, "require_gps_on_attendance", None),
+                getattr(before, "latitude", None) != getattr(result, "latitude", None),
+                getattr(before, "longitude", None) != getattr(result, "longitude", None),
+                getattr(before, "geo_radius_meters", None) != getattr(result, "geo_radius_meters", None),
+            ]
+        )
+        if gps_changed:
+            try:
+                notification_service.create_for_permission(
+                    db,
+                    company_id=int(cid),
+                    permission_key="notifications.read",
+                    type="company.gps_policy.updated",
+                    category="settings",
+                    severity="warning",
+                    title="Cấu hình GPS chấm công vừa được cập nhật",
+                    body=f"GPS {'bật' if bool(getattr(result, 'require_gps_on_attendance', False)) else 'tắt'} • bán kính {int(getattr(result, 'geo_radius_meters', 0) or 0)}m",
+                    entity_type="company",
+                    entity_id=int(getattr(result, "id")),
+                    action_url="/settings",
+                    created_by_user_id=int(user.id),
+                    exclude_user_ids=[],
+                )
+            except Exception:
+                pass
+        return ok(result)
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 

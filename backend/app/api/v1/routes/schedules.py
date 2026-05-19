@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import logging
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -23,10 +24,20 @@ from app.schemas.schedules import (
     WorkScheduleRegistrationOut,
     WorkScheduleUpdateRequest,
 )
+from app.services.notifications import NotificationService
 from app.services.schedules import ScheduleService
 
 router = APIRouter()
 service = ScheduleService()
+notification_service = NotificationService()
+logger = logging.getLogger(__name__)
+
+
+def _safe_notify(fn) -> None:
+    try:
+        fn()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("schedule notification emit failed: %r", exc)
 
 
 # ---- schedule templates ----
@@ -201,6 +212,23 @@ def create_my_registration_request(
             days=list(payload.days or []),
             note=payload.note,
         )
+        _safe_notify(
+            lambda: notification_service.create_for_permission(
+                db,
+                company_id=company_id,
+                permission_key="schedules.approve",
+                type="schedule.request.created",
+                category="schedule",
+                severity="info",
+                title=f"Yêu cầu đăng ký ca mới từ {getattr(user, 'name', 'Nhân viên')}",
+                body=f"Ca #{req.schedule_id} • {req.date_from} → {req.date_to}",
+                entity_type="schedule_registration_request",
+                entity_id=int(req.id),
+                action_url="/schedules",
+                created_by_user_id=int(user.id),
+                exclude_user_ids=[int(user.id)],
+            )
+        )
         return ok(WorkScheduleRegistrationRequestOut.model_validate(req))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -227,7 +255,25 @@ def cancel_my_registration_request(
 ) -> ApiResponse[dict[str, object]]:
     company_id = int(getattr(user, "company_id", 0) or 0)
     try:
-        service.cancel_my_registration_request(db, company_id=company_id, user_id=int(user.id), request_id=request_id)
+        req = service.cancel_my_registration_request(db, company_id=company_id, user_id=int(user.id), request_id=request_id)
+        if req is not None:
+            _safe_notify(
+                lambda: notification_service.create_for_permission(
+                    db,
+                    company_id=company_id,
+                    permission_key="schedules.approve",
+                    type="schedule.registration.cancelled",
+                    category="schedule",
+                    severity="warning",
+                    title=f"Yêu cầu đăng ký ca đã bị hủy bởi {getattr(user, 'name', 'Nhân viên')}",
+                    body=f"Ca #{getattr(req, 'schedule_id')} • {getattr(req, 'date_from')} → {getattr(req, 'date_to')}",
+                    entity_type="schedule_registration_request",
+                    entity_id=int(getattr(req, "id")),
+                    action_url="/schedules",
+                    created_by_user_id=int(user.id),
+                    exclude_user_ids=[int(user.id)],
+                )
+            )
         return ok({"cancelled": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -241,7 +287,25 @@ def cancel_my_registration(
 ) -> ApiResponse[dict[str, object]]:
     company_id = int(getattr(user, "company_id", 0) or 0)
     try:
-        service.cancel_my_registration(db, company_id=company_id, user_id=int(user.id), reg_id=reg_id)
+        item = service.cancel_my_registration(db, company_id=company_id, user_id=int(user.id), reg_id=reg_id)
+        if item is not None:
+            _safe_notify(
+                lambda: notification_service.create_for_permission(
+                    db,
+                    company_id=company_id,
+                    permission_key="schedules.approve",
+                    type="schedule.registration.cancelled",
+                    category="schedule",
+                    severity="warning",
+                    title=f"Lịch làm đã bị hủy bởi {getattr(user, 'name', 'Nhân viên')}",
+                    body=f"Ca #{getattr(item, 'schedule_id')} • {getattr(item, 'day')}",
+                    entity_type="schedule_registration",
+                    entity_id=int(getattr(item, "id")),
+                    action_url="/schedules",
+                    created_by_user_id=int(user.id),
+                    exclude_user_ids=[int(user.id)],
+                )
+            )
         return ok({"cancelled": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -294,6 +358,22 @@ def approve_registration_request(
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
     try:
         req = service.approve_registration_request(db, company_id=int(company_id), approver_user_id=int(actor.id), request_id=request_id)
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=int(company_id),
+                type="schedule.request.approved",
+                category="schedule",
+                severity="success",
+                title="Yêu cầu đăng ký ca đã được duyệt",
+                body=f"Ca #{req.schedule_id} • {req.date_from} → {req.date_to}",
+                entity_type="schedule_registration_request",
+                entity_id=int(req.id),
+                action_url="/employee/schedules",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(req.user_id)],
+            )
+        )
         return ok(WorkScheduleRegistrationRequestOut.model_validate(req))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -312,6 +392,22 @@ def reject_registration_request(
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
     try:
         req = service.reject_registration_request(db, company_id=int(company_id), approver_user_id=int(actor.id), request_id=request_id, note=note)
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=int(company_id),
+                type="schedule.request.rejected",
+                category="schedule",
+                severity="warning",
+                title="Yêu cầu đăng ký ca đã bị từ chối",
+                body=f"Ca #{req.schedule_id} • {req.date_from} → {req.date_to}",
+                entity_type="schedule_registration_request",
+                entity_id=int(req.id),
+                action_url="/employee/schedules",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(req.user_id)],
+            )
+        )
         return ok(WorkScheduleRegistrationRequestOut.model_validate(req))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -328,18 +424,33 @@ def assign_registration(
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
     try:
-        return ok(
-            service.assign_schedule(
+        item = service.assign_schedule(
+            db,
+            company_id=int(company_id),
+            actor_user_id=int(actor.id),
+            user_id=payload.user_id,
+            day=payload.day,
+            schedule_id=payload.schedule_id,
+            status=payload.status or "approved",
+            note=payload.note,
+        )
+        _safe_notify(
+            lambda: notification_service.create_for_users(
                 db,
                 company_id=int(company_id),
-                actor_user_id=int(actor.id),
-                user_id=payload.user_id,
-                day=payload.day,
-                schedule_id=payload.schedule_id,
-                status=payload.status or "approved",
-                note=payload.note,
+                type="schedule.registration.created",
+                category="schedule",
+                severity="info",
+                title="Bạn vừa được gán vào một ca làm",
+                body=f"Ca #{getattr(item, 'schedule_id')} • {getattr(item, 'day')}",
+                entity_type="schedule_registration",
+                entity_id=int(getattr(item, "id")),
+                action_url="/employee/schedules",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(getattr(item, "user_id"))],
             )
         )
+        return ok(item)
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -355,7 +466,24 @@ def approve_registration(
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
     try:
-        return ok(service.approve_registration(db, company_id=int(company_id), approver_user_id=int(actor.id), reg_id=reg_id))
+        item = service.approve_registration(db, company_id=int(company_id), approver_user_id=int(actor.id), reg_id=reg_id)
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=int(company_id),
+                type="schedule.registration.approved",
+                category="schedule",
+                severity="success",
+                title="Lịch làm của bạn đã được duyệt",
+                body=f"Ca #{getattr(item, 'schedule_id')} • {getattr(item, 'day')}",
+                entity_type="schedule_registration",
+                entity_id=int(getattr(item, "id")),
+                action_url="/employee/schedules",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(getattr(item, "user_id"))],
+            )
+        )
+        return ok(item)
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -372,7 +500,24 @@ def reject_registration(
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
     try:
-        return ok(service.reject_registration(db, company_id=int(company_id), approver_user_id=int(actor.id), reg_id=reg_id, note=note))
+        item = service.reject_registration(db, company_id=int(company_id), approver_user_id=int(actor.id), reg_id=reg_id, note=note)
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=int(company_id),
+                type="schedule.registration.rejected",
+                category="schedule",
+                severity="warning",
+                title="Lịch làm của bạn đã bị từ chối",
+                body=f"Ca #{getattr(item, 'schedule_id')} • {getattr(item, 'day')}",
+                entity_type="schedule_registration",
+                entity_id=int(getattr(item, "id")),
+                action_url="/employee/schedules",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(getattr(item, "user_id"))],
+            )
+        )
+        return ok(item)
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -382,12 +527,30 @@ def delete_registration(
     reg_id: int,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("schedules.approve")),
 ) -> ApiResponse[dict[str, object]]:
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
     try:
-        service.delete_registration(db, company_id=int(company_id), reg_id=reg_id)
+        item = service.delete_registration(db, company_id=int(company_id), reg_id=reg_id)
+        if item is not None:
+            _safe_notify(
+                lambda: notification_service.create_for_users(
+                    db,
+                    company_id=int(company_id),
+                    type="schedule.registration.cancelled",
+                    category="schedule",
+                    severity="warning",
+                    title="Lịch làm của bạn vừa bị gỡ khỏi hệ thống",
+                    body=f"Ca #{getattr(item, 'schedule_id')} • {getattr(item, 'day')}",
+                    entity_type="schedule_registration",
+                    entity_id=int(getattr(item, "id")),
+                    action_url="/employee/schedules",
+                    created_by_user_id=int(actor.id),
+                    user_ids=[int(getattr(item, "user_id"))],
+                )
+            )
         return ok({"deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

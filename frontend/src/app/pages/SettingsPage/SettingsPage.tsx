@@ -3,6 +3,7 @@ import Card from "../../components/Card/Card";
 import { mockSettings } from "../../../shared/mock/mockData";
 import { getAttendancePolicy, updateAttendancePolicy } from "../../../shared/api/settings";
 import { getCompany, getMyCompany, updateCompany, updateMyCompany } from "../../../shared/api/companies";
+import { getCompanyNotificationPolicies, updateCompanyNotificationPolicies } from "../../../shared/api/notifications";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useTheme } from "../../../shared/theme/theme";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
@@ -131,6 +132,9 @@ export default function SettingsPage() {
   const [notifNewLeave, setNotifNewLeave] = useState(true);
   const [notifDailyReport, setNotifDailyReport] = useState(false);
   const [notifOvertime, setNotifOvertime] = useState(true);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
 
   const languageLabel = useMemo(() => (language === "vi" ? "Tiếng Việt" : "English"), [language]);
   const themeLabel = useMemo(() => {
@@ -203,6 +207,25 @@ export default function SettingsPage() {
   useEffect(() => {
     ensureLeafletDefaultIcon();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setNotifLoading(true);
+        setNotifError(null);
+        const policies = await getCompanyNotificationPolicies();
+        setNotifLate(Boolean(policies.late_attendance_enabled));
+        setNotifAbsent(Boolean(policies.absent_attendance_enabled));
+        setNotifNewLeave(Boolean(policies.new_leave_request_enabled));
+        setNotifDailyReport(Boolean(policies.daily_report_enabled));
+        setNotifOvertime(Boolean(policies.overtime_request_enabled));
+      } catch (e) {
+        setNotifError(getApiErrorMessage(e));
+      } finally {
+        setNotifLoading(false);
+      }
+    })();
+  }, [auth.selectedCompanyId, auth.companyId]);
 
   async function searchMap() {
     const q = mapQuery.trim();
@@ -714,7 +737,39 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card title="📱 Thông báo" sub="Bật/tắt các loại cảnh báo">
+          <Card
+            title="📱 Thông báo"
+            sub={notifLoading ? "Đang tải cấu hình..." : "Bật/tắt các loại cảnh báo theo công ty"}
+            right={
+              <button
+                className={styles.btnGhost}
+                type="button"
+                disabled={notifSaving || notifLoading}
+                onClick={async () => {
+                  try {
+                    setNotifSaving(true);
+                    setNotifError(null);
+                    await updateCompanyNotificationPolicies({
+                      late_attendance_enabled: notifLate,
+                      absent_attendance_enabled: notifAbsent,
+                      new_leave_request_enabled: notifNewLeave,
+                      daily_report_enabled: notifDailyReport,
+                      overtime_request_enabled: notifOvertime,
+                      attendance_policy_change_enabled: true,
+                      gps_policy_change_enabled: true
+                    });
+                  } catch (e) {
+                    setNotifError(getApiErrorMessage(e));
+                  } finally {
+                    setNotifSaving(false);
+                  }
+                }}
+              >
+                {notifSaving ? "Đang lưu..." : "Lưu thông báo"}
+              </button>
+            }
+          >
+            {notifError ? <div style={{ marginBottom: 12, color: "var(--danger)", fontWeight: 800 }}>{notifError}</div> : null}
             <div className={styles.simpleList}>
               <div className={styles.simpleRow}>
                 <div className={styles.simpleLabel}>Cảnh báo đi muộn</div>

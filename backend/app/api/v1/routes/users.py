@@ -11,10 +11,12 @@ from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateReq
 from app.schemas.common import ApiResponse
 from app.services.users import UserService
 from app.services.auth import AuthService
+from app.services.notifications import NotificationService
 
 router = APIRouter()
 service = UserService()
 auth_service = AuthService()
+notification_service = NotificationService()
 
 
 @router.post("/enroll", response_model=ApiResponse[EnrollResponse])
@@ -141,6 +143,7 @@ def create_user(
     payload: UserCreateRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[UserOut]:
     try:
@@ -156,6 +159,24 @@ def create_user(
             create_login=payload.create_login,
             portal_role_key=payload.portal_role_key,
         )
+        if payload.create_login:
+            try:
+                notification_service.create_for_users(
+                    db,
+                    company_id=company_id,
+                    type="user.invite.sent",
+                    category="iam",
+                    severity="info",
+                    title="Tài khoản của bạn đã được tạo",
+                    body="Kiểm tra email để kích hoạt tài khoản và đặt mật khẩu.",
+                    entity_type="user",
+                    entity_id=int(user.id),
+                    action_url="/activate",
+                    created_by_user_id=int(actor.id),
+                    user_ids=[int(user.id)],
+                )
+            except Exception:
+                pass
         return ok(user)
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -204,10 +225,29 @@ def delete_user(
 def resend_invite(
     user_id: int,
     db: Session = Depends(get_db),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("employees.read")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         auth_service.invite_pending_user(db, user_id=user_id)
+        try:
+            target = service.get_user(db, user_id=user_id)
+            notification_service.create_for_users(
+                db,
+                company_id=int(getattr(target, "company_id", 0) or 0) or None,
+                type="user.invite.sent",
+                category="iam",
+                severity="info",
+                title="Lời mời kích hoạt tài khoản vừa được gửi lại",
+                body="Kiểm tra email để kích hoạt tài khoản và đặt mật khẩu.",
+                entity_type="user",
+                entity_id=int(user_id),
+                action_url="/activate",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(user_id)],
+            )
+        except Exception:
+            pass
         return ok({"sent": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

@@ -5,7 +5,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_company_scope_id, require_permission
+from app.api.deps import get_company_scope_id, get_current_user, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
@@ -22,9 +22,85 @@ from app.schemas.attendance import (
 )
 from app.schemas.common import ApiResponse
 from app.services.attendance import AttendanceService
+from app.services.notifications import NotificationService
 
 router = APIRouter()
 service = AttendanceService()
+notification_service = NotificationService()
+
+
+def _safe_notify(fn) -> None:
+    try:
+        fn()
+    except Exception:
+        pass
+
+
+def _notify_attendance_success(
+    db: Session,
+    *,
+    user_id: int,
+    company_id: int | None,
+    actor_user_id: int | None,
+    action: str,
+    ts,
+) -> None:
+    event_type = "attendance.checkin.success" if action == "checkin" else "attendance.checkout.success"
+    title = "Chấm công vào ca thành công" if action == "checkin" else "Chấm công ra ca thành công"
+    _safe_notify(
+        lambda: notification_service.create_for_users(
+            db,
+            company_id=company_id,
+            type=event_type,
+            category="attendance",
+            severity="success",
+            title=title,
+            body=f"Thời gian: {ts}",
+            entity_type="attendance_log",
+            entity_id=None,
+            action_url="/employee/checkin",
+            created_by_user_id=actor_user_id,
+            user_ids=[int(user_id)],
+        )
+    )
+
+
+def _notify_attendance_failure(
+    db: Session,
+    *,
+    user_id: int,
+    company_id: int | None,
+    message: str,
+) -> None:
+    detail = message.strip()
+    lowered = detail.lower()
+    if "không khớp" in lowered:
+        event_type = "attendance.face_mismatch"
+        title = "Chấm công thất bại: khuôn mặt không khớp"
+    elif "gps" in lowered or "phạm vi chấm công" in lowered or "định vị" in lowered:
+        event_type = "attendance.geo_rejected"
+        title = "Chấm công thất bại: vị trí GPS không hợp lệ"
+    elif "khung giờ" in lowered:
+        event_type = "attendance.time_window_rejected"
+        title = "Chấm công thất bại: ngoài khung giờ"
+    else:
+        return
+    _safe_notify(
+        lambda: notification_service.create_for_users(
+            db,
+            company_id=company_id,
+            type=event_type,
+            category="attendance",
+            severity="warning",
+            title=title,
+            body=detail,
+            entity_type="attendance_log",
+            entity_id=None,
+            action_url="/employee/checkin",
+            created_by_user_id=user_id,
+            user_ids=[int(user_id)],
+        )
+    )
 
 
 @router.post("/checkin", response_model=ApiResponse[CheckInResponse])
@@ -43,8 +119,16 @@ async def checkin(
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
-        user_name, confidence, ts = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
-        return ok(CheckInResponse(user_name=user_name, confidence=confidence, time=ts))
+        result = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _notify_attendance_success(
+            db,
+            user_id=int(result["user_id"]),
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            actor_user_id=None,
+            action="checkin",
+            ts=result["time"],
+        )
+        return ok(CheckInResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"]))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể check-in: {e}")
 
@@ -65,8 +149,16 @@ async def checkout(
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
-        user_name, confidence, ts = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
-        return ok(CheckOutResponse(user_name=user_name, confidence=confidence, time=ts))
+        result = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _notify_attendance_success(
+            db,
+            user_id=int(result["user_id"]),
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            actor_user_id=None,
+            action="checkout",
+            ts=result["time"],
+        )
+        return ok(CheckOutResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"]))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể check-out: {e}")
 
@@ -87,8 +179,16 @@ async def scan(
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
         image_bytes = await image.read()
-        user_name, confidence, ts, action = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
-        return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
+        result = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _notify_attendance_success(
+            db,
+            user_id=int(result["user_id"]),
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            actor_user_id=None,
+            action=str(result["action"]),
+            ts=result["time"],
+        )
+        return ok(ScanResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"], action=str(result["action"])))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")
 
@@ -106,9 +206,23 @@ async def scan_me(
     """
     try:
         image_bytes = await image.read()
-        user_name, confidence, ts, action = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes, latitude=latitude, longitude=longitude)
-        return ok(ScanResponse(user_name=user_name, confidence=confidence, time=ts, action=action))
+        result = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _notify_attendance_success(
+            db,
+            user_id=int(result["user_id"]),
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            actor_user_id=int(user.id),
+            action=str(result["action"]),
+            ts=result["time"],
+        )
+        return ok(ScanResponse(user_name=str(result["user_name"]), confidence=float(result["confidence"]), time=result["time"], action=str(result["action"])))
     except ValueError as e:
+        _notify_attendance_failure(
+            db,
+            user_id=int(user.id),
+            company_id=int(getattr(user, "company_id", 0) or 0) or None,
+            message=str(e),
+        )
         raise AppException(BAD_REQUEST, detail=f"Không thể quét chấm công: {e}")
 
 
@@ -223,6 +337,7 @@ def timelog_upsert(
     payload: TimelogUpsertRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[TimelogRow]:
     try:
@@ -233,6 +348,22 @@ def timelog_upsert(
             day=day,
             checkin_time=payload.checkin_time,
             checkout_time=payload.checkout_time,
+        )
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=company_id,
+                type="attendance.timelog.updated",
+                category="attendance",
+                severity="info",
+                title="Bảng công của bạn vừa được chỉnh sửa",
+                body=f"Ngày {day.isoformat()} đã được cập nhật bởi quản lý.",
+                entity_type="attendance_log",
+                entity_id=None,
+                action_url="/employee/timesheet",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(user_id)],
+            )
         )
         return ok(TimelogRow(**row))
     except ValueError as e:
@@ -245,10 +376,27 @@ def timelog_delete(
     day: date,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("attendance.manage")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         service.timelog_delete_day(db, company_id=company_id, user_id=user_id, day=day)
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=company_id,
+                type="attendance.timelog.deleted",
+                category="attendance",
+                severity="warning",
+                title="Bảng công của bạn vừa bị xóa",
+                body=f"Dữ liệu ngày {day.isoformat()} đã bị xóa bởi quản lý.",
+                entity_type="attendance_log",
+                entity_id=None,
+                action_url="/employee/timesheet",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(user_id)],
+            )
+        )
         return ok({"deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

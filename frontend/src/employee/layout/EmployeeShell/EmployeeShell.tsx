@@ -1,14 +1,16 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../../shared/theme/theme";
-import { CalendarOutlined, CameraOutlined, HomeOutlined, IdcardOutlined, ProfileOutlined, UserOutlined } from "@ant-design/icons";
+import { BellOutlined, CalendarOutlined, CameraOutlined, HomeOutlined, IdcardOutlined, ProfileOutlined, UserOutlined } from "@ant-design/icons";
 import styles from "./EmployeeShell.module.scss";
+import { useUnreadNotificationCount } from "../../../shared/notifications/useUnreadNotificationCount";
 
 export default function EmployeeShell() {
   const { pathname } = useLocation();
   const nav = useNavigate();
   const { setMode } = useTheme();
   const hideNav = pathname.startsWith("/employee/checkin");
+  const unreadCount = useUnreadNotificationCount([pathname]);
 
   useEffect(() => {
     // Default employee UI to dark on first visit, without overriding an explicit user preference.
@@ -16,8 +18,9 @@ export default function EmployeeShell() {
     if (window.localStorage.getItem("theme-mode") == null) setMode("dark");
   }, [setMode]);
 
-  const activeKey: "home" | "history" | "leave" | "schedule" | "profile" | null = (() => {
+  const activeKey: "home" | "history" | "leave" | "schedule" | "notifications" | "profile" | null = (() => {
     if (pathname.startsWith("/employee/profile")) return "profile";
+    if (pathname.startsWith("/employee/notifications")) return "notifications";
     if (pathname.startsWith("/employee/schedules")) return "schedule";
     if (pathname.startsWith("/employee/timesheet")) return "history";
     if (pathname.startsWith("/employee/leave")) return "leave";
@@ -67,6 +70,14 @@ export default function EmployeeShell() {
             <CalendarOutlined />
           </div>
           <div className={labelCls}>Lịch làm</div>
+        </Link>
+
+        <Link to="/employee/notifications" className={tabCls("notifications")}>
+          <div className={`${iconCls} ${styles.navBellWrap}`}>
+            <BellOutlined />
+            {unreadCount > 0 ? <span className={styles.navBellBadge}>{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
+          </div>
+          <div className={labelCls}>Thông báo</div>
         </Link>
 
         <Link to="/employee/profile" className={tabCls("profile")}>

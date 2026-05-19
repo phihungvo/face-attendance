@@ -7,12 +7,16 @@ from app.core.response import ok
 from app.db.session import get_db
 from app.schemas.auth import ActivateRequest, ChangePasswordRequest, LoginRequest, MeResponse, RegisterRequest, TokenResponse
 from app.schemas.common import ApiResponse
+from app.core.security import get_token_subject
+from app.models.user import User
 from app.services.auth import AuthService
 from app.api.deps import get_current_user
 from app.core.errors import BAD_REQUEST, AppException
+from app.services.notifications import NotificationService
 
 router = APIRouter()
 service = AuthService()
+notification_service = NotificationService()
 
 
 @router.post("/register", response_model=ApiResponse[TokenResponse])
@@ -29,6 +33,42 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> ApiResponse[T
 @router.post("/activate", response_model=ApiResponse[TokenResponse])
 def activate(payload: ActivateRequest, db: Session = Depends(get_db)) -> ApiResponse[TokenResponse]:
     token = service.activate_with_token(db, token=payload.token, password=payload.password)
+    try:
+        subject = get_token_subject(token)
+        user = db.get(User, int(subject)) if subject is not None else None
+        if user is not None:
+            notification_service.create_for_users(
+                db,
+                company_id=int(getattr(user, "company_id", 0) or 0) or None,
+                type="user.account.activated",
+                category="iam",
+                severity="success",
+                title="Tài khoản của bạn đã được kích hoạt",
+                body="Bạn đã có thể sử dụng đầy đủ các chức năng được phân quyền.",
+                entity_type="user",
+                entity_id=int(user.id),
+                action_url="/employee/profile" if "employee" in [r.key for r in getattr(user, "roles", [])] else "/",
+                created_by_user_id=int(user.id),
+                user_ids=[int(user.id)],
+            )
+        if user is not None and getattr(user, "company_id", None) is not None:
+            notification_service.create_for_permission(
+                db,
+                company_id=int(user.company_id),
+                permission_key="notifications.read",
+                type="user.account.activated",
+                category="iam",
+                severity="success",
+                title=f"Tài khoản {getattr(user, 'name', getattr(user, 'username', 'người dùng'))} đã kích hoạt",
+                body="Người dùng đã hoàn tất bước kích hoạt tài khoản.",
+                entity_type="user",
+                entity_id=int(user.id),
+                action_url="/employees",
+                created_by_user_id=int(user.id),
+                exclude_user_ids=[int(user.id)],
+            )
+    except Exception:
+        pass
     return ok(TokenResponse(access_token=token))
 
 @router.post("/change-password", response_model=ApiResponse[dict[str, object]])
@@ -41,6 +81,23 @@ def change_password(
         raise AppException(BAD_REQUEST, detail="Mật khẩu mới phải khác mật khẩu hiện tại")
     try:
         service.change_password(db, user_id=int(user.id), current_password=payload.current_password, new_password=payload.new_password)
+        try:
+            notification_service.create_for_users(
+                db,
+                company_id=int(getattr(user, "company_id", 0) or 0) or None,
+                type="user.password.changed",
+                category="iam",
+                severity="info",
+                title="Mật khẩu của bạn vừa được thay đổi",
+                body="Nếu đây không phải là bạn, hãy liên hệ quản trị viên ngay.",
+                entity_type="user",
+                entity_id=int(user.id),
+                action_url="/change-password" if "employee" not in [r.key for r in getattr(user, "roles", [])] else "/employee/change-password",
+                created_by_user_id=int(user.id),
+                user_ids=[int(user.id)],
+            )
+        except Exception:
+            pass
     except AppException:
         raise
     except Exception as e:

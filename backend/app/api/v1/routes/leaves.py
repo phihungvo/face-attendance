@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import logging
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -12,9 +13,19 @@ from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.leaves import LeaveBalanceOut, LeaveCreateRequest, LeaveListResponse, LeaveMeCreateRequest, LeaveOut, LeaveUpdateRequest
 from app.services.leaves import LeaveService
+from app.services.notifications import NotificationService
 
 router = APIRouter()
 service = LeaveService()
+notification_service = NotificationService()
+logger = logging.getLogger(__name__)
+
+
+def _safe_notify(fn) -> None:
+    try:
+        fn()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("leave notification emit failed: %r", exc)
 
 @router.get("/me", response_model=ApiResponse[LeaveListResponse])
 def list_my_leaves(
@@ -50,6 +61,25 @@ def create_my_leave(
             end_date=payload.end_date,
             reason=payload.reason,
         )
+        company_id = int(getattr(user, "company_id", 0) or 0)
+        if company_id > 0:
+            _safe_notify(
+                lambda: notification_service.create_for_permission(
+                    db,
+                    company_id=company_id,
+                    permission_key="leave.approve",
+                    type="leave.created",
+                    category="leave",
+                    severity="info",
+                    title=f"Đơn nghỉ mới từ {item.get('user_name') or getattr(user, 'name', 'Nhân viên')}",
+                    body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                    entity_type="leave_request",
+                    entity_id=int(item["id"]),
+                    action_url="/leave",
+                    created_by_user_id=int(user.id),
+                    exclude_user_ids=[int(user.id)],
+                )
+            )
         return ok(LeaveOut(**item))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -115,6 +145,7 @@ def create_leave(
     payload: LeaveCreateRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[LeaveOut]:
     try:
@@ -127,6 +158,23 @@ def create_leave(
             end_date=payload.end_date,
             reason=payload.reason,
         )
+        if int(payload.user_id) != int(actor.id):
+            _safe_notify(
+                lambda: notification_service.create_for_users(
+                    db,
+                    company_id=company_id,
+                    type="leave.created",
+                    category="leave",
+                    severity="info",
+                    title="Đơn nghỉ của bạn đã được tạo",
+                    body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                    entity_type="leave_request",
+                    entity_id=int(item["id"]),
+                    action_url="/employee/leave",
+                    created_by_user_id=int(actor.id),
+                    user_ids=[int(payload.user_id)],
+                )
+            )
         return ok(LeaveOut(**item))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -138,6 +186,7 @@ def update_leave(
     payload: LeaveUpdateRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[LeaveOut]:
     try:
@@ -152,6 +201,42 @@ def update_leave(
             reason=payload.reason,
             status=payload.status,
         )
+        if int(item["user_id"]) == int(actor.id):
+            if company_id is not None:
+                _safe_notify(
+                    lambda: notification_service.create_for_permission(
+                        db,
+                        company_id=int(company_id),
+                        permission_key="leave.approve",
+                        type="leave.updated",
+                        category="leave",
+                        severity="info",
+                        title=f"Đơn nghỉ đã được cập nhật bởi {item.get('user_name') or getattr(actor, 'name', 'Nhân viên')}",
+                        body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                        entity_type="leave_request",
+                        entity_id=int(item["id"]),
+                        action_url="/leave",
+                        created_by_user_id=int(actor.id),
+                        exclude_user_ids=[int(actor.id)],
+                    )
+                )
+        else:
+            _safe_notify(
+                lambda: notification_service.create_for_users(
+                    db,
+                    company_id=company_id,
+                    type="leave.updated",
+                    category="leave",
+                    severity="info",
+                    title="Đơn nghỉ của bạn vừa được cập nhật",
+                    body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                    entity_type="leave_request",
+                    entity_id=int(item["id"]),
+                    action_url="/employee/leave",
+                    created_by_user_id=int(actor.id),
+                    user_ids=[int(item["user_id"])],
+                )
+            )
         return ok(LeaveOut(**item))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -162,10 +247,48 @@ def delete_leave(
     leave_id: int,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("leave.read")),
 ) -> ApiResponse[dict[str, object]]:
     try:
+        item = service.get(db, leave_id=leave_id, company_id=company_id)
         service.delete(db, leave_id=leave_id, company_id=company_id)
+        if int(item["user_id"]) == int(actor.id):
+            if company_id is not None:
+                _safe_notify(
+                    lambda: notification_service.create_for_permission(
+                        db,
+                        company_id=int(company_id),
+                        permission_key="leave.approve",
+                        type="leave.cancelled",
+                        category="leave",
+                        severity="warning",
+                        title=f"Đơn nghỉ đã bị hủy bởi {item.get('user_name') or getattr(actor, 'name', 'Nhân viên')}",
+                        body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                        entity_type="leave_request",
+                        entity_id=int(item["id"]),
+                        action_url="/leave",
+                        created_by_user_id=int(actor.id),
+                        exclude_user_ids=[int(actor.id)],
+                    )
+                )
+        else:
+            _safe_notify(
+                lambda: notification_service.create_for_users(
+                    db,
+                    company_id=company_id,
+                    type="leave.cancelled",
+                    category="leave",
+                    severity="warning",
+                    title="Đơn nghỉ của bạn vừa bị hủy",
+                    body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                    entity_type="leave_request",
+                    entity_id=int(item["id"]),
+                    action_url="/employee/leave",
+                    created_by_user_id=int(actor.id),
+                    user_ids=[int(item["user_id"])],
+                )
+            )
         return ok({"deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
@@ -176,10 +299,28 @@ def approve_leave(
     leave_id: int,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("leave.approve")),
 ) -> ApiResponse[LeaveOut]:
     try:
-        return ok(LeaveOut(**service.approve(db, leave_id=leave_id, company_id=company_id)))
+        item = service.approve(db, leave_id=leave_id, company_id=company_id)
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=company_id,
+                type="leave.approved",
+                category="leave",
+                severity="success",
+                title="Đơn nghỉ đã được duyệt",
+                body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                entity_type="leave_request",
+                entity_id=int(item["id"]),
+                action_url="/employee/leave",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(item["user_id"])],
+            )
+        )
+        return ok(LeaveOut(**item))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -189,9 +330,27 @@ def reject_leave(
     leave_id: int,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
+    actor=Depends(get_current_user),
     _: object = Depends(require_permission("leave.approve")),
 ) -> ApiResponse[LeaveOut]:
     try:
-        return ok(LeaveOut(**service.reject(db, leave_id=leave_id, company_id=company_id)))
+        item = service.reject(db, leave_id=leave_id, company_id=company_id)
+        _safe_notify(
+            lambda: notification_service.create_for_users(
+                db,
+                company_id=company_id,
+                type="leave.rejected",
+                category="leave",
+                severity="warning",
+                title="Đơn nghỉ đã bị từ chối",
+                body=f"{item['type']} • {item['start_date']} → {item['end_date']}",
+                entity_type="leave_request",
+                entity_id=int(item["id"]),
+                action_url="/employee/leave",
+                created_by_user_id=int(actor.id),
+                user_ids=[int(item["user_id"])],
+            )
+        )
+        return ok(LeaveOut(**item))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

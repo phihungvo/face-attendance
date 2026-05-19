@@ -8,6 +8,7 @@ import EmployeeTimesheetPage from "./pages/EmployeeTimesheetPage/EmployeeTimeshe
 import EmployeeProfilePage from "./pages/EmployeeProfilePage/EmployeeProfilePage";
 import EmployeeSchedulesPage from "./pages/EmployeeSchedulesPage/EmployeeSchedulesPage";
 import EmployeeChangePasswordPage from "./pages/EmployeeChangePasswordPage/EmployeeChangePasswordPage";
+import NotificationsPage from "../app/pages/NotificationsPage/NotificationsPage";
 
 export default function EmployeeApp() {
   return (
@@ -18,6 +19,7 @@ export default function EmployeeApp() {
           <Route path="/employee/checkin" element={<EmployeeCheckinPage />} />
           <Route path="/employee/leave" element={<EmployeeLeavePage />} />
           <Route path="/employee/schedules" element={<EmployeeSchedulesPage />} />
+          <Route path="/employee/notifications" element={<NotificationsPage />} />
           <Route path="/employee/timesheet" element={<EmployeeTimesheetPage />} />
           <Route path="/employee/profile" element={<EmployeeProfilePage />} />
           <Route path="/employee/change-password" element={<EmployeeChangePasswordPage />} />

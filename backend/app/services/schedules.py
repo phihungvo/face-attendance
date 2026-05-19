@@ -381,15 +381,18 @@ class ScheduleService:
     ):
         return self._reqs.list_for_user(db, company_id=company_id, user_id=user_id, status=status, limit=limit, offset=offset)
 
-    def cancel_my_registration_request(self, db: Session, *, company_id: int, user_id: int, request_id: int) -> None:
+    def cancel_my_registration_request(self, db: Session, *, company_id: int, user_id: int, request_id: int) -> object:
         req = self._reqs.get_for_user(db, request_id, company_id=company_id, user_id=user_id)
         if req is None:
             raise ValueError("Request not found")
         if req.status not in {"pending", "approved"}:
             raise ValueError("Không thể huỷ trạng thái hiện tại")
-        self._reqs.update_status(db, company_id=company_id, request_id=request_id, status="cancelled")
+        req = self._reqs.update_status(db, company_id=company_id, request_id=request_id, status="cancelled")
         self._regs.update_status_for_request(db, company_id=company_id, request_id=request_id, status="cancelled")
         db.commit()
+        if req is not None:
+            db.refresh(req)
+        return req
 
     def list_registration_requests(
         self,
@@ -455,15 +458,18 @@ class ScheduleService:
         db.refresh(req)
         return req
 
-    def cancel_my_registration(self, db: Session, *, company_id: int, user_id: int, reg_id: int) -> None:
+    def cancel_my_registration(self, db: Session, *, company_id: int, user_id: int, reg_id: int) -> object:
         r = self._regs.get_for_user(db, reg_id, company_id=company_id, user_id=user_id)
         if r is None:
             raise ValueError("Registration not found")
         if r.status not in {"pending", "approved"}:
             raise ValueError("Không thể huỷ trạng thái hiện tại")
         # Keep audit: mark cancelled.
-        self._regs.update_status(db, company_id=company_id, reg_id=reg_id, status="cancelled")
+        r = self._regs.update_status(db, company_id=company_id, reg_id=reg_id, status="cancelled")
         db.commit()
+        if r is not None:
+            db.refresh(r)
+        return r
 
     def list_registrations(
         self,
@@ -530,7 +536,7 @@ class ScheduleService:
         db.refresh(r)
         return r
 
-    def delete_registration(self, db: Session, *, company_id: int, reg_id: int) -> None:
+    def delete_registration(self, db: Session, *, company_id: int, reg_id: int) -> object:
         r = self._regs.get(db, reg_id, company_id=company_id)
         if r is None:
             raise ValueError("Registration not found")
@@ -539,6 +545,7 @@ class ScheduleService:
             raise ValueError("Không thể xoá khi đang pending; hãy duyệt/từ chối trước")
         db.delete(r)
         db.commit()
+        return r
 
     def assign_schedule(
         self,
