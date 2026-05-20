@@ -8,11 +8,15 @@ import styles from "./CompaniesPage.module.scss";
 import { useAuth } from "../../../shared/auth/auth";
 import { viStatusLabel } from "../../../shared/i18n/vi";
 
+const pageSize = 20;
+
 export default function CompaniesPage() {
   const auth = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<Company[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
@@ -22,11 +26,14 @@ export default function CompaniesPage() {
 
   const canManage = useMemo(() => auth.permissionKeys.includes("companies.manage"), [auth.permissionKeys]);
 
-  async function reload() {
+  async function reload(nextOffset = 0, append = false) {
     setLoading(true);
     setError(null);
     try {
-      setItems(await listCompanies({ limit: 500, offset: 0 }));
+      const rows = await listCompanies({ limit: pageSize, offset: nextOffset });
+      setItems((prev) => (append ? [...prev, ...rows] : rows));
+      setOffset(nextOffset);
+      setHasMore(rows.length === pageSize);
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -86,7 +93,7 @@ export default function CompaniesPage() {
 
       <Card
         title="🏢 Danh sách công ty"
-        sub={loading ? "Đang tải..." : `${items.length} công ty`}
+        sub={loading && items.length === 0 ? "Đang tải..." : `Đã tải ${items.length} công ty`}
         right={
           canManage ? (
             <button className={styles.primaryBtn} type="button" onClick={openCreate}>
@@ -136,6 +143,14 @@ export default function CompaniesPage() {
             ) : null}
           </tbody>
         </Table>
+        <div className={styles.pagination}>
+          <div className={styles.pageHint}>{hasMore ? `Đã tải ${items.length} công ty gần nhất` : `Đã hiển thị toàn bộ ${items.length} công ty đang tải được`}</div>
+          {hasMore ? (
+            <button className={styles.secondaryBtn} type="button" disabled={loading} onClick={() => void reload(offset + pageSize, true)}>
+              {loading ? "Đang tải..." : "Tải thêm"}
+            </button>
+          ) : null}
+        </div>
       </Card>
 
       <Modal

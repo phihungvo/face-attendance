@@ -221,6 +221,8 @@ export async function listTimelog(params: {
   department_id?: number | null;
   status?: "on-time" | "late" | "absent" | null;
   include_absent?: boolean;
+  limit?: number;
+  offset?: number;
 }) {
   const res = await api.get<ApiResponse<TimelogRow[]>>("/attendance/timelog", { params });
   return res.data.result ?? [];

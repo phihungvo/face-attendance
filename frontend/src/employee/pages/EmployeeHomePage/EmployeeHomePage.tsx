@@ -73,14 +73,17 @@ export default function EmployeeHomePage() {
     const qSchedules = useCachedQuery({
         key: empKeys.schedules(),
         ttlMs: 5 * 60_000,
-        fetcher: () => listSchedules()
+        fetcher: () => listSchedules({status: "active", limit: 200, offset: 0})
     });
     const schedules = qSchedules.data ?? [];
 
     const qRegs = useCachedQuery({
         key: empKeys.myScheduleRegs(),
         ttlMs: 30_000,
-        fetcher: () => listMyScheduleRegistrations({limit: 200, offset: 0})
+        fetcher: () => {
+            const today = new Date().toISOString().slice(0, 10);
+            return listMyScheduleRegistrations({from_date: today, to_date: today, limit: 20, offset: 0});
+        }
     });
     const regs = qRegs.data ?? [];
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_company_scope_id, get_current_user, require_permission
@@ -342,6 +342,8 @@ def timelog_range(
     department_id: int | None = None,
     status: str | None = None,  # "on-time" | "late" | "absent"
     include_absent: bool = False,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("timesheet.read")),
@@ -355,6 +357,8 @@ def timelog_range(
             department_id=department_id,
             status=status,
             include_absent=include_absent,
+            limit=limit,
+            offset=offset,
         )
         return ok([TimelogRow(**r) for r in rows])
     except ValueError as e:

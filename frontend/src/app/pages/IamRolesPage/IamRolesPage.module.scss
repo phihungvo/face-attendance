@@ -149,3 +149,17 @@
   color: var(--primary);
 }
 
+.pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pageHint {
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+}

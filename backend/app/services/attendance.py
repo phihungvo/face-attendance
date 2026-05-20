@@ -619,6 +619,8 @@ class AttendanceService:
         department_id: int | None = None,
         status: str | None = None,  # "on-time" | "late" | "absent"
         include_absent: bool = False,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[dict[str, object]]:
         if to_day_inclusive < from_day:
             raise ValueError("to_date must be >= from_date")
@@ -716,6 +718,10 @@ class AttendanceService:
                 )
             day_cursor = day_cursor + timedelta(days=1)
         rows.sort(key=lambda r: (r["date"], r["user_name"]))
+        if offset > 0 or limit is not None:
+            start_idx = max(0, int(offset))
+            end_idx = start_idx + int(limit) if limit is not None else None
+            rows = rows[start_idx:end_idx]
         return rows
 
     def timelog_upsert_day(

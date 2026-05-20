@@ -238,7 +238,7 @@ export default function NotificationsPage() {
                 <div className={styles.main}>
                   <div className={styles.itemTopRow}>
                     <div className={styles.title}>{item.title}</div>
-                    <span className={styles.categoryPill}>{item.category} · {item.severity}</span>
+                    {/*<span className={styles.categoryPill}>{item.category} · {item.severity}</span>*/}
                   </div>
                   <div className={styles.sub}>{item.body || "Thông báo hệ thống"}</div>
                   <div className={styles.time}>{formatDateTimeVi(new Date(item.created_at))}</div>

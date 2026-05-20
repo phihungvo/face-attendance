@@ -18,28 +18,51 @@ type FormState = {
 };
 
 const emptyForm: FormState = { key: "employee", label: "", description: "", permissionKeys: [] };
+const pageSize = 20;
 
 export default function IamRolesPage() {
   const [roles, setRoles] = useState<RoleOut[]>([]);
   const [permissions, setPermissions] = useState<PermissionOut[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const permLabelByKey = useMemo(() => new Map(permissions.map((p) => [p.key, p.label])), [permissions]);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  async function reload() {
-    const [pr, rr] = await Promise.all([
-      api.get<ApiResponse<PermissionOut[]>>("/iam/permissions"),
-      api.get<ApiResponse<RoleOut[]>>("/iam/roles")
-    ]);
+  async function loadPermissions() {
+    const pr = await api.get<ApiResponse<PermissionOut[]>>("/iam/permissions", { params: { limit: 500, offset: 0 } });
     setPermissions(pr.data.result ?? []);
-    setRoles(rr.data.result ?? []);
+  }
+
+  async function reload(nextOffset = 0, append = false) {
+    try {
+      setLoading(true);
+      setErr(null);
+      const rr = await api.get<ApiResponse<RoleOut[]>>("/iam/roles", { params: { limit: pageSize, offset: nextOffset } });
+      const rows = rr.data.result ?? [];
+      setRoles((prev) => (append ? [...prev, ...rows] : rows));
+      setOffset(nextOffset);
+      setHasMore(rows.length === pageSize);
+    } catch (e) {
+      setErr(getApiErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadInitial() {
+    await Promise.all([
+      loadPermissions(),
+      reload()
+    ]);
   }
 
   useEffect(() => {
-    reload().catch((e) => setErr(getApiErrorMessage(e)));
+    loadInitial().catch((e) => setErr(getApiErrorMessage(e)));
   }, []);
 
   const saveDisabled = !form.key.trim() || !form.label.trim();
@@ -122,6 +145,14 @@ export default function IamRolesPage() {
               ))}
             </tbody>
           </Table>
+          <div className={styles.pagination}>
+            <div className={styles.pageHint}>{hasMore ? `Đã tải ${roles.length} role` : `Đã hiển thị ${roles.length} role`}</div>
+            {hasMore ? (
+              <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => void reload(offset + pageSize, true)}>
+                {loading ? "Đang tải..." : "Tải thêm"}
+              </button>
+            ) : null}
+          </div>
         </Card>
 
         <Modal
@@ -203,4 +234,3 @@ export default function IamRolesPage() {
     </RequirePermission>
   );
 }
-

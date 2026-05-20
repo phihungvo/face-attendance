@@ -214,6 +214,11 @@
   font-weight: 600;
 }
 
+.empty {
+  text-align: center;
+  padding: 18px 12px;
+}
+
 .rowActions {
   display: flex;
   gap: 6px;
@@ -249,6 +254,21 @@
   background: var(--info-bg);
   color: var(--primary);
   border-color: var(--primary);
+}
+
+.pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pageHint {
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 @media (max-width: 900px) {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_permission
@@ -30,19 +30,35 @@ notification_service = NotificationService()
 
 @router.get("/permissions", response_model=ApiResponse[list[PermissionOut]])
 def list_permissions(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: object = Depends(require_permission("iam.manage")),
 ) -> ApiResponse[list[PermissionOut]]:
-    items = list(db.execute(select(Permission).order_by(Permission.key.asc())).scalars().all())
+    stmt = select(Permission)
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(Permission.key.ilike(like), Permission.label.ilike(like)))
+    stmt = stmt.order_by(Permission.key.asc()).offset(offset).limit(limit)
+    items = list(db.execute(stmt).scalars().all())
     return ok(items)
 
 
 @router.get("/roles", response_model=ApiResponse[list[RoleOut]])
 def list_roles(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: object = Depends(require_permission("iam.manage")),
 ) -> ApiResponse[list[RoleOut]]:
-    roles = list(db.execute(select(Role).order_by(Role.key.asc())).scalars().all())
+    stmt = select(Role)
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(Role.key.ilike(like), Role.label.ilike(like)))
+    stmt = stmt.order_by(Role.key.asc()).offset(offset).limit(limit)
+    roles = list(db.execute(stmt).scalars().all())
     out: list[RoleOut] = []
     for r in roles:
         out.append(RoleOut(id=r.id, key=r.key, label=r.label, description=r.description, permission_keys=[p.key for p in r.permissions]))
@@ -102,10 +118,18 @@ def delete_role(
 @router.get("/users", response_model=ApiResponse[list[AccountOut]])
 @router.get("/accounts", response_model=ApiResponse[list[AccountOut]])
 def list_iam_users(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: object = Depends(require_permission("iam.manage")),
 ) -> ApiResponse[list[AccountOut]]:
-    users = list(db.execute(select(User).where(User.username.is_not(None)).order_by(User.id.desc())).scalars().all())
+    stmt = select(User).where(User.username.is_not(None))
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(User.username.ilike(like))
+    stmt = stmt.order_by(User.id.desc()).offset(offset).limit(limit)
+    users = list(db.execute(stmt).scalars().all())
     out: list[AccountOut] = []
     for u in users:
         role_keys = [r.key for r in u.roles]

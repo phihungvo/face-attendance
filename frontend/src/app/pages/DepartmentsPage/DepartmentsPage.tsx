@@ -7,23 +7,29 @@ import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import type { Department } from "../../../shared/types/department";
 import styles from "./DepartmentsPage.module.scss";
 
+const pageSize = 20;
+
 export default function DepartmentsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<Department[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
 
-  async function refresh(q?: string) {
+  async function refresh(q?: string, nextOffset = 0, append = false) {
     try {
       setLoading(true);
       setError(null);
-      const data = await listDepartments({ q: q?.trim() || undefined, limit: 500, offset: 0 });
-      setRows(data);
+      const data = await listDepartments({ q: q?.trim() || undefined, limit: pageSize, offset: nextOffset });
+      setRows((prev) => (append ? [...prev, ...data] : data));
+      setOffset(nextOffset);
+      setHasMore(data.length === pageSize);
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -152,8 +158,23 @@ export default function DepartmentsPage() {
                 </td>
               </tr>
             ))}
+            {!loading && rows.length === 0 ? (
+              <tr>
+                <td colSpan={5} className={`${styles.muted} ${styles.empty}`}>
+                  Chưa có phòng ban phù hợp.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </Table>
+        <div className={styles.pagination}>
+          <div className={styles.pageHint}>{hasMore ? `Đã tải ${rows.length} phòng ban` : `Đã hiển thị ${rows.length} phòng ban`}</div>
+          {hasMore ? (
+            <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => void refresh(query, offset + pageSize, true)}>
+              {loading ? "Đang tải..." : "Tải thêm"}
+            </button>
+          ) : null}
+        </div>
       </Card>
 
       <Modal
