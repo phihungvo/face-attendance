@@ -13,6 +13,7 @@ from app.repositories.attendance_logs import AttendanceLogRepository
 from app.repositories.attendance_policy import AttendancePolicyRepository
 from app.repositories.departments import DepartmentRepository
 from app.repositories.face_embeddings import FaceEmbeddingRepository
+from app.repositories.leaves import LeaveRepository
 from app.repositories.schedules import WorkScheduleRegistrationRepository, WorkScheduleRepository
 from app.repositories.users import UserRepository
 from app.models.company import Company
@@ -37,6 +38,7 @@ class AttendanceService:
         self._embeddings = FaceEmbeddingRepository()
         self._users = UserRepository()
         self._depts = DepartmentRepository()
+        self._leaves = LeaveRepository()
         self._ml = MlClient()
         self._schedules = WorkScheduleRepository()
         self._schedule_regs = WorkScheduleRegistrationRepository()
@@ -95,6 +97,27 @@ class AttendanceService:
             )
         return out
 
+    def _late_minutes_for_checkin(
+        self,
+        db: Session,
+        *,
+        company_id: int | None,
+        user_id: int,
+        day: date,
+        checkin_time: datetime,
+        policy,
+    ) -> int:
+        base_cfg = self._policy_cfg(policy)
+        cfg = self._schedule_cfg_map(
+            db,
+            company_id=company_id,
+            from_day=day,
+            to_day=day,
+            user_ids=[int(user_id)],
+        ).get((int(user_id), day), base_cfg)
+        computed = compute_attendance(day=day, checkin_time=checkin_time, checkout_time=None, cfg=cfg)
+        return int(computed.late_minutes)
+
     def checkin(
         self,
         db: Session,
@@ -110,12 +133,28 @@ class AttendanceService:
 
         user, confidence = self._match_user(db, company_id=company_id, image_bytes=image_bytes, threshold=float(policy.face_match_threshold))
         geo = self._enforce_geo(db, user_company_id=int(getattr(user, "company_id", 0) or 0), latitude=latitude, longitude=longitude)
+        day = _attendance_day_for_ts(now, shift_start=policy.shift_start, shift_end=policy.shift_end)
+        late_minutes = self._late_minutes_for_checkin(
+            db,
+            company_id=company_id,
+            user_id=int(user.id),
+            day=day,
+            checkin_time=now,
+            policy=policy,
+        )
 
         _enforce_min_interval(db, self._logs, user_id=user.id, log_type="checkin", now=now, min_minutes=policy.min_minutes_between_same_type)
         log = self._logs.create(db, user_id=user.id, log_type="checkin", confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
-        return {"user_id": int(user.id), "company_id": getattr(user, "company_id", None), "user_name": user.name, "confidence": confidence, "time": log.timestamp}
+        return {
+            "user_id": int(user.id),
+            "company_id": getattr(user, "company_id", None),
+            "user_name": user.name,
+            "confidence": confidence,
+            "time": log.timestamp,
+            "late_minutes": late_minutes,
+        }
 
     def checkout(
         self,
@@ -193,6 +232,16 @@ class AttendanceService:
             has_checkin=first_checkin is not None,
             has_checkout=last_checkout is not None,
         )
+        late_minutes = 0
+        if action == "checkin":
+            late_minutes = self._late_minutes_for_checkin(
+                db,
+                company_id=company_id,
+                user_id=int(user.id),
+                day=day,
+                checkin_time=now,
+                policy=policy,
+            )
 
         _enforce_min_interval(db, self._logs, user_id=user.id, log_type=action, now=now, min_minutes=policy.min_minutes_between_same_type)
         log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now, **geo)
@@ -205,6 +254,7 @@ class AttendanceService:
             "confidence": confidence,
             "time": log.timestamp,
             "action": action,
+            "late_minutes": late_minutes,
         }
 
     def scan_for_user(
@@ -258,6 +308,16 @@ class AttendanceService:
             has_checkin=first_checkin is not None,
             has_checkout=last_checkout is not None,
         )
+        late_minutes = 0
+        if action == "checkin":
+            late_minutes = self._late_minutes_for_checkin(
+                db,
+                company_id=cid,
+                user_id=int(user.id),
+                day=day,
+                checkin_time=now,
+                policy=policy,
+            )
 
         _enforce_min_interval(db, self._logs, user_id=user.id, log_type=action, now=now, min_minutes=policy.min_minutes_between_same_type)
         log = self._logs.create(db, user_id=user.id, log_type=action, confidence=confidence, timestamp=now, **geo)
@@ -270,6 +330,7 @@ class AttendanceService:
             "confidence": confidence,
             "time": log.timestamp,
             "action": action,
+            "late_minutes": late_minutes,
         }
 
     def _enforce_geo(self, db: Session, *, user_company_id: int, latitude: float | None, longitude: float | None) -> dict[str, object]:
@@ -558,6 +619,8 @@ class AttendanceService:
         department_id: int | None = None,
         status: str | None = None,  # "on-time" | "late" | "absent"
         include_absent: bool = False,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[dict[str, object]]:
         if to_day_inclusive < from_day:
             raise ValueError("to_date must be >= from_date")
@@ -655,6 +718,10 @@ class AttendanceService:
                 )
             day_cursor = day_cursor + timedelta(days=1)
         rows.sort(key=lambda r: (r["date"], r["user_name"]))
+        if offset > 0 or limit is not None:
+            start_idx = max(0, int(offset))
+            end_idx = start_idx + int(limit) if limit is not None else None
+            rows = rows[start_idx:end_idx]
         return rows
 
     def timelog_upsert_day(
@@ -742,6 +809,150 @@ class AttendanceService:
         self._logs.delete_in_range(db, start=start, end=end, user_id=user_id)
         db.commit()
 
+    def manager_dashboard_summary(self, db: Session, *, company_id: int | None = None) -> dict[str, object]:
+        policy = self._policy.get_or_create(db, company_id=company_id)
+        generated_at = _now_in_policy_tz(policy.timezone)
+        today = generated_at.date()
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        departments = self._depts.list(db, company_id=company_id, limit=10000, offset=0)
+        dept_by_id = {int(dept.id): dept for dept in departments}
+        user_by_id = {int(user.id): user for user in users}
+
+        today_rows = self.daily_report(db, company_id=company_id, day=today)
+        total_users = len(today_rows)
+        present_count = sum(1 for row in today_rows if not row.absent)
+        absent_count = max(0, total_users - present_count)
+        late_count = sum(1 for row in today_rows if row.late)
+        checked_out_count = sum(1 for row in today_rows if row.checkout_time is not None)
+        working_count = sum(1 for row in today_rows if row.checkin_time is not None and row.checkout_time is None)
+        attendance_rate = round((present_count / total_users) * 100, 1) if total_users else 0.0
+
+        trend: list[dict[str, object]] = []
+        for offset in range(6, -1, -1):
+            day_cursor = today - timedelta(days=offset)
+            rows = self.daily_report(db, company_id=company_id, day=day_cursor)
+            day_total = len(rows)
+            day_present = sum(1 for row in rows if not row.absent)
+            day_absent = max(0, day_total - day_present)
+            day_late = sum(1 for row in rows if row.late)
+            trend.append(
+                {
+                    "day": day_cursor.isoformat(),
+                    "label": _weekday_label_vi(day_cursor),
+                    "present_count": day_present,
+                    "absent_count": day_absent,
+                    "late_count": day_late,
+                    "attendance_rate": round((day_present / day_total) * 100, 1) if day_total else 0.0,
+                }
+            )
+
+        department_buckets: dict[int | None, dict[str, object]] = {}
+        for user in users:
+            dept_id = int(user.department_id) if getattr(user, "department_id", None) is not None else None
+            dept_name = dept_by_id[dept_id].name if dept_id is not None and dept_id in dept_by_id else "Chưa phân phòng ban"
+            bucket = department_buckets.setdefault(
+                dept_id,
+                {
+                    "department_id": dept_id,
+                    "department_name": dept_name,
+                    "total_users": 0,
+                    "present_count": 0,
+                    "absent_count": 0,
+                    "late_count": 0,
+                },
+            )
+            bucket["total_users"] = int(bucket["total_users"]) + 1
+
+        for row in today_rows:
+            user = user_by_id.get(int(row.user_id))
+            dept_id = int(user.department_id) if user is not None and getattr(user, "department_id", None) is not None else None
+            bucket = department_buckets.setdefault(
+                dept_id,
+                {
+                    "department_id": dept_id,
+                    "department_name": dept_by_id[dept_id].name if dept_id is not None and dept_id in dept_by_id else "Chưa phân phòng ban",
+                    "total_users": 0,
+                    "present_count": 0,
+                    "absent_count": 0,
+                    "late_count": 0,
+                },
+            )
+            if row.absent:
+                bucket["absent_count"] = int(bucket["absent_count"]) + 1
+            else:
+                bucket["present_count"] = int(bucket["present_count"]) + 1
+            if row.late:
+                bucket["late_count"] = int(bucket["late_count"]) + 1
+
+        department_rows: list[dict[str, object]] = []
+        for bucket in department_buckets.values():
+            dept_total = int(bucket["total_users"])
+            department_rows.append(
+                {
+                    **bucket,
+                    "attendance_rate": round((int(bucket["present_count"]) / dept_total) * 100, 1) if dept_total else 0.0,
+                }
+            )
+        department_rows.sort(key=lambda item: (-int(item["present_count"]), str(item["department_name"])))
+
+        leave_summary = {
+            "pending_count": self._leaves.count(db, company_id=company_id, status="pending"),
+            "approved_count": self._leaves.count(db, company_id=company_id, status="approved"),
+            "rejected_count": self._leaves.count(db, company_id=company_id, status="rejected"),
+        }
+
+        pending_leaves: list[dict[str, object]] = []
+        for leave, user in self._leaves.list(db, company_id=company_id, status="pending", limit=5, offset=0):
+            dept = dept_by_id.get(int(user.department_id)) if getattr(user, "department_id", None) is not None else None
+            pending_leaves.append(
+                {
+                    "id": int(leave.id),
+                    "user_id": int(user.id),
+                    "user_name": str(user.name),
+                    "user_code": user.code,
+                    "department_name": dept.name if dept is not None else None,
+                    "type": str(leave.type),
+                    "start_date": leave.start_date.isoformat(),
+                    "end_date": leave.end_date.isoformat(),
+                    "status": str(leave.status),
+                    "created_at": leave.created_at,
+                }
+            )
+
+        recent_logs: list[dict[str, object]] = []
+        for log, user_name in self._logs.list_with_user(db, company_id=company_id, limit=8, offset=0):
+            user = user_by_id.get(int(log.user_id))
+            recent_logs.append(
+                {
+                    "id": int(log.id),
+                    "user_id": int(log.user_id),
+                    "user_name": str(user_name),
+                    "user_code": getattr(user, "code", None),
+                    "type": str(log.type),
+                    "confidence": float(log.confidence),
+                    "timestamp": log.timestamp,
+                }
+            )
+
+        return {
+            "generated_at": generated_at,
+            "today": {
+                "day": today.isoformat(),
+                "total_users": total_users,
+                "present_count": present_count,
+                "absent_count": absent_count,
+                "late_count": late_count,
+                "checked_out_count": checked_out_count,
+                "working_count": working_count,
+                "attendance_rate": attendance_rate,
+            },
+            "trend": trend,
+            "departments": department_rows,
+            "leave_summary": leave_summary,
+            "pending_leaves": pending_leaves,
+            "recent_logs": recent_logs,
+        }
+
     def stats(self, db: Session, *, company_id: int | None = None, from_day: date, to_day_inclusive: date) -> dict[str, object]:
         if to_day_inclusive < from_day:
             raise ValueError("to_date must be >= from_date")
@@ -782,6 +993,11 @@ class AttendanceService:
 def _parse_hhmm(value: str) -> time:
     hh, mm = value.split(":", 1)
     return time(int(hh), int(mm))
+
+
+def _weekday_label_vi(value: date) -> str:
+    labels = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+    return labels[value.weekday()]
 
 
 def _enforce_time_window(now: datetime, start_hhmm: str, end_hhmm: str, *, label: str) -> None:

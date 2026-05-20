@@ -24,6 +24,75 @@ export type AttendanceStats = {
   late_count: number;
 };
 
+export type ManagerDashboardTodaySummary = {
+  day: string;
+  total_users: number;
+  present_count: number;
+  absent_count: number;
+  late_count: number;
+  checked_out_count: number;
+  working_count: number;
+  attendance_rate: number;
+};
+
+export type ManagerDashboardTrendPoint = {
+  day: string;
+  label: string;
+  present_count: number;
+  absent_count: number;
+  late_count: number;
+  attendance_rate: number;
+};
+
+export type ManagerDashboardDepartmentRow = {
+  department_id?: number | null;
+  department_name: string;
+  total_users: number;
+  present_count: number;
+  absent_count: number;
+  late_count: number;
+  attendance_rate: number;
+};
+
+export type ManagerDashboardLeaveSummary = {
+  pending_count: number;
+  approved_count: number;
+  rejected_count: number;
+};
+
+export type ManagerDashboardPendingLeaveItem = {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_code?: string | null;
+  department_name?: string | null;
+  type: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  created_at: string;
+};
+
+export type ManagerDashboardRecentLogItem = {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_code?: string | null;
+  type: "checkin" | "checkout";
+  confidence: number;
+  timestamp: string;
+};
+
+export type ManagerDashboardSummary = {
+  generated_at: string;
+  today: ManagerDashboardTodaySummary;
+  trend: ManagerDashboardTrendPoint[];
+  departments: ManagerDashboardDepartmentRow[];
+  leave_summary: ManagerDashboardLeaveSummary;
+  pending_leaves: ManagerDashboardPendingLeaveItem[];
+  recent_logs: ManagerDashboardRecentLogItem[];
+};
+
 export type TimelogRow = {
   user_id: number;
   user_name: string;
@@ -124,6 +193,12 @@ export async function getAttendanceStats(params: { from_date: string; to_date: s
   return res.data.result;
 }
 
+export async function getManagerDashboardSummary() {
+  const res = await api.get<ApiResponse<ManagerDashboardSummary>>("/attendance/dashboard/summary");
+  if (!res.data.result) throw new Error("Không lấy được dữ liệu dashboard");
+  return res.data.result;
+}
+
 export type DailyAttendanceRow = {
   user_id: number;
   user_name: string;
@@ -146,6 +221,8 @@ export async function listTimelog(params: {
   department_id?: number | null;
   status?: "on-time" | "late" | "absent" | null;
   include_absent?: boolean;
+  limit?: number;
+  offset?: number;
 }) {
   const res = await api.get<ApiResponse<TimelogRow[]>>("/attendance/timelog", { params });
   return res.data.result ?? [];

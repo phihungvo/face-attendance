@@ -9,6 +9,8 @@ import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { exportExcelHtml } from "../../../shared/lib/excelExport";
 import styles from "./TimesheetPage.module.scss";
 
+const pageSize = 50;
+
 function toYmd(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -40,6 +42,8 @@ export default function TimesheetPage() {
   const [rows, setRows] = useState<TimelogRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<TimelogRow | null>(null);
@@ -54,7 +58,7 @@ export default function TimesheetPage() {
     return { totalEmployees, totalHours: Math.round(totalHours * 10) / 10, lateDays, absentDays };
   }, [rows]);
 
-  async function refresh() {
+  async function refresh(nextOffset = 0, append = false) {
     try {
       setBusy(true);
       setError(null);
@@ -63,9 +67,13 @@ export default function TimesheetPage() {
         to_date: toDate,
         department_id: departmentId,
         status: status || null,
-        include_absent: includeAbsent || status === "absent"
+        include_absent: includeAbsent || status === "absent",
+        limit: pageSize,
+        offset: nextOffset
       });
-      setRows(data);
+      setRows((prev) => (append ? [...prev, ...data] : data));
+      setOffset(nextOffset);
+      setHasMore(data.length === pageSize);
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -128,7 +136,7 @@ export default function TimesheetPage() {
           <label className={styles.check}>
             <input type="checkbox" checked={includeAbsent} onChange={(e) => setIncludeAbsent(e.target.checked)} /> Hiện vắng
           </label>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" disabled={busy} onClick={refresh}>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" disabled={busy} onClick={() => void refresh()}>
             {busy ? "Đang tải..." : "🔍 Lọc"}
           </button>
           <button
@@ -224,7 +232,7 @@ export default function TimesheetPage() {
         </div>
       </Card>
 
-      <Card title="📄 Bảng chấm công" sub={`${rows.length} bản ghi`}>
+      <Card title="📄 Bảng chấm công" sub={hasMore ? `Đã tải ${rows.length} bản ghi` : `${rows.length} bản ghi`}>
         {error ? <div className={styles.errorBox}>{error}</div> : null}
         <div className={styles.timelogTable}>
           <Table>
@@ -328,6 +336,14 @@ export default function TimesheetPage() {
               })}
             </tbody>
           </Table>
+        </div>
+        <div className={styles.pagination}>
+          <div className={styles.pageHint}>{hasMore ? `Đang hiển thị ${rows.length} bản ghi gần nhất theo bộ lọc` : `Đã hiển thị ${rows.length} bản ghi theo bộ lọc`}</div>
+          {hasMore ? (
+            <button className={`${styles.btn} ${styles.btnGhost}`} type="button" disabled={busy} onClick={() => void refresh(offset + pageSize, true)}>
+              {busy ? "Đang tải..." : "Tải thêm"}
+            </button>
+          ) : null}
         </div>
       </Card>
 

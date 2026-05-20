@@ -37,18 +37,18 @@ class NotificationService:
         }
 
     def list_for_user(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        company_id: int | None = None,
-        unread_only: bool = False,
-        category: str | None = None,
-        severity: str | None = None,
-        include_archived: bool = False,
-        archived_only: bool = False,
-        limit: int = 20,
-        offset: int = 0,
+            self,
+            db: Session,
+            *,
+            user_id: int,
+            company_id: int | None = None,
+            unread_only: bool = False,
+            category: str | None = None,
+            severity: str | None = None,
+            include_archived: bool = False,
+            archived_only: bool = False,
+            limit: int = 20,
+            offset: int = 0,
     ) -> dict[str, object]:
         total = self._repo.count_for_user(
             db,
@@ -85,19 +85,22 @@ class NotificationService:
         return self._repo.count_for_user(db, user_id=user_id, company_id=company_id, unread_only=True)
 
     def mark_read(self, db: Session, *, recipient_id: int, user_id: int) -> dict[str, object]:
-        row = self._repo.mark_read(db, recipient_id=recipient_id, user_id=user_id, now=datetime.now(timezone.utc).replace(tzinfo=None))
+        row = self._repo.mark_read(db, recipient_id=recipient_id, user_id=user_id,
+                                   now=datetime.now(timezone.utc).replace(tzinfo=None))
         if row is None:
             raise ValueError("Notification not found")
         db.commit()
         return {"read": True, "id": recipient_id}
 
     def mark_all_read(self, db: Session, *, user_id: int, company_id: int | None = None) -> dict[str, object]:
-        count = self._repo.mark_all_read(db, user_id=user_id, company_id=company_id, now=datetime.now(timezone.utc).replace(tzinfo=None))
+        count = self._repo.mark_all_read(db, user_id=user_id, company_id=company_id,
+                                         now=datetime.now(timezone.utc).replace(tzinfo=None))
         db.commit()
         return {"read_all": True, "updated": int(count)}
 
     def archive(self, db: Session, *, recipient_id: int, user_id: int) -> dict[str, object]:
-        row = self._repo.archive(db, recipient_id=recipient_id, user_id=user_id, now=datetime.now(timezone.utc).replace(tzinfo=None))
+        row = self._repo.archive(db, recipient_id=recipient_id, user_id=user_id,
+                                 now=datetime.now(timezone.utc).replace(tzinfo=None))
         if row is None:
             raise ValueError("Notification not found")
         db.commit()
@@ -158,53 +161,112 @@ class NotificationService:
         disabled = self._repo.list_disabled_preference_user_ids(db, user_ids=user_ids, preference_field=field)
         return [user_id for user_id in user_ids if user_id not in disabled]
 
+    # def _dispatch_new_items(self, db: Session, *, recipient_ids: list[int], user_ids: list[int]) -> None:
+    #     for recipient_id, user_id in zip(recipient_ids, user_ids, strict=False):
+    #         row = self._repo.get_notification_for_user(db, recipient_id=recipient_id, user_id=user_id)
+    #         if row is None:
+    #             continue
+    #         recipient, notification = row
+    #         item = self._to_item(recipient, notification)
+    #         try:
+    #             loop = asyncio.get_running_loop()
+    #         except RuntimeError:
+    #             try:
+    #                 from_thread.run(
+    #                     partial(
+    #                         notification_hub.emit_notification_created,
+    #                         user_id=int(user_id),
+    #                         company_id=notification.company_id,
+    #                         item=item,
+    #                         unread_count=None,
+    #                     ),
+    #                 )
+    #             except RuntimeError:
+    #                 continue
+    #         else:
+    #             loop.create_task(
+    #                 notification_hub.emit_notification_created(
+    #                     user_id=int(user_id),
+    #                     company_id=notification.company_id,
+    #                     item=item,
+    #                     unread_count=None,
+    #                 )
+    #             )
+
     def _dispatch_new_items(self, db: Session, *, recipient_ids: list[int], user_ids: list[int]) -> None:
+        items_to_emit: list[tuple[int, int | None, dict]] = []
         for recipient_id, user_id in zip(recipient_ids, user_ids, strict=False):
             row = self._repo.get_notification_for_user(db, recipient_id=recipient_id, user_id=user_id)
             if row is None:
                 continue
             recipient, notification = row
             item = self._to_item(recipient, notification)
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                try:
-                    from_thread.run(
-                        partial(
-                            notification_hub.emit_notification_created,
-                            user_id=int(user_id),
-                            company_id=notification.company_id,
-                            item=item,
-                            unread_count=None,
-                        ),
-                    )
-                except RuntimeError:
-                    continue
-            else:
-                loop.create_task(
-                    notification_hub.emit_notification_created(
-                        user_id=int(user_id),
-                        company_id=notification.company_id,
-                        item=item,
-                        unread_count=None,
-                    )
+            items_to_emit.append((int(user_id), notification.company_id, item))
+
+        if not items_to_emit:
+            return
+
+        async def _emit_all() -> None:
+            for user_id, company_id, item in items_to_emit:
+                await notification_hub.emit_notification_created(
+                    user_id=user_id,
+                    company_id=company_id,
+                    item=item,
+                    unread_count=None,
                 )
 
+        # Case 1: đang trong async context (FastAPI async endpoint)
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_emit_all())
+            return
+        except RuntimeError:
+            pass
+
+        # Case 2: sync context (Celery, scheduler, background thread)
+        # Lấy event loop của FastAPI app để submit task an toàn
+        try:
+            import asyncio as _asyncio
+            # Tìm loop đang chạy của main thread (uvicorn)
+            loop = _asyncio.get_event_loop_policy().get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                future = concurrent.futures.Future()
+
+                async def _run_and_resolve():
+                    try:
+                        await _emit_all()
+                        future.set_result(None)
+                    except Exception as e:
+                        future.set_exception(e)
+
+                asyncio.run_coroutine_threadsafe(_run_and_resolve(), loop)
+                return
+        except Exception:
+            pass
+
+        # Case 3: fallback — chạy loop mới (không có WS connections nào đang live)
+        try:
+            asyncio.run(_emit_all())
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("notification dispatch failed: %r", exc)
+
     def create_for_users(
-        self,
-        db: Session,
-        *,
-        company_id: int | None,
-        type: str,
-        category: str,
-        severity: str,
-        title: str,
-        body: str | None,
-        entity_type: str | None,
-        entity_id: int | None,
-        action_url: str | None,
-        created_by_user_id: int | None,
-        user_ids: list[int],
+            self,
+            db: Session,
+            *,
+            company_id: int | None,
+            type: str,
+            category: str,
+            severity: str,
+            title: str,
+            body: str | None,
+            entity_type: str | None,
+            entity_id: int | None,
+            action_url: str | None,
+            created_by_user_id: int | None,
+            user_ids: list[int],
     ) -> int:
         category, severity = self._normalize_event(type=type, category=category, severity=severity)
         recipient_ids = sorted({int(x) for x in user_ids if int(x) > 0})
@@ -233,21 +295,21 @@ class NotificationService:
         return int(notification.id)
 
     def create_for_permission(
-        self,
-        db: Session,
-        *,
-        company_id: int,
-        permission_key: str,
-        type: str,
-        category: str,
-        severity: str,
-        title: str,
-        body: str | None,
-        entity_type: str | None,
-        entity_id: int | None,
-        action_url: str | None,
-        created_by_user_id: int | None,
-        exclude_user_ids: list[int] | None = None,
+            self,
+            db: Session,
+            *,
+            company_id: int,
+            permission_key: str,
+            type: str,
+            category: str,
+            severity: str,
+            title: str,
+            body: str | None,
+            entity_type: str | None,
+            entity_id: int | None,
+            action_url: str | None,
+            created_by_user_id: int | None,
+            exclude_user_ids: list[int] | None = None,
     ) -> int:
         user_ids = self._repo.list_user_ids_for_permission(
             db,

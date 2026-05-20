@@ -14,26 +14,44 @@ type CreateForm = { username: string; password: string; roleKeys: string[] };
 type EditForm = { id: number; username: string; roleKeys: string[]; permissionKeys: string[] };
 
 const emptyCreate: CreateForm = { username: "", password: "", roleKeys: ["employee"] };
+const pageSize = 20;
 
 export default function IamUsersPage() {
   const [accounts, setAccounts] = useState<AccountOut[]>([]);
   const [roles, setRoles] = useState<RoleOut[]>([]);
   const [permissions, setPermissions] = useState<PermissionOut[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
-  async function reload() {
-    const [ar, rr, pr] = await Promise.all([
-      api.get<ApiResponse<AccountOut[]>>("/iam/users"),
-      api.get<ApiResponse<RoleOut[]>>("/iam/roles"),
-      api.get<ApiResponse<PermissionOut[]>>("/iam/permissions")
+  async function loadOptions() {
+    const [rr, pr] = await Promise.all([
+      api.get<ApiResponse<RoleOut[]>>("/iam/roles", { params: { limit: 500, offset: 0 } }),
+      api.get<ApiResponse<PermissionOut[]>>("/iam/permissions", { params: { limit: 500, offset: 0 } })
     ]);
-    setAccounts(ar.data.result ?? []);
     setRoles(rr.data.result ?? []);
     setPermissions(pr.data.result ?? []);
   }
 
+  async function reload(nextOffset = 0, append = false) {
+    try {
+      setLoading(true);
+      setErr(null);
+      const ar = await api.get<ApiResponse<AccountOut[]>>("/iam/users", { params: { limit: pageSize, offset: nextOffset } });
+      const rows = ar.data.result ?? [];
+      setAccounts((prev) => (append ? [...prev, ...rows] : rows));
+      setOffset(nextOffset);
+      setHasMore(rows.length === pageSize);
+    } catch (e) {
+      setErr(getApiErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    reload().catch((e) => setErr(getApiErrorMessage(e)));
+    Promise.all([loadOptions(), reload()]).catch((e) => setErr(getApiErrorMessage(e)));
   }, []);
 
   const roleLabelByKey = useMemo(() => new Map(roles.map((r) => [r.key, r.label])), [roles]);
@@ -114,6 +132,14 @@ export default function IamUsersPage() {
               ))}
             </tbody>
           </Table>
+          <div className={styles.pagination}>
+            <div className={styles.pageHint}>{hasMore ? `Đã tải ${accounts.length} tài khoản` : `Đã hiển thị ${accounts.length} tài khoản`}</div>
+            {hasMore ? (
+              <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => void reload(offset + pageSize, true)}>
+                {loading ? "Đang tải..." : "Tải thêm"}
+              </button>
+            ) : null}
+          </div>
         </Card>
 
         <Modal

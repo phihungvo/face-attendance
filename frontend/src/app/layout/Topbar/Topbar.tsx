@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  BellOutlined,
+  BgColorsOutlined,
+  CalendarOutlined,
+  DownOutlined,
+  LockOutlined,
+  MenuUnfoldOutlined,
+  LogoutOutlined,
+  SafetyCertificateOutlined,
+  SearchOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 import { formatDateTimeVi, formatDateVi } from "../../../shared/lib/date";
 import { useClock } from "../../../shared/hooks/useClock";
 import { useTheme } from "../../../shared/theme/theme";
@@ -10,34 +22,49 @@ import { listCompanies, type Company } from "../../../shared/api/companies";
 import { listNotifications, markAllNotificationsRead, markNotificationRead, type NotificationItem } from "../../../shared/api/notifications";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useUnreadNotificationCount } from "../../../shared/notifications/useUnreadNotificationCount";
+import { getMyProfile } from "../../../shared/api/users";
 
 function getNotificationGlyph(item: NotificationItem) {
-  if (item.category === "leave") return "📝";
-  if (item.category === "schedule") return "📅";
-  if (item.category === "attendance") return "📍";
-  if (item.category === "settings") return "⚙️";
-  if (item.category === "iam") return "🔐";
-  return "🔔";
+  if (item.category === "leave") return <SafetyCertificateOutlined />;
+  if (item.category === "schedule") return <CalendarOutlined />;
+  if (item.category === "attendance") return <BellOutlined />;
+  if (item.category === "settings") return <SettingOutlined />;
+  if (item.category === "iam") return <SafetyCertificateOutlined />;
+  return <BellOutlined />;
 }
 
-export default function Topbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
+export default function Topbar({
+  isMobile,
+  onOpenMobileMenu
+}: {
+  isMobile: boolean;
+  onOpenMobileMenu?: () => void;
+}) {
   const { pathname } = useLocation();
   const nav = useNavigate();
   const meta = pageMetaByPath[pathname] ?? { title: "FaceTime HR", sub: "Hệ thống chấm công" };
   const { now } = useClock(1000);
+  const { toggle } = useTheme();
   const [query, setQuery] = useState("");
-  const { resolvedTheme, toggle } = useTheme();
   const auth = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [latestItems, setLatestItems] = useState<NotificationItem[]>([]);
   const [dropdownLoading, setDropdownLoading] = useState(false);
   const [dropdownError, setDropdownError] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [myProfile, setMyProfile] = useState<Awaited<ReturnType<typeof getMyProfile>> | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const profileRef = useRef<HTMLDivElement | null>(null);
   const unreadCount = useUnreadNotificationCount([auth.selectedCompanyId, auth.companyId]);
 
   const todayLabel = useMemo(() => formatDateVi(now), [now]);
   const showCompanySwitcher = auth.roleKeys.includes("admin") && auth.permissionKeys.includes("companies.read");
+  const canOpenSettings = auth.permissionKeys.includes("settings.read");
+  const avatarText = (auth.username || "U").slice(0, 2).toUpperCase();
+  const profileName = myProfile?.name || auth.username || "User";
 
   useEffect(() => {
     if (!showCompanySwitcher) return;
@@ -45,6 +72,11 @@ export default function Topbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
       .then(setCompanies)
       .catch(() => setCompanies([]));
   }, [showCompanySwitcher]);
+
+  useEffect(() => {
+    void reloadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function reloadLatest() {
     try {
@@ -59,10 +91,29 @@ export default function Topbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
     }
   }
 
+  async function reloadProfile() {
+    try {
+      setProfileLoading(true);
+      setProfileError(null);
+      const data = await getMyProfile();
+      setMyProfile(data);
+    } catch (e) {
+      setProfileError(getApiErrorMessage(e));
+      setMyProfile(null);
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!dropdownOpen) return;
     void reloadLatest();
   }, [dropdownOpen, auth.selectedCompanyId, auth.companyId]);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    void reloadProfile();
+  }, [profileOpen]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -76,6 +127,7 @@ export default function Topbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
     };
     const onDocClick = (event: MouseEvent) => {
       if (!dropdownRef.current?.contains(event.target as Node)) setDropdownOpen(false);
+      if (!profileRef.current?.contains(event.target as Node)) setProfileOpen(false);
     };
     window.addEventListener("fa:notifications-changed", onChanged);
     document.addEventListener("mousedown", onDocClick);
@@ -110,20 +162,28 @@ export default function Topbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
   return (
     <header className={styles.topbar}>
-      <button className={styles.menuBtn} type="button" onClick={onOpenMenu} aria-label="Mở menu">
-        ☰
-      </button>
+      {isMobile ? (
+        <button className={styles.menuBtn} type="button" onClick={onOpenMobileMenu} aria-label="Mở menu">
+          <MenuUnfoldOutlined />
+        </button>
+      ) : null}
+
       <div className={styles.titleWrap}>
         <div className={styles.pageTitle}>{meta.title}</div>
         <div className={styles.pageSub}>{meta.sub}</div>
       </div>
 
       <div className={styles.actions}>
-        <div className={styles.dateChip}>📅 {todayLabel}</div>
+        <div className={styles.dateChip}>
+          <CalendarOutlined />
+          {todayLabel}
+        </div>
 
         {showCompanySwitcher ? (
           <div className={styles.companyBox} title="Chọn công ty để thao tác">
-            <span className={styles.companyIcon}>🏢</span>
+            <span className={styles.companyIcon}>
+              <SafetyCertificateOutlined />
+            </span>
             <select
               value={auth.selectedCompanyId ?? auth.companyId ?? ""}
               onChange={(e) => auth.setSelectedCompanyId(e.target.value ? Number(e.target.value) : null)}
@@ -138,13 +198,15 @@ export default function Topbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
         ) : null}
 
         <div className={styles.searchBox}>
-          <span className={styles.searchIcon}>🔍</span>
+          <span className={styles.searchIcon}>
+            <SearchOutlined />
+          </span>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm kiếm..." />
         </div>
 
         <div className={styles.notifWrap} ref={dropdownRef}>
           <button className={styles.iconBtn} type="button" title="Thông báo" onClick={() => setDropdownOpen((prev) => !prev)}>
-            🔔
+            <BellOutlined />
             {unreadCount > 0 ? <span className={styles.notifCount}>{unreadCount > 99 ? "99+" : String(unreadCount)}</span> : null}
           </button>
           {dropdownOpen ? (
@@ -192,12 +254,72 @@ export default function Topbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
             </div>
           ) : null}
         </div>
-        <button className={styles.iconBtn} type="button" title="Trợ giúp">
-          ❓
+        <button className={styles.iconBtn} type="button" title="Đổi giao diện" aria-label="Đổi giao diện" onClick={toggle}>
+          <BgColorsOutlined />
         </button>
-        <button className={styles.iconBtn} type="button" title="Đổi giao diện" onClick={toggle} aria-label="Đổi giao diện">
-          {resolvedTheme === "dark" ? "🌙" : "☀️"}
-        </button>
+        <div className={styles.profileWrap} ref={profileRef}>
+          <button className={styles.profileTrigger} type="button" onClick={() => setProfileOpen((prev) => !prev)} aria-label="Mở menu tài khoản">
+            <span className={styles.profileAvatar}>{avatarText}</span>
+            <span className={styles.profileTriggerBody}>
+              <strong>{profileName}</strong>
+            </span>
+            <span className={styles.profileChevron}>
+              <DownOutlined />
+            </span>
+          </button>
+          {profileOpen ? (
+            <div className={styles.profileDropdown}>
+              <div className={styles.profileDropdownHead}>
+                <div className={styles.profileDropdownAvatar}>{avatarText}</div>
+                <div className={styles.profileDropdownIdentity}>
+                  <strong>{profileName}</strong>
+                  <small>@{auth.username || "user"}</small>
+                </div>
+              </div>
+
+              {profileError ? <div className={styles.profileStateError}>{profileError}</div> : null}
+              {profileLoading ? <div className={styles.profileState}>Đang tải thông tin tài khoản...</div> : null}
+
+              <div className={styles.profileMeta}>
+                <div className={styles.profileMetaItem}>
+                  <span className={styles.profileMetaLabel}>Công ty</span>
+                  <span className={styles.profileMetaValue}>{auth.companyName || "Chưa có công ty"}</span>
+                </div>
+                <div className={styles.profileMetaItem}>
+                  <span className={styles.profileMetaLabel}>Mã nhân viên</span>
+                  <span className={styles.profileMetaValue}>{myProfile?.code || "Chưa cập nhật"}</span>
+                </div>
+              </div>
+
+              <div className={styles.profileActionList}>
+                {canOpenSettings ? (
+                  <button
+                    className={styles.profileAction}
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      nav("/change-password");
+                    }}
+                  >
+                    <LockOutlined />
+                    <span>Đổi mật khẩu</span>
+                  </button>
+                ) : null}
+                <button
+                  className={`${styles.profileAction} ${styles.profileActionDanger}`}
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    auth.logout();
+                  }}
+                >
+                  <LogoutOutlined />
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         {meta.actionLabel ? (
           <Link className={`${styles.btn} ${styles.btnPrimary}`} to={meta.actionTo ?? pathname}>

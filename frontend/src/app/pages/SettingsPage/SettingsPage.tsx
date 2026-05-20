@@ -132,6 +132,8 @@ export default function SettingsPage() {
   const [notifNewLeave, setNotifNewLeave] = useState(true);
   const [notifDailyReport, setNotifDailyReport] = useState(false);
   const [notifOvertime, setNotifOvertime] = useState(true);
+  const [notifAttendancePolicy, setNotifAttendancePolicy] = useState(true);
+  const [notifGpsPolicy, setNotifGpsPolicy] = useState(true);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
@@ -219,6 +221,8 @@ export default function SettingsPage() {
         setNotifNewLeave(Boolean(policies.new_leave_request_enabled));
         setNotifDailyReport(Boolean(policies.daily_report_enabled));
         setNotifOvertime(Boolean(policies.overtime_request_enabled));
+        setNotifAttendancePolicy(Boolean(policies.attendance_policy_change_enabled));
+        setNotifGpsPolicy(Boolean(policies.gps_policy_change_enabled));
       } catch (e) {
         setNotifError(getApiErrorMessage(e));
       } finally {
@@ -286,9 +290,9 @@ export default function SettingsPage() {
                     <div className={styles.hintInline}>{companyRequireGps ? "Bật" : "Tắt"}</div>
                   </div>
                 </div>
-                <div style={{ color: "var(--text3)", fontSize: 12.5, fontWeight: 800, marginTop: 6 }}>
-                  Khi bật: mỗi lần chấm công bắt buộc gửi vị trí GPS. Khi tắt: chấm công bỏ qua GPS và không áp dụng giới hạn bán kính.
-                </div>
+                {/*<div style={{ color: "var(--text3)", fontSize: 12.5, fontWeight: 800, marginTop: 6 }}>*/}
+                {/*  Khi bật: mỗi lần chấm công bắt buộc gửi vị trí GPS. Khi tắt: chấm công bỏ qua GPS và không áp dụng giới hạn bán kính.*/}
+                {/*</div>*/}
                 <div className={styles.mapWrap} style={{ marginTop: 12 }}>
                   <div className={styles.mapToolbar}>
                     <input
@@ -365,9 +369,9 @@ export default function SettingsPage() {
                     </div>
                   ) : null}
 
-                  <div className={styles.mapHint}>
-                    Chạm vào bản đồ để chọn vị trí công ty. Khi đã cấu hình GPS + bán kính, hệ thống chỉ cho chấm công nếu vị trí nhân viên nằm trong bán kính này.
-                  </div>
+                  {/*<div className={styles.mapHint}>*/}
+                  {/*  Chạm vào bản đồ để chọn vị trí công ty. Khi đã cấu hình GPS + bán kính, hệ thống chỉ cho chấm công nếu vị trí nhân viên nằm trong bán kính này.*/}
+                  {/*</div>*/}
                 </div>
               </div>
               <div className={styles.actions} style={{ marginTop: 12 }}>
@@ -755,8 +759,8 @@ export default function SettingsPage() {
                       new_leave_request_enabled: notifNewLeave,
                       daily_report_enabled: notifDailyReport,
                       overtime_request_enabled: notifOvertime,
-                      attendance_policy_change_enabled: true,
-                      gps_policy_change_enabled: true
+                      attendance_policy_change_enabled: notifAttendancePolicy,
+                      gps_policy_change_enabled: notifGpsPolicy
                     });
                   } catch (e) {
                     setNotifError(getApiErrorMessage(e));
@@ -787,9 +791,17 @@ export default function SettingsPage() {
                 <div className={styles.simpleLabel}>Báo cáo cuối ngày</div>
                 <Toggle checked={notifDailyReport} onChange={setNotifDailyReport} label="Báo cáo cuối ngày" />
               </div>
-              <div className={`${styles.simpleRow} ${styles.simpleRowLast}`}>
+              <div className={styles.simpleRow}>
                 <div className={styles.simpleLabel}>Nhắc nhở tăng ca</div>
                 <Toggle checked={notifOvertime} onChange={setNotifOvertime} label="Nhắc nhở tăng ca" />
+              </div>
+              <div className={styles.simpleRow}>
+                <div className={styles.simpleLabel}>Đổi chính sách chấm công</div>
+                <Toggle checked={notifAttendancePolicy} onChange={setNotifAttendancePolicy} label="Đổi chính sách chấm công" />
+              </div>
+              <div className={`${styles.simpleRow} ${styles.simpleRowLast}`}>
+                <div className={styles.simpleLabel}>Đổi cấu hình GPS công ty</div>
+                <Toggle checked={notifGpsPolicy} onChange={setNotifGpsPolicy} label="Đổi cấu hình GPS công ty" />
               </div>
             </div>
           </Card>

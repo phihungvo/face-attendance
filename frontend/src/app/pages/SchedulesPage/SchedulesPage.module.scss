@@ -20,86 +20,6 @@
   gap: 12px;
 }
 
-.hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 16px;
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  background:
-    radial-gradient(420px 220px at 0% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 60%),
-    radial-gradient(420px 220px at 100% 0%, color-mix(in oklab, var(--purple) 12%, transparent), transparent 60%),
-    color-mix(in oklab, var(--surface) 88%, transparent);
-  box-shadow: var(--shadow);
-  position: relative;
-  overflow: hidden;
-}
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: 20px;
-  padding: 2px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in oklab, var(--primary) 55%, transparent),
-    color-mix(in oklab, var(--purple) 45%, transparent),
-    color-mix(in oklab, var(--accent) 40%, transparent)
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.55;
-}
-
-.heroLeft {
-  min-width: 0;
-}
-
-.heroTitle {
-  font-weight: 950;
-  letter-spacing: -0.3px;
-  font-size: 18px;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.heroSub {
-  margin-top: 4px;
-  color: var(--text3);
-  font-weight: 800;
-  font-size: 12.5px;
-}
-
-.heroCta {
-  background: linear-gradient(135deg, var(--primary), var(--purple));
-  color: white;
-  border: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
-  font-weight: 950;
-  cursor: pointer;
-  box-shadow: 0 12px 28px color-mix(in oklab, var(--primary) 22%, transparent);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
-  flex-shrink: 0;
-}
-.heroCta :global(.anticon) {
-  font-size: 16px;
-}
-.heroCta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 36px color-mix(in oklab, var(--primary) 26%, transparent);
-}
-.heroCta:active {
-  transform: translateY(0);
-  filter: saturate(0.95);
-}
-
 .topTabs {
   display: flex;
   gap: 8px;
@@ -686,9 +606,6 @@
 }
 
 @media (max-width: 599px) {
-  .hero {
-    padding: 14px 14px;
-  }
   .scheduleCard {
     grid-template-columns: 48px 1fr;
   }
@@ -1391,72 +1308,153 @@
 
 /* ─── Day Modal ─── */
 .dayDetailModalShell {
-  width: min(920px, 100%);
-  --modal-header-bg: color-mix(in oklab, var(--primary) 6%, var(--surface2));
+  width: min(600px, 100%);
+  --modal-header-bg: linear-gradient(180deg, color-mix(in oklab, var(--primary) 6%, var(--surface2)), var(--surface2));
   --modal-footer-bg: var(--surface);
 }
 
 .dayModal {
+  --day-pending: #d97706;
+  --day-pending-bg: color-mix(in oklab, #d97706 16%, var(--surface));
+  --day-approved: #15803d;
+  --day-approved-bg: color-mix(in oklab, #15803d 14%, var(--surface));
+  --day-rejected: #dc2626;
+  --day-rejected-bg: color-mix(in oklab, #dc2626 14%, var(--surface));
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
-.dayModalTop {
+.dayModalHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 12px;
+  padding: 12px 14px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: var(--surface2);
-}
-
-.dayMetaTitle {
-  font-weight: 950;
-  color: var(--text);
-}
-.dayMetaSub {
-  margin-top: 2px;
-  color: var(--text3);
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.dayActions {
-  display: inline-flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
+  background:
+    radial-gradient(260px 120px at 0% 0%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface2) 88%, var(--surface)), var(--surface2));
 }
 
 .dayMeta {
   min-width: 220px;
 }
 
-.dayApproveAll {
-  border: 0;
-  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
-  color: var(--text);
-  padding: 10px 12px;
-  border-radius: 12px;
+.dayMetaLead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.dayMetaIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--primary) 12%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--primary) 20%, var(--border));
+  color: var(--primary);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.dayMetaTitle {
   font-weight: 950;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.dayMetaSub {
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text3);
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.dayActions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dayApproveAll {
+  border: 1px solid color-mix(in oklab, #15803d 26%, var(--border));
+  background: color-mix(in oklab, #15803d 14%, var(--surface));
+  color: var(--text);
+  padding: 8px 11px;
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 12px;
   cursor: pointer;
-  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
 }
 
 .dayApproveAll:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--accent) 18%, var(--surface));
+  background: color-mix(in oklab, #15803d 20%, var(--surface));
 }
+
 .dayApproveAll:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
+.daySummaryBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface2) 54%, var(--surface)), var(--surface));
+}
+
+.daySummaryPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 25px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 850;
+  border: 1px solid var(--border);
+}
+
+.daySummaryNeutral {
+  background: color-mix(in oklab, var(--surface2) 82%, var(--surface));
+  color: var(--text2);
+}
+
+.daySummaryPending {
+  background: var(--day-pending-bg);
+  border-color: color-mix(in oklab, #d97706 24%, var(--border));
+  color: #92400e;
+}
+
+.daySummaryApproved {
+  background: var(--day-approved-bg);
+  border-color: color-mix(in oklab, #15803d 24%, var(--border));
+  color: #166534;
+}
+
+.daySummaryRejected {
+  background: var(--day-rejected-bg);
+  border-color: color-mix(in oklab, #dc2626 24%, var(--border));
+  color: #b91c1c;
+}
+
 .dayGroups {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .dayGroup {
@@ -1464,59 +1462,150 @@
   border-radius: 14px;
   background: var(--surface);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .dayGroupHead {
-  padding: 12px 12px 10px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface2);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface2) 92%, var(--surface)), color-mix(in oklab, var(--surface2) 80%, var(--surface)));
+  display: grid;
+  gap: 8px;
 }
+
+.dayGroupHeadMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dayGroupInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.dayGroupTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dayShiftIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.dayShiftMorning {
+  background: color-mix(in oklab, #f59e0b 16%, var(--surface));
+  border-color: color-mix(in oklab, #f59e0b 24%, var(--border));
+  color: #b45309;
+}
+
+.dayShiftDay {
+  background: color-mix(in oklab, #0ea5e9 14%, var(--surface));
+  border-color: color-mix(in oklab, #0ea5e9 24%, var(--border));
+  color: #0369a1;
+}
+
+.dayShiftNight {
+  background: color-mix(in oklab, #475569 16%, var(--surface));
+  border-color: color-mix(in oklab, #475569 24%, var(--border));
+  color: #334155;
+}
+
 .dayGroupTitle {
   font-weight: 950;
   color: var(--text);
-}
-.dayGroupSub {
-  margin-top: 2px;
-  color: var(--text3);
-  font-weight: 800;
-  font-size: 12px;
+  font-size: 13px;
 }
 
-.dayGroupStats {
-  margin-top: 10px;
+.dayGroupAssistRow {
   display: flex;
+  align-items: center;
+  gap: 6px;
   flex-wrap: wrap;
-  gap: 8px;
+}
+
+.dayInlineMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface2) 84%, var(--surface));
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.dayTimePill,
+.dayShortagePill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 850;
+  border: 1px solid var(--border);
+}
+
+.dayTimePill {
+  background: var(--surface);
+  color: var(--text2);
+}
+
+.dayShortagePill {
+  background: var(--day-pending-bg);
+  color: #92400e;
+  border-color: color-mix(in oklab, #d97706 24%, var(--border));
 }
 
 .statChip {
   border-radius: 999px;
-  padding: 6px 10px;
-  font-weight: 950;
-  font-size: 12px;
+  padding: 5px 9px;
+  font-weight: 900;
+  font-size: 11px;
   border: 1px solid var(--border);
-  background: var(--surface2);
+  background: var(--surface);
   color: var(--text);
 }
 
-.chipTotal {
-  background: color-mix(in oklab, var(--surface2) 76%, var(--surface));
-  border-color: color-mix(in oklab, var(--text3) 18%, var(--border));
-}
 .chipPending {
-  background: color-mix(in oklab, var(--warning) 14%, var(--surface));
-  border-color: color-mix(in oklab, var(--warning) 22%, var(--border));
-  color: var(--text);
+  background: var(--day-pending-bg);
+  border-color: color-mix(in oklab, #d97706 24%, var(--border));
+  color: #92400e;
 }
-.chipApproved {
-  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
-  border-color: color-mix(in oklab, var(--accent) 20%, var(--border));
-  color: var(--text);
-}
+
 .chipRejected {
-  background: color-mix(in oklab, var(--danger) 12%, var(--surface));
-  border-color: color-mix(in oklab, var(--danger) 20%, var(--border));
-  color: var(--text);
+  background: var(--day-rejected-bg);
+  border-color: color-mix(in oklab, #dc2626 24%, var(--border));
+  color: #b91c1c;
+}
+
+.dayTableHead {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(160px, 1fr) auto minmax(170px, auto);
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface2) 68%, var(--surface)), color-mix(in oklab, var(--surface2) 58%, var(--surface)));
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .dayList {
@@ -1524,111 +1613,220 @@
 }
 
 .dayRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(160px, 1fr) auto minmax(170px, auto);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
   border-top: 1px solid var(--border);
   transition: background 0.15s ease;
 }
+
 .dayRow:first-child {
   border-top: 0;
 }
+
 .dayRow:hover {
   background: color-mix(in oklab, var(--surface2) 78%, var(--surface));
+}
+
+.dayRow_pending {
+  box-shadow: inset 3px 0 0 #d97706;
+}
+
+.dayRow_approved {
+  box-shadow: inset 3px 0 0 #15803d;
+}
+
+.dayRow_rejected {
+  box-shadow: inset 3px 0 0 #dc2626;
+}
+
+.dayRowIdentity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dayAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 950;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.dayAvatar_pending {
+  background: color-mix(in oklab, #d97706 18%, var(--surface));
+  border-color: color-mix(in oklab, #d97706 24%, var(--border));
+  color: #92400e;
+}
+
+.dayAvatar_approved {
+  background: color-mix(in oklab, #15803d 18%, var(--surface));
+  border-color: color-mix(in oklab, #15803d 24%, var(--border));
+  color: #166534;
+}
+
+.dayAvatar_rejected {
+  background: color-mix(in oklab, #dc2626 16%, var(--surface));
+  border-color: color-mix(in oklab, #dc2626 24%, var(--border));
+  color: #b91c1c;
 }
 
 .dayEmpName {
   font-weight: 950;
   color: var(--text);
 }
+
 .dayEmpMeta {
   margin-top: 2px;
   color: var(--text3);
   font-weight: 800;
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.dayRowRight {
-  display: inline-flex;
-  gap: 10px;
-  align-items: center;
+.dayRowInfo {
+  display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  gap: 5px;
 }
 
-@media (max-width: 720px) {
-  .dayRow {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .dayRowRight {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .dayRowBtns {
-    width: 100%;
-    justify-content: flex-end;
-  }
+.dayInfoItem {
+  display: inline-flex;
+  align-items: center;
+  min-height: 23px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface2) 80%, var(--surface));
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.dayRowStatus {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .statusPill {
   border-radius: 999px;
-  padding: 6px 10px;
-  font-weight: 950;
-  font-size: 12px;
+  padding: 4px 9px;
+  font-weight: 900;
+  font-size: 11px;
   border: 1px solid var(--border);
-  background: var(--surface2);
 }
+
 .pillPending {
-  background: color-mix(in oklab, var(--warning) 14%, var(--surface));
-  border-color: color-mix(in oklab, var(--warning) 22%, var(--border));
-  color: var(--text);
+  background: var(--day-pending-bg);
+  border-color: color-mix(in oklab, #d97706 24%, var(--border));
+  color: #92400e;
 }
+
 .pillApproved {
-  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
-  border-color: color-mix(in oklab, var(--accent) 20%, var(--border));
-  color: var(--text);
+  background: var(--day-approved-bg);
+  border-color: color-mix(in oklab, #15803d 24%, var(--border));
+  color: #166534;
 }
+
 .pillRejected {
-  background: color-mix(in oklab, var(--danger) 12%, var(--surface));
-  border-color: color-mix(in oklab, var(--danger) 20%, var(--border));
-  color: var(--text);
+  background: var(--day-rejected-bg);
+  border-color: color-mix(in oklab, #dc2626 24%, var(--border));
+  color: #b91c1c;
+}
+
+.dayRowActions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .dayRowBtns {
   display: inline-flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
-.dayBtnApprove {
-  border: 0;
-  background: color-mix(in oklab, var(--accent) 16%, var(--surface2));
-  color: var(--text);
-  padding: 8px 10px;
-  border-radius: 12px;
-  font-weight: 950;
+.dayBtnApprove,
+.dayBtnReject {
+  padding: 6px 9px;
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 11px;
   cursor: pointer;
-  border: 1px solid color-mix(in oklab, var(--accent) 26%, var(--border));
+  border: 1px solid var(--border);
+}
+
+.dayBtnApprove {
+  background: color-mix(in oklab, #15803d 14%, var(--surface));
+  border-color: color-mix(in oklab, #15803d 26%, var(--border));
+  color: #166534;
 }
 
 .dayBtnReject {
-  border: 0;
-  background: color-mix(in oklab, var(--danger) 12%, var(--surface2));
-  color: var(--text);
-  padding: 8px 10px;
-  border-radius: 12px;
-  font-weight: 950;
-  cursor: pointer;
-  border: 1px solid color-mix(in oklab, var(--danger) 22%, var(--border));
+  background: color-mix(in oklab, #dc2626 12%, var(--surface));
+  border-color: color-mix(in oklab, #dc2626 24%, var(--border));
+  color: #b91c1c;
+}
+
+.dayActionPlaceholder {
+  color: var(--text3);
+  font-weight: 700;
 }
 
 .dayEmpty {
-  padding: 14px 12px;
-  border-radius: 14px;
+  padding: 10px;
+  border-radius: 12px;
   border: 1px dashed var(--border);
   color: var(--text3);
   font-weight: 800;
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .dayTableHead {
+    display: none;
+  }
+
+  .dayRow {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .dayRowActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .dayModalHeader {
+    padding: 12px;
+  }
+
+  .dayMetaLead {
+    align-items: flex-start;
+  }
+
+  .dayGroupHead {
+    padding: 12px;
+  }
+
+  .dayGroupAssistRow {
+    width: 100%;
+  }
+
+  .dayRowBtns {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .dayBtnApprove,
+  .dayBtnReject {
+    flex: 1 1 140px;
+  }
 }

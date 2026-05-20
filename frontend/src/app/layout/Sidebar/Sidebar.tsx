@@ -1,31 +1,27 @@
 import { NavLink } from "react-router-dom";
-import { useEffect } from "react";
+import type { CSSProperties } from "react";
+import { AppstoreOutlined, CloseOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import styles from "./Sidebar.module.scss";
 import { getNavSections } from "./navConfig";
 import { useAuth } from "../../../shared/auth/auth";
-import { useTheme } from "../../../shared/theme/theme";
 
 export default function Sidebar({
   variant = "static",
   open = false,
-  onClose
+  collapsed = false,
+  onClose,
+  onToggleCollapse
 }: {
   variant?: "static" | "drawer";
   open?: boolean;
+  collapsed?: boolean;
   onClose?: () => void;
+  onToggleCollapse?: () => void;
 }) {
   const auth = useAuth();
-  const { resolvedTheme, toggle, setMode } = useTheme();
   const can = (p: string) => auth.permissionKeys.includes(p as any);
   const navSections = getNavSections(auth.roleKeys);
-  const isEmployee = auth.roleKeys.includes("employee") && !auth.roleKeys.includes("manager") && !auth.roleKeys.includes("admin");
-
-  useEffect(() => {
-    if (!isEmployee) return;
-    // Default employee UI to dark on first visit, without overriding an explicit user preference.
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem("theme-mode") == null) setMode("dark");
-  }, [isEmployee, setMode]);
+  const roleLabel = auth.roleKeys.includes("admin") ? "Admin" : auth.roleKeys.includes("manager") ? "Quản lý" : "Nhân viên";
 
   const itemAllowed = (to: string) => {
     const map: Record<string, string> = {
@@ -51,12 +47,14 @@ export default function Sidebar({
     return can(needed);
   };
 
-  const cls =
-    variant === "drawer"
-      ? open
-        ? `${styles.sidebar} ${styles.drawer} ${styles.drawerOpen}`
-        : `${styles.sidebar} ${styles.drawer}`
-      : styles.sidebar;
+  const cls = [
+    styles.sidebar,
+    variant === "drawer" ? styles.drawer : "",
+    open ? styles.drawerOpen : "",
+    collapsed ? styles.collapsed : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const closeIfDrawer = () => {
     if (variant === "drawer") onClose?.();
@@ -64,71 +62,82 @@ export default function Sidebar({
 
   return (
     <nav className={cls} aria-label="Điều hướng quản lý">
-      {variant === "drawer" ? (
-        <div className={styles.drawerTop}>
-          <div className={styles.drawerTitle}>Menu</div>
-          <button className={styles.drawerClose} type="button" onClick={onClose} aria-label="Đóng menu">
-            ✕
-          </button>
-        </div>
-      ) : null}
-      <div className={styles.logo}>
-        <div className={styles.logoIcon}>🎯</div>
-        <div className={styles.logoText}>
-          <h2>FaceTime HR</h2>
-          <p>Chấm công thông minh</p>
-        </div>
-      </div>
+      <div className={styles.sidebarInner}>
+        <div className={styles.brandCard}>
+          <div className={styles.brandTop}>
+            <div className={styles.logo}>
+              <div className={styles.logoIcon}>
+                <AppstoreOutlined />
+              </div>
+              <div className={styles.logoText}>
+                <h2>FaceTime HR</h2>
+                <p>{auth.companyName || "Workforce management"}</p>
+              </div>
+            </div>
 
-      {navSections
-        .map((sec) => ({ ...sec, items: sec.items.filter((it) => itemAllowed(it.to)) }))
-        .filter((sec) => sec.items.length > 0)
-        .map((sec) => (
-        <div className={styles.navSection} key={sec.label}>
-          <div className={styles.navSectionLabel}>{sec.label}</div>
-          {sec.items.map((item) => (
-            <NavLink
-              key={item.key}
-              to={item.to}
-              end={item.to === "/"}
-              onClick={closeIfDrawer}
-              className={({ isActive }) => (isActive ? `${styles.navItem} ${styles.active}` : styles.navItem)}
-            >
-              <span className={styles.navIcon}>{item.icon}</span>
-              {item.label}
-              {item.badge ? (
-                <span className={item.badge.tone === "green" ? `${styles.navBadge} ${styles.green}` : styles.navBadge}>
-                  {item.badge.text}
-                </span>
+            <div className={styles.brandActions}>
+              {variant === "drawer" ? (
+                <button className={`${styles.sidebarToggle} ${styles.mobileToggle}`} type="button" onClick={onClose} aria-label="Đóng menu">
+                  <CloseOutlined />
+                </button>
               ) : null}
-            </NavLink>
-          ))}
-        </div>
-      ))}
-
-      <div className={styles.sidebarFooter}>
-        {isEmployee ? (
-          <button className={styles.themeToggle} type="button" onClick={toggle} aria-label="Bật/tắt sáng tối">
-            <span className={styles.themeIcon}>{resolvedTheme === "dark" ? "🌙" : "☀️"}</span>
-            <span className={styles.themeLabel}>Giao diện</span>
-            <span className={styles.themeValue}>{resolvedTheme === "dark" ? "Tối" : "Sáng"}</span>
-          </button>
-        ) : null}
-        <button
-          className={styles.userCard}
-          type="button"
-          onClick={() => {
-            auth.logout();
-            closeIfDrawer();
-          }}
-          title="Đăng xuất"
-        >
-          <div className={styles.avatar}>{(auth.username || "U").slice(0, 2).toUpperCase()}</div>
-          <div className={styles.userInfo}>
-            <p>{auth.username || "User"}</p>
-            <span>{auth.roleKeys.includes("admin") ? "Admin" : auth.roleKeys.includes("manager") ? "Quản lý" : "Nhân viên"}</span>
+            </div>
           </div>
-          <span className={styles.userChevron}>›</span>
+          {/*<div className={styles.brandMeta}>*/}
+          {/*  <span className={styles.rolePill}>{roleLabel}</span>*/}
+          {/*  <span className={styles.statusPill}>Online</span>*/}
+          {/*</div>*/}
+        </div>
+
+        <div className={styles.navScroll}>
+          {navSections
+            .map((sec) => ({ ...sec, items: sec.items.filter((it) => itemAllowed(it.to)) }))
+            .filter((sec) => sec.items.length > 0)
+            .map((sec) => (
+              <div className={styles.navSection} key={sec.label}>
+                <div className={styles.navSectionLabel}>{sec.label}</div>
+                <div className={styles.navList}>
+                  {sec.items.map((item) => (
+                    <NavLink
+                      key={item.key}
+                      to={item.to}
+                      end={item.to === "/"}
+                      onClick={closeIfDrawer}
+                      title={collapsed ? item.label : undefined}
+                      aria-label={item.label}
+                      className={({ isActive }) => (isActive ? `${styles.navItem} ${styles.active}` : styles.navItem)}
+                    >
+                      <span className={styles.navIcon} style={{ "--nav-icon-color": item.iconColor } as CSSProperties}>
+                        {item.icon}
+                      </span>
+                      <span className={styles.navLabel}>{item.label}</span>
+                      {item.badge ? (
+                        <span className={item.badge.tone === "green" ? `${styles.navBadge} ${styles.green}` : styles.navBadge}>{item.badge.text}</span>
+                      ) : null}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+        </div>
+
+        <div className={styles.sidebarFooter}>
+          <button className={styles.logoutButton} type="button" onClick={() => auth.logout()} title={collapsed ? "Đăng xuất" : undefined}>
+            <span className={styles.logoutIcon}>
+              <LogoutOutlined />
+            </span>
+            <span className={styles.logoutLabel}>Đăng xuất</span>
+          </button>
+        </div>
+
+        <button
+          className={`${styles.edgeToggle} ${styles.desktopToggle}`}
+          type="button"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+          title={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+        >
+          {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
         </button>
       </div>
     </nav>

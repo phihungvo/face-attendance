@@ -92,3 +92,72 @@ class AttendanceStats(BaseModel):
     total_checkins: int
     total_checkouts: int
     late_count: int
+
+
+class ManagerDashboardTodaySummary(BaseModel):
+    day: str
+    total_users: int
+    present_count: int
+    absent_count: int
+    late_count: int
+    checked_out_count: int
+    working_count: int
+    attendance_rate: float
+
+
+class ManagerDashboardTrendPoint(BaseModel):
+    day: str
+    label: str
+    present_count: int
+    absent_count: int
+    late_count: int
+    attendance_rate: float
+
+
+class ManagerDashboardDepartmentRow(BaseModel):
+    department_id: int | None = None
+    department_name: str
+    total_users: int
+    present_count: int
+    absent_count: int
+    late_count: int
+    attendance_rate: float
+
+
+class ManagerDashboardLeaveSummary(BaseModel):
+    pending_count: int
+    approved_count: int
+    rejected_count: int
+
+
+class ManagerDashboardPendingLeaveItem(BaseModel):
+    id: int
+    user_id: int
+    user_name: str
+    user_code: str | None = None
+    department_name: str | None = None
+    type: str
+    start_date: str
+    end_date: str
+    status: str
+    created_at: datetime
+
+
+class ManagerDashboardRecentLogItem(BaseModel):
+    id: int
+    user_id: int
+    user_name: str
+    user_code: str | None = None
+    type: str
+    confidence: float
+    timestamp: datetime
+
+
+class ManagerDashboardSummary(BaseModel):
+    generated_at: datetime
+    today: ManagerDashboardTodaySummary
+    trend: list[ManagerDashboardTrendPoint]
+    departments: list[ManagerDashboardDepartmentRow]
+    leave_summary: ManagerDashboardLeaveSummary
+    pending_leaves: list[ManagerDashboardPendingLeaveItem]
+    recent_logs: list[ManagerDashboardRecentLogItem]

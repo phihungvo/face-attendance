@@ -32,3 +32,32 @@
   width: 220px;
 }
 
+.pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pageHint {
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.loadMore {
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-weight: 1000;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.loadMore:hover {
+  background: var(--muted-bg);
+}

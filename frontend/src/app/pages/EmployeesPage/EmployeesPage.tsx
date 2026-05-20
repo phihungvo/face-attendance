@@ -507,10 +507,10 @@ export default function EmployeesPage() {
           </>
         }
       >
-        <div className={styles.modalIntro}>
-          <div className={styles.modalTitleLine}>Thông tin cơ bản</div>
-          <div className={styles.modalSubLine}>Nhập đủ dữ liệu cần thiết, có thể chỉnh sửa sau.</div>
-        </div>
+        {/*<div className={styles.modalIntro}>*/}
+        {/*  <div className={styles.modalTitleLine}>Thông tin cơ bản</div>*/}
+        {/*  <div className={styles.modalSubLine}>Nhập đủ dữ liệu cần thiết, có thể chỉnh sửa sau.</div>*/}
+        {/*</div>*/}
 
         <div className={styles.modalGrid}>
           <div className={styles.formGroup}>

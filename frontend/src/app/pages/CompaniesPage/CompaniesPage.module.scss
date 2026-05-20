@@ -52,6 +52,21 @@
   font-weight: 700;
 }
 
+.pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pageHint {
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .form {
   display: grid;
   gap: 12px;
@@ -107,4 +122,3 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
-
