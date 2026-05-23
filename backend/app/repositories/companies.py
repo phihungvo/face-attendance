@@ -85,6 +85,23 @@ class CompanyRepository:
         db.flush()
         return c
 
+    def update_logo(
+        self,
+        db: Session,
+        *,
+        company_id: int,
+        logo_blob: bytes | None,
+        logo_mime_type: str | None,
+    ) -> Company | None:
+        c = self.get(db, company_id)
+        if c is None:
+            return None
+        c.logo_blob = logo_blob
+        c.logo_mime_type = logo_mime_type
+        db.add(c)
+        db.flush()
+        return c
+
     def delete(self, db: Session, *, company_id: int) -> bool:
         c = self.get(db, company_id)
         if c is None:

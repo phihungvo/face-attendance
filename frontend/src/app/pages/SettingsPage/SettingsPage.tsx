@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "../../components/Card/Card";
 import { mockSettings } from "../../../shared/mock/mockData";
 import { getAttendancePolicy, updateAttendancePolicy } from "../../../shared/api/settings";
-import { getCompany, getMyCompany, updateCompany, updateMyCompany } from "../../../shared/api/companies";
+import { getCompany, getMyCompany, updateCompany, updateMyCompany, uploadCompanyLogo, uploadMyCompanyLogo } from "../../../shared/api/companies";
 import { getCompanyNotificationPolicies, updateCompanyNotificationPolicies } from "../../../shared/api/notifications";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useTheme } from "../../../shared/theme/theme";
@@ -13,6 +13,7 @@ import { useAuth } from "../../../shared/auth/auth";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { viStatusLabel } from "../../../shared/i18n/vi";
+import { emitCompanyBrandingUpdated } from "../../../shared/companyBranding/companyBranding";
 
 type LatLng = { lat: number; lng: number };
 type NominatimResult = { display_name: string; lat: string; lon: string };
@@ -90,8 +91,11 @@ export default function SettingsPage() {
   const [companyLng, setCompanyLng] = useState<string>("");
   const [companyRadius, setCompanyRadius] = useState<number>(250);
   const [companyRequireGps, setCompanyRequireGps] = useState(false);
+  const [companyLogoDataUrl, setCompanyLogoDataUrl] = useState<string | null>(null);
   const [companySaving, setCompanySaving] = useState(false);
+  const [companyLogoUploading, setCompanyLogoUploading] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
+  const companyLogoInputRef = useRef<HTMLInputElement | null>(null);
   const [mapQuery, setMapQuery] = useState("");
   const [mapSearching, setMapSearching] = useState(false);
   const [mapResults, setMapResults] = useState<NominatimResult[]>([]);
@@ -199,6 +203,8 @@ export default function SettingsPage() {
         setCompanyLng((c as any).longitude != null ? String((c as any).longitude) : "");
         setCompanyRadius(Number((c as any).geo_radius_meters ?? 250));
         setCompanyRequireGps(Boolean((c as any).require_gps_on_attendance ?? false));
+        setCompanyLogoDataUrl((c as any).logo_data_url ?? null);
+        setCompanyError(null);
       } catch (e) {
         setCompanyError(getApiErrorMessage(e));
       }
@@ -250,12 +256,70 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleLogoPicked(file: File) {
+    try {
+      setCompanyLogoUploading(true);
+      setCompanyError(null);
+      const cid = auth.roleKeys.includes("admin") ? (auth.selectedCompanyId ?? null) : null;
+      const updated = cid ? await uploadCompanyLogo(cid, file) : await uploadMyCompanyLogo(file);
+      setCompanyLogoDataUrl(updated.logo_data_url ?? null);
+      emitCompanyBrandingUpdated({
+        companyId: updated.id ?? cid ?? auth.companyId ?? null,
+        name: updated.name ?? company,
+        logoDataUrl: updated.logo_data_url ?? null
+      });
+      if (!auth.roleKeys.includes("admin")) {
+        await auth.refreshMe();
+      }
+    } catch (e) {
+      setCompanyError(getApiErrorMessage(e));
+    } finally {
+      setCompanyLogoUploading(false);
+      if (companyLogoInputRef.current) {
+        companyLogoInputRef.current.value = "";
+      }
+    }
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
         <div className={styles.col}>
           <Card title="⚙️ Cài đặt chung" sub="Tuỳ chỉnh hệ thống">
             <div className={styles.form}>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Logo công ty</div>
+                <div className={styles.logoUploadBlock}>
+                  <div className={styles.logoPreviewCard}>
+                    {companyLogoDataUrl ? (
+                      <img className={styles.logoPreviewImage} src={companyLogoDataUrl} alt={company || "Company logo"} />
+                    ) : (
+                      <div className={styles.logoPreviewFallback}>{(company.trim() || "C").slice(0, 1).toUpperCase()}</div>
+                    )}
+                  </div>
+                  <div className={styles.logoUploadMeta}>
+                    <div className={styles.logoUploadTitle}>Logo hiển thị cho từng công ty</div>
+                    <div className={styles.logoUploadHint}>PNG, JPG hoặc WEBP. Tối đa 2MB. Upload xong sẽ áp dụng ngay cho sidebar của công ty đó.</div>
+                    <div className={styles.actions}>
+                      <button className={styles.btnGhost} type="button" disabled={companyLogoUploading} onClick={() => companyLogoInputRef.current?.click()}>
+                        {companyLogoUploading ? "Đang upload..." : "Tải logo lên"}
+                      </button>
+                    </div>
+                    <input
+                      ref={companyLogoInputRef}
+                      className={styles.hiddenInput}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          void handleLogoPicked(file);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
               <div className={styles.formRow}>
                 <div className={styles.formLabel}>Tên công ty</div>
                 <input className={styles.input} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Tên công ty" />
@@ -395,8 +459,22 @@ export default function SettingsPage() {
                         require_gps_on_attendance: companyRequireGps
                       };
                       const cid = auth.roleKeys.includes("admin") ? (auth.selectedCompanyId ?? null) : null;
-                      if (cid) await updateCompany(cid, payload);
-                      else await updateMyCompany(payload);
+                      const updated = cid ? await updateCompany(cid, payload) : await updateMyCompany(payload);
+                      setCompany(updated.name ?? "");
+                      setCompanyAddr(updated.address ?? "");
+                      setCompanyLat(updated.latitude != null ? String(updated.latitude) : "");
+                      setCompanyLng(updated.longitude != null ? String(updated.longitude) : "");
+                      setCompanyRadius(Number(updated.geo_radius_meters ?? 250));
+                      setCompanyRequireGps(Boolean(updated.require_gps_on_attendance ?? false));
+                      setCompanyLogoDataUrl(updated.logo_data_url ?? null);
+                      emitCompanyBrandingUpdated({
+                        companyId: updated.id ?? cid ?? auth.companyId ?? null,
+                        name: updated.name ?? null,
+                        logoDataUrl: updated.logo_data_url ?? null
+                      });
+                      if (!auth.roleKeys.includes("admin")) {
+                        await auth.refreshMe();
+                      }
                     } catch (e) {
                       setCompanyError(getApiErrorMessage(e));
                     } finally {

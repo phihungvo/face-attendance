@@ -36,5 +36,6 @@ class MeResponse(BaseModel):
     username: str
     company_id: int | None = None
     company_name: str | None = None
+    company_logo_data_url: str | None = None
     role_keys: list[str]
     permission_keys: list[str]

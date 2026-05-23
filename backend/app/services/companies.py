@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from app.core.sentinels import UNSET
 from app.repositories.companies import CompanyRepository
 
+ALLOWED_COMPANY_LOGO_TYPES = {"image/png", "image/jpeg", "image/webp"}
+MAX_COMPANY_LOGO_BYTES = 2 * 1024 * 1024
+
 
 class CompanyService:
     def __init__(self) -> None:
@@ -130,3 +133,32 @@ class CompanyService:
         except IntegrityError:
             db.rollback()
             raise ValueError("Company đang được sử dụng; không thể xoá")
+
+    def update_company_logo(
+        self,
+        db: Session,
+        *,
+        company_id: int,
+        logo_bytes: bytes,
+        content_type: str | None,
+    ):
+        normalized_type = (content_type or "").split(";", 1)[0].strip().lower()
+        if normalized_type == "image/jpg":
+            normalized_type = "image/jpeg"
+        if not logo_bytes:
+            raise ValueError("Logo không được để trống")
+        if len(logo_bytes) > MAX_COMPANY_LOGO_BYTES:
+            raise ValueError("Logo tối đa 2MB")
+        if normalized_type not in ALLOWED_COMPANY_LOGO_TYPES:
+            raise ValueError("Logo chỉ hỗ trợ PNG, JPG/JPEG hoặc WEBP")
+        company = self._companies.update_logo(
+            db,
+            company_id=company_id,
+            logo_blob=logo_bytes,
+            logo_mime_type=normalized_type,
+        )
+        if company is None:
+            raise ValueError("Company not found")
+        db.commit()
+        db.refresh(company)
+        return company

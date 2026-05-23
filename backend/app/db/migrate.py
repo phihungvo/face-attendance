@@ -150,6 +150,10 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
             _exec(engine, "ALTER TABLE companies ADD COLUMN latitude DOUBLE NULL")
         if not _column_exists(engine, table="companies", column="longitude", schema=schema):
             _exec(engine, "ALTER TABLE companies ADD COLUMN longitude DOUBLE NULL")
+        if not _column_exists(engine, table="companies", column="logo_blob", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN logo_blob MEDIUMBLOB NULL")
+        if not _column_exists(engine, table="companies", column="logo_mime_type", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN logo_mime_type VARCHAR(64) NULL")
     if not _column_exists(engine, table="companies", column="geo_radius_meters", schema=schema):
         _exec(engine, "ALTER TABLE companies ADD COLUMN geo_radius_meters DOUBLE NULL")
     if not _column_exists(engine, table="companies", column="require_gps_on_attendance", schema=schema):

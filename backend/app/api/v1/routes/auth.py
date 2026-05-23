@@ -123,6 +123,7 @@ def me(
             username=user.username or "",
             company_id=getattr(user, "company_id", None),
             company_name=getattr(company, "name", None) if company is not None else None,
+            company_logo_data_url=getattr(company, "logo_data_url", None) if company is not None else None,
             role_keys=role_keys,
             permission_keys=sorted(perm_keys),
         )

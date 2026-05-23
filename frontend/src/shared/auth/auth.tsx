@@ -8,6 +8,7 @@ type AuthContextValue = {
   username: string | null;
   companyId: number | null;
   companyName: string | null;
+  companyLogoDataUrl: string | null;
   selectedCompanyId: number | null;
   setSelectedCompanyId(companyId: number | null): void;
   roleKeys: string[];
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(null);
   const [companyId, setCompanyIdState] = useState<number | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [companyLogoDataUrl, setCompanyLogoDataUrl] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyIdState] = useState<number | null>(() => getCompanyId());
   const [roleKeys, setRoleKeys] = useState<string[]>([]);
   const [permissionKeys, setPermissionKeys] = useState<string[]>([]);
@@ -39,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsername(null);
     setCompanyIdState(null);
     setCompanyName(null);
+    setCompanyLogoDataUrl(null);
     setSelectedCompanyIdState(null);
     setRoleKeys([]);
     setPermissionKeys([]);
@@ -49,13 +52,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!t) return;
     setMeLoading(true);
     try {
-      const res = await api.get<ApiResponse<{ username: string; company_id?: number | null; company_name?: string | null; role_keys: string[]; permission_keys: string[] }>>("/auth/me");
+      const res = await api.get<
+        ApiResponse<{
+          username: string;
+          company_id?: number | null;
+          company_name?: string | null;
+          company_logo_data_url?: string | null;
+          role_keys: string[];
+          permission_keys: string[];
+        }>
+      >("/auth/me");
       const me = res.data.result;
       if (!me) throw new Error("Không thể lấy thông tin user");
       setUsername(me.username);
       const cid = (me.company_id ?? null) as number | null;
       setCompanyIdState(cid);
       setCompanyName((me.company_name ?? null) as string | null);
+      setCompanyLogoDataUrl((me.company_logo_data_url ?? null) as string | null);
       // Default selected company to user's company on first login.
       if (!getCompanyId() && cid) {
         setCompanyId(cid);
@@ -115,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshMe,
       companyId,
       companyName,
+      companyLogoDataUrl,
       selectedCompanyId,
       setSelectedCompanyId(companyId) {
         setCompanyId(companyId);
@@ -125,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearSessionState();
       }
     }),
-    [companyId, companyName, meLoading, permissionKeys, roleKeys, selectedCompanyId, token, username]
+    [companyId, companyLogoDataUrl, companyName, meLoading, permissionKeys, roleKeys, selectedCompanyId, token, username]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
