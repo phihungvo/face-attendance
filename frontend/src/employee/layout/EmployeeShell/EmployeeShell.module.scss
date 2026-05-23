@@ -257,6 +257,24 @@
     letter-spacing: 0.5px;
   }
 
+  .sideBrandLogoWrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    flex-shrink: 0;
+  }
+
+  .sideBrandLogo {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
   .sideBrandTitle {
     font-weight: 1000;
     font-size: 15px;
