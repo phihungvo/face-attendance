@@ -7,6 +7,18 @@ import { listDepartments } from "../../../shared/api/departments";
 import type { Department } from "../../../shared/types/department";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { exportExcelHtml } from "../../../shared/lib/excelExport";
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  ExclamationCircleOutlined,
+  FileExcelOutlined,
+  FileTextOutlined,
+  SearchOutlined,
+  TeamOutlined
+} from "@ant-design/icons";
 import styles from "./TimesheetPage.module.scss";
 
 const pageSize = 50;
@@ -99,7 +111,13 @@ export default function TimesheetPage() {
 
   return (
     <div className={styles.page}>
-      <Card title="📋 Nhật ký giờ công">
+      <Card
+        title={
+          <span className={styles.cardTitle}>
+            <FileTextOutlined /> Nhật ký giờ công
+          </span>
+        }
+      >
         <div className={styles.filters}>
           <div className={styles.filterItem}>
             <div className={styles.filterLabel}>Từ ngày</div>
@@ -137,7 +155,7 @@ export default function TimesheetPage() {
             <input type="checkbox" checked={includeAbsent} onChange={(e) => setIncludeAbsent(e.target.checked)} /> Hiện vắng
           </label>
           <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" disabled={busy} onClick={() => void refresh()}>
-            {busy ? "Đang tải..." : "🔍 Lọc"}
+            <SearchOutlined /> {busy ? "Đang tải..." : "Lọc"}
           </button>
           <button
             className={`${styles.btn} ${styles.btnGhost}`}
@@ -172,7 +190,7 @@ export default function TimesheetPage() {
               URL.revokeObjectURL(url);
             }}
           >
-            📥 Xuất CSV
+            <DownloadOutlined /> Xuất CSV
           </button>
           <button
             className={`${styles.btn} ${styles.btnGhost}`}
@@ -220,19 +238,34 @@ export default function TimesheetPage() {
               });
             }}
           >
-            📥 Xuất Excel
+            <FileExcelOutlined /> Xuất Excel
           </button>
 
           <div className={styles.chips}>
-            <div className={styles.chip}>👥 {summary.totalEmployees} nhân viên</div>
-            <div className={styles.chip}>⏱ {summary.totalHours} giờ</div>
-            <div className={styles.chip}>🟡 {summary.lateDays} đi trễ</div>
-            <div className={styles.chip}>🔴 {summary.absentDays} vắng</div>
+            <div className={styles.chip}>
+              <TeamOutlined /> {summary.totalEmployees} nhân viên
+            </div>
+            <div className={styles.chip}>
+              <ClockCircleOutlined /> {summary.totalHours} giờ
+            </div>
+            <div className={styles.chip}>
+              <ExclamationCircleOutlined /> {summary.lateDays} đi trễ
+            </div>
+            <div className={styles.chip}>
+              <DeleteOutlined /> {summary.absentDays} vắng
+            </div>
           </div>
         </div>
       </Card>
 
-      <Card title="📄 Bảng chấm công" sub={hasMore ? `Đã tải ${rows.length} bản ghi` : `${rows.length} bản ghi`}>
+      <Card
+        title={
+          <span className={styles.cardTitle}>
+            <FileTextOutlined /> Bảng chấm công
+          </span>
+        }
+        sub={hasMore ? `Đã tải ${rows.length} bản ghi` : `${rows.length} bản ghi`}
+      >
         {error ? <div className={styles.errorBox}>{error}</div> : null}
         <div className={styles.timelogTable}>
           <Table>
@@ -299,16 +332,16 @@ export default function TimesheetPage() {
                     <td className={styles.colActions}>
                       <div className={styles.rowActions}>
                         <button
-                          className={`${styles.rowBtn} ${styles.rowBtnEdit}`}
-                          type="button"
-                          onClick={() => {
+                        className={`${styles.rowBtn} ${styles.rowBtnEdit}`}
+                        type="button"
+                        onClick={() => {
                             setEditing(r);
                             setEditCheckin(toHm(r.checkin_time));
                             setEditCheckout(toHm(r.checkout_time));
-                            setEditOpen(true);
-                          }}
-                        >
-                          ✏️
+                          setEditOpen(true);
+                        }}
+                      >
+                          <EditOutlined />
                         </button>
                         <button
                           className={`${styles.rowBtn} ${styles.rowBtnDel}`}
@@ -327,7 +360,7 @@ export default function TimesheetPage() {
                             }
                           }}
                         >
-                          🗑
+                          <DeleteOutlined />
                         </button>
                       </div>
                     </td>

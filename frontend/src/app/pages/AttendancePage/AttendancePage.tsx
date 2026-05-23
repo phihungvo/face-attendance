@@ -9,6 +9,18 @@ import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { useAutoScan } from "../../../shared/hooks/useAutoScan";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
+import {
+  CameraOutlined,
+  CheckCircleOutlined,
+  EnvironmentOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+  ReloadOutlined,
+  RetweetOutlined,
+  SafetyCertificateOutlined,
+  StopOutlined,
+  ThunderboltOutlined
+} from "@ant-design/icons";
 import styles from "./AttendancePage.module.scss";
 
 export default function AttendancePage() {
@@ -93,7 +105,9 @@ export default function AttendancePage() {
           <div className={styles.cameraContainer}>
             {!cam.state.ready ? (
               <div className={styles.cameraPlaceholder}>
-                <div className={styles.camIcon}>📷</div>
+                <div className={styles.camIcon}>
+                  <CameraOutlined />
+                </div>
                 <p className={styles.camTitle}>Camera chưa khởi động</p>
                 <p className={styles.camSub}>Nhấn nút bên dưới để bắt đầu</p>
               </div>
@@ -111,7 +125,7 @@ export default function AttendancePage() {
           <div className={styles.cameraActions}>
             {!cam.state.ready ? (
               <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => cam.start()} disabled={busy}>
-                📷 Bật Camera
+                <CameraOutlined /> Bật Camera
               </button>
             ) : (
               <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => setAuto((v) => !v)} disabled={busy}>
@@ -119,10 +133,10 @@ export default function AttendancePage() {
               </button>
             )}
             <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => cam.switchCamera()} disabled={!cam.state.ready || busy}>
-              🔄 Đổi camera
+              <RetweetOutlined /> Đổi camera
             </button>
             <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => cam.stop()} disabled={!cam.state.ready || busy}>
-              ⏹ Tắt Camera
+              <StopOutlined /> Tắt Camera
             </button>
           </div>
         </div>
@@ -140,7 +154,7 @@ export default function AttendancePage() {
               {geo.error ? <div style={{ marginTop: 6, opacity: 0.9 }}>{geo.error}</div> : null}
               <div style={{ marginTop: 8 }}>
                 <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => geo.refresh()} disabled={geo.loading}>
-                  📍 Lấy GPS lại
+                  <EnvironmentOutlined /> Lấy GPS lại
                 </button>
                 {!auto ? <span style={{ marginLeft: 10, opacity: 0.9 }}>Auto đang tắt do thiếu GPS.</span> : null}
               </div>
@@ -149,7 +163,7 @@ export default function AttendancePage() {
           {error ? <div className={styles.errorBox}>{error}</div> : null}
           {result ? (
             <div className={styles.infoBox}>
-              ✅ <b>{result.user}</b> • {result.action === "checkout" ? "Checkout" : "Checkin"} • conf={result.confidence.toFixed(3)} •{" "}
+              <CheckCircleOutlined /> <b>{result.user}</b> • {result.action === "checkout" ? "Checkout" : "Checkin"} • conf={result.confidence.toFixed(3)} •{" "}
               {new Date(result.time).toLocaleString("vi-VN")}
             </div>
           ) : (
@@ -158,7 +172,14 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <Card title="📋 Log chấm công" sub="Danh sách gần nhất">
+      <Card
+        title={
+          <span className={styles.cardTitle}>
+            <FileTextOutlined /> Log chấm công
+          </span>
+        }
+        sub="Danh sách gần nhất"
+      >
         <Table>
           <thead>
             <tr>
@@ -192,7 +213,14 @@ export default function AttendancePage() {
       </Card>
 
       <div className={styles.bottomGrid}>
-        <Card title="⚡ Nhận diện" sub="Trạng thái">
+        <Card
+          title={
+            <span className={styles.cardTitle}>
+              <ThunderboltOutlined /> Nhận diện
+            </span>
+          }
+          sub="Trạng thái"
+        >
           <div className={styles.scanCard}>
             <div className={styles.scanRow}>
               <div className={styles.scanDot} />
@@ -204,7 +232,14 @@ export default function AttendancePage() {
           </div>
         </Card>
 
-        <Card title="🧾 Gợi ý xử lý" sub="Các trường hợp thường gặp">
+        <Card
+          title={
+            <span className={styles.cardTitle}>
+              <SafetyCertificateOutlined /> Gợi ý xử lý
+            </span>
+          }
+          sub="Các trường hợp thường gặp"
+        >
           <div className={styles.warningBox}>
             Nếu camera không hoạt động, hãy kiểm tra quyền truy cập trình duyệt hoặc đổi camera trong phần cài đặt.
           </div>
