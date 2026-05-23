@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { api, type ApiResponse, getApiErrorMessage, getCompanyId, getToken, setCompanyId, setToken } from "../lib/apiClient";
 import { useEffect } from "react";
+import { clearQueryCache } from "../lib/queryCache";
 
 type AuthContextValue = {
   token: string | null;
@@ -31,6 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissionKeys, setPermissionKeys] = useState<string[]>([]);
   const [meLoading, setMeLoading] = useState(false);
 
+  function clearSessionState() {
+    clearQueryCache();
+    setCompanyId(null);
+    setTokenState(null);
+    setUsername(null);
+    setCompanyIdState(null);
+    setCompanyName(null);
+    setSelectedCompanyIdState(null);
+    setRoleKeys([]);
+    setPermissionKeys([]);
+  }
+
   async function refreshMe() {
     const t = getToken();
     if (!t) return;
@@ -60,10 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshMe().catch(() => {
       // token invalid or server down -> logout state
       setToken(null);
-      setTokenState(null);
-      setUsername(null);
-      setRoleKeys([]);
-      setPermissionKeys([]);
+      clearSessionState();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -76,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissionKeys,
       meLoading,
       async login(identifier, password) {
+        clearQueryCache();
         const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/login", { identifier, password });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
@@ -84,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshMe();
       },
       async register(username, password, role) {
+        clearQueryCache();
         const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/register", { username, password, role });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
@@ -92,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshMe();
       },
       async acceptInvite(token, password) {
+        clearQueryCache();
         const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/activate", { token, password });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
@@ -109,14 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       logout() {
         setToken(null);
-        setCompanyId(null);
-        setTokenState(null);
-        setUsername(null);
-        setCompanyIdState(null);
-        setCompanyName(null);
-        setSelectedCompanyIdState(null);
-        setRoleKeys([]);
-        setPermissionKeys([]);
+        clearSessionState();
       }
     }),
     [companyId, companyName, meLoading, permissionKeys, roleKeys, selectedCompanyId, token, username]

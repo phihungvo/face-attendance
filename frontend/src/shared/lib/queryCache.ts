@@ -36,6 +36,20 @@ export function invalidatePrefix(prefix: string) {
   }
 }
 
+export function clearQueryCache(prefix?: string) {
+  if (!prefix) {
+    store.clear();
+    inflight.clear();
+    return;
+  }
+  for (const k of store.keys()) {
+    if (k.startsWith(prefix)) store.delete(k);
+  }
+  for (const k of inflight.keys()) {
+    if (k.startsWith(prefix)) inflight.delete(k);
+  }
+}
+
 export async function cached<T>(key: CacheKey, fetcher: () => Promise<T>, ttlMs: number): Promise<T> {
   const hit = getCached<T>(key);
   if (hit !== undefined) return hit;
@@ -55,4 +69,3 @@ export async function cached<T>(key: CacheKey, fetcher: () => Promise<T>, ttlMs:
   inflight.set(key, p);
   return p;
 }
-
