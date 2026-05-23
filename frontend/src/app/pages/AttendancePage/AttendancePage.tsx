@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../../components/Card/Card";
 import Table from "../../components/Table/Table";
 import { useClock } from "../../../shared/hooks/useClock";
@@ -9,6 +9,7 @@ import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { useAutoScan } from "../../../shared/hooks/useAutoScan";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
+import { useFaceTracking } from "../../../shared/hooks/useFaceTracking";
 import {
   CameraOutlined,
   CheckCircleOutlined,
@@ -25,6 +26,7 @@ import styles from "./AttendancePage.module.scss";
 
 export default function AttendancePage() {
   const { now } = useClock(1000);
+  const cameraBoxRef = useRef<HTMLDivElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [auto, setAuto] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +35,37 @@ export default function AttendancePage() {
   const [requireGps, setRequireGps] = useState<boolean>(false);
   const cam = useCamera();
   const geo = useGeoPosition({ watch: requireGps, auto: requireGps });
+  const tracker = useFaceTracking(cam.videoRef.current, { enabled: cam.state.ready, maxFaces: 6, intervalMs: 180 });
   const liveClock = useMemo(() => now.toLocaleTimeString("vi-VN"), [now]);
   const liveDate = useMemo(() => formatDateTimeVi(now, { dateOnly: true }), [now]);
+  const overlayFaces = useMemo(() => {
+    const container = cameraBoxRef.current;
+    const video = cam.videoRef.current;
+    if (!container || !video || video.videoWidth <= 0 || video.videoHeight <= 0) return [];
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    const scale = Math.max(containerWidth / video.videoWidth, containerHeight / video.videoHeight);
+    const displayWidth = video.videoWidth * scale;
+    const displayHeight = video.videoHeight * scale;
+    const offsetX = (containerWidth - displayWidth) / 2;
+    const offsetY = (containerHeight - displayHeight) / 2;
+
+    return tracker.faces.map((face) => {
+      const left = offsetX + face.x * scale;
+      const top = offsetY + face.y * scale;
+      const width = face.width * scale;
+      const height = face.height * scale;
+      return {
+        id: face.id,
+        left,
+        top,
+        width,
+        height,
+        active: tracker.primaryFace?.id === face.id
+      };
+    });
+  }, [cam.videoRef, tracker.faces, tracker.primaryFace?.id]);
 
   async function refreshLogs() {
     try {
@@ -70,7 +101,28 @@ export default function AttendancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const captureOnce = useCallback(() => cam.capture({ quality: 0.9, type: "image/jpeg" }), [cam]);
+  const captureOnce = useCallback(async () => {
+    const video = cam.videoRef.current;
+    const primary = tracker.primaryFace;
+    if (!video || !primary) return cam.capture({ quality: 0.9, type: "image/jpeg" });
+
+    const pad = Math.max(primary.width, primary.height) * 0.3;
+    const sx = Math.max(0, Math.floor(primary.x - pad));
+    const sy = Math.max(0, Math.floor(primary.y - pad));
+    const sw = Math.min(video.videoWidth - sx, Math.ceil(primary.width + pad * 2));
+    const sh = Math.min(video.videoHeight - sy, Math.ceil(primary.height + pad * 2));
+    if (sw < 32 || sh < 32) return cam.capture({ quality: 0.9, type: "image/jpeg" });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return cam.capture({ quality: 0.9, type: "image/jpeg" });
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Không thể crop khuôn mặt"))), "image/jpeg", 0.92);
+    });
+  }, [cam, tracker.primaryFace]);
   const scanOnce = useCallback(
     (b: Blob) => scanMyAttendanceFromImageWithGeo(b, { latitude: geo.latitude, longitude: geo.longitude }),
     [geo.latitude, geo.longitude]
@@ -102,7 +154,7 @@ export default function AttendancePage() {
     <div className={styles.page}>
       <div className={styles.checkinArea}>
         <div>
-          <div className={styles.cameraContainer}>
+          <div className={styles.cameraContainer} ref={cameraBoxRef}>
             {!cam.state.ready ? (
               <div className={styles.cameraPlaceholder}>
                 <div className={styles.camIcon}>
@@ -115,10 +167,38 @@ export default function AttendancePage() {
             <video ref={cam.videoRef} className={styles.video} playsInline muted />
             {cam.state.ready ? (
               <div className={styles.overlay}>
-                <div className={styles.faceFrame}>
-                  <div className={styles.scanLine} />
-                </div>
-                <div className={styles.overlayHint}>Đặt khuôn mặt vào khung • Hệ thống tự quét</div>
+                {overlayFaces.length ? (
+                  <>
+                    {overlayFaces.map((face) => (
+                      <div
+                        key={face.id}
+                        className={face.active ? `${styles.faceTrackBox} ${styles.faceTrackBoxActive}` : styles.faceTrackBox}
+                        style={{
+                          left: `${face.left}px`,
+                          top: `${face.top}px`,
+                          width: `${face.width}px`,
+                          height: `${face.height}px`
+                        }}
+                      >
+                        {face.active ? <div className={styles.scanLine} /> : null}
+                      </div>
+                    ))}
+                    <div className={styles.overlayHint}>
+                      {overlayFaces.length > 1
+                        ? `Đang theo dõi ${overlayFaces.length} khuôn mặt • Ưu tiên khuôn mặt đang focus`
+                        : "Đang theo dõi khuôn mặt • Hệ thống tự quét"}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.faceFrame}>
+                      <div className={styles.scanLine} />
+                    </div>
+                    <div className={styles.overlayHint}>
+                      {tracker.supported ? "Đưa khuôn mặt vào vùng camera • Hệ thống tự quét" : "Đặt khuôn mặt vào khung • Hệ thống tự quét"}
+                    </div>
+                  </>
+                )}
               </div>
             ) : null}
           </div>
@@ -229,6 +309,18 @@ export default function AttendancePage() {
                 <div className={styles.scanSub}>Cập nhật: {formatDateTimeVi(now)}</div>
               </div>
             </div>
+            {cam.state.ready ? (
+              <div className={styles.trackingMeta}>
+                <span className={styles.trackingPill}>
+                  <InfoCircleOutlined />
+                  {tracker.supported ? `Tracking ${tracker.faces.length} mặt` : "Tracking không hỗ trợ"}
+                </span>
+                <span className={styles.trackingPill}>
+                  <CheckCircleOutlined />
+                  {tracker.primaryFace ? "Crop theo mặt đang focus" : "Đang chờ khóa mặt"}
+                </span>
+              </div>
+            ) : null}
           </div>
         </Card>
 
