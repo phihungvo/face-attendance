@@ -59,7 +59,6 @@ export default function EmployeeProfilePage() {
     fetcher: getMyFaceStatus
   });
   const lastFace = qFace.data?.last_enrolled_at ?? null;
-  const nextAllowed = qFace.data?.next_allowed_at ?? null;
 
   const initials = (me?.name || auth.username || "ME")
     .split(" ")
@@ -220,7 +219,7 @@ export default function EmployeeProfilePage() {
                       setFaceInfo(null);
                       const blob = await cam.capture({ quality: 0.9, type: "image/jpeg" });
                       const res = await enrollMyFace(blob);
-                      setFaceInfo("Đăng ký khuôn mặt thành công");
+                      setFaceInfo("Đã lưu khuôn mặt thành công");
                       invalidateKey(empKeys.myFaceStatus());
                       qFace.refresh();
                       return res;
@@ -241,7 +240,7 @@ export default function EmployeeProfilePage() {
                 <StopOutlined /> Tắt camera
               </button>
             </div>
-            <div className={styles.faceHint}>Giới hạn: mỗi tài khoản chỉ được đăng ký khuôn mặt 1 lần / tháng.</div>
+            <div className={styles.faceHint}>Bạn có thể đăng ký hoặc cập nhật khuôn mặt bất kỳ lúc nào.</div>
           </div>
         </div>
 
@@ -274,7 +273,6 @@ export default function EmployeeProfilePage() {
                 <div className={styles.profileItemKey}>Khuôn mặt đã đăng ký</div>
                 <div className={styles.profileItemVal}>
                   {lastFace ? `Cập nhật lần cuối: ${new Date(lastFace).toLocaleString("vi-VN")}` : "Chưa đăng ký"}
-                  {nextAllowed ? ` • Có thể đăng ký lại sau: ${new Date(nextAllowed).toLocaleString("vi-VN")}` : ""}
                 </div>
               </div>
               <div className={styles.profileItemArrow}>

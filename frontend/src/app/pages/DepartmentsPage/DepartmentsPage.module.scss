@@ -73,6 +73,9 @@
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btnGhost:hover {
@@ -93,6 +96,9 @@
   color: #fff;
   font-weight: 900;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btnPrimary:hover {
@@ -125,6 +131,9 @@
 .searchIcon {
   color: var(--text3);
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .searchBox input {
@@ -204,6 +213,10 @@
   flex-shrink: 0;
 }
 
+.deptIcon :global(.anticon) {
+  font-size: 16px;
+}
+
 .deptName {
   font-weight: 900;
   color: var(--text);
@@ -239,6 +252,10 @@
   color: var(--text3);
 }
 
+.rowBtn :global(.anticon) {
+  font-size: 14px;
+}
+
 .rowBtn:hover {
   background: var(--bg);
   color: var(--text);
@@ -269,6 +286,13 @@
   color: var(--text3);
   font-size: 12px;
   font-weight: 800;
+}
+
+.cardTitle,
+.modalTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 900px) {

@@ -93,6 +93,9 @@
 .searchIcon {
   color: var(--text3);
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .searchBox input {
@@ -130,6 +133,9 @@
 .dateSep {
   color: var(--text3);
   font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .select {
@@ -157,6 +163,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .btnGhost:hover {
@@ -177,6 +184,10 @@
   color: #fff;
   font-weight: 1000;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btnPrimary:hover {
@@ -282,6 +293,10 @@
   justify-content: center;
 }
 
+.actionBtn :global(.anticon) {
+  font-size: 14px;
+}
+
 .ok {
   background: var(--success-bg);
   border-color: var(--success-border);
@@ -332,6 +347,9 @@
   font-weight: 900;
   cursor: pointer;
   padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pageBtn:hover {
@@ -347,6 +365,13 @@
   background: var(--info-bg);
   color: var(--primary);
   border-color: var(--info-border);
+}
+
+.cardTitle,
+.modalTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .modalGrid {

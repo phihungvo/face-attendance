@@ -12,7 +12,26 @@ import type { User } from "../../../shared/types/user";
 import type { Department } from "../../../shared/types/department";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { viStatusLabel } from "../../../shared/i18n/vi";
-import { ReloadOutlined } from "@ant-design/icons";
+import {
+  AppstoreOutlined,
+  CameraOutlined,
+  CheckOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  FileTextOutlined,
+  LeftOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  RetweetOutlined,
+  RightOutlined,
+  SearchOutlined,
+  StopOutlined,
+  TeamOutlined,
+  UnorderedListOutlined,
+  UserAddOutlined
+} from "@ant-design/icons";
+import { Tooltip } from "antd";
 import styles from "./EmployeesPage.module.scss";
 
 function initialsFromName(name: string) {
@@ -112,10 +131,9 @@ export default function EmployeesPage() {
 
   const stats = useMemo(() => {
     return [
-      { icon: "👥", label: "Tổng nhân viên", value: users.length, variant: "blue" as const, delta: { label: "↑ DB", tone: "neutral" as const } },
-      { icon: "🧾", label: "Bản ghi", value: users.length, variant: "green" as const, delta: { label: "↑ users", tone: "neutral" as const } },
-      { icon: "🆕", label: "Mới hôm nay", value: 0, variant: "orange" as const, delta: { label: "—", tone: "neutral" as const } },
-      // { icon: "⚙️", label: "Nguồn", value: "API", variant: "red" as const, delta: { label: "/api/v1/users", tone: "neutral" as const } }
+      { icon: <TeamOutlined />, label: "Tổng nhân viên", value: users.length, variant: "blue" as const, delta: { label: "DB", tone: "neutral" as const } },
+      { icon: <FileTextOutlined />, label: "Bản ghi", value: users.length, variant: "green" as const, delta: { label: "users", tone: "neutral" as const } },
+      { icon: <UserAddOutlined />, label: "Mới hôm nay", value: 0, variant: "orange" as const, delta: { label: "hôm nay", tone: "neutral" as const } }
     ];
   }, [users.length]);
 
@@ -174,7 +192,7 @@ export default function EmployeesPage() {
               aria-selected={view === "grid"}
               onClick={() => setView("grid")}
             >
-              🔲 Lưới
+              <AppstoreOutlined /> Lưới
             </button>
             <button
               className={view === "list" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
@@ -183,12 +201,14 @@ export default function EmployeesPage() {
               aria-selected={view === "list"}
               onClick={() => setView("list")}
             >
-              ☰ Danh sách
+              <UnorderedListOutlined /> Danh sách
             </button>
           </div>
 
           <div className={styles.searchBoxCompact}>
-            <span className={styles.searchIcon}>🔍</span>
+            <span className={styles.searchIcon}>
+              <SearchOutlined />
+            </span>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm nhân viên..." />
           </div>
 
@@ -232,7 +252,7 @@ export default function EmployeesPage() {
               });
             }}
           >
-            📥 Xuất Excel
+            <DownloadOutlined /> Xuất Excel
           </button>
 
           <button
@@ -249,7 +269,7 @@ export default function EmployeesPage() {
               setModalOpen(true);
             }}
           >
-            + Thêm nhân viên
+            <PlusOutlined /> Thêm nhân viên
           </button>
         </div>
       </Card>
@@ -315,7 +335,13 @@ export default function EmployeesPage() {
           })}
         </div>
       ) : (
-        <Card title="👥 Danh sách nhân viên">
+        <Card
+          title={
+            <span className={styles.cardTitle}>
+              <TeamOutlined /> Danh sách nhân viên
+            </span>
+          }
+        >
           <Table>
             <thead>
               <tr>
@@ -345,81 +371,85 @@ export default function EmployeesPage() {
                   <td className={styles.muted}>{u.email || "—"}</td>
                   <td>
                     <div className={styles.rowActions}>
-                      <button
-                        className={`${styles.rowBtn} ${styles.edit}`}
-                        type="button"
-                        title="Sửa"
-                        onClick={() => {
-                        setEditing(u);
-                        setCode(u.code ?? "");
-                        setName(u.name);
-                        setEmail(u.email ?? "");
-                        setRole(u.role ?? "");
-                        setDepartmentId(u.department_id ? String(u.department_id) : "");
-                        setModalOpen(true);
-                      }}
-                    >
-                      ✏️
-                      </button>
-                      <button
-                        className={styles.rowBtn}
-                        type="button"
-                        title="Đăng ký gương mặt"
-                        onClick={() => {
-                          setFaceUser(u);
-                          setFaceModalOpen(true);
-                          setError(null);
-                        }}
-                      >
-                        📷
-                      </button>
-                      <button
-                        className={u.status === "active" ? styles.rowBtn : `${styles.rowBtn} ${styles.enable}`}
-                        type="button"
-                        title={u.status === "active" ? "Tạm tắt" : "Kích hoạt"}
-                        onClick={async () => {
-                          try {
-                            const nextStatus = u.status === "active" ? "inactive" : "active";
-                            setLoading(true);
+                      <Tooltip title="Sửa" placement="top">
+                        <button
+                          className={`${styles.rowBtn} ${styles.edit}`}
+                          type="button"
+                          onClick={() => {
+                            setEditing(u);
+                            setCode(u.code ?? "");
+                            setName(u.name);
+                            setEmail(u.email ?? "");
+                            setRole(u.role ?? "");
+                            setDepartmentId(u.department_id ? String(u.department_id) : "");
+                            setModalOpen(true);
+                          }}
+                        >
+                          <EditOutlined />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Gương mặt" placement="top">
+                        <button
+                          className={styles.rowBtn}
+                          type="button"
+                          onClick={() => {
+                            setFaceUser(u);
+                            setFaceModalOpen(true);
                             setError(null);
-                            await updateUser(u.id, {
-                              name: u.name,
-                              code: u.code ?? null,
-                              email: u.email ?? null,
-                              role: u.role ?? null,
-                              status: nextStatus,
-                              department_id: u.department_id ?? null
-                            });
-                            await refresh(query);
-                          } catch (e) {
-                            setError(getApiErrorMessage(e));
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                      >
-                        {u.status === "active" ? "🚫" : "✅"}
-                      </button>
-                      <button
-                        className={`${styles.rowBtn} ${styles.del}`}
-                        type="button"
-                        title="Xóa"
-                        onClick={async () => {
-                          if (!confirm(`Xóa nhân viên "${u.name}"?`)) return;
-                          try {
-                            setLoading(true);
-                            setError(null);
-                            await deleteUser(u.id);
-                            await refresh(query);
-                          } catch (e) {
-                            setError(getApiErrorMessage(e));
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                      >
-                        🗑
-                      </button>
+                          }}
+                        >
+                          <CameraOutlined />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title={u.status === "active" ? "Tạm tắt" : "Kích hoạt"} placement="top">
+                        <button
+                          className={u.status === "active" ? styles.rowBtn : `${styles.rowBtn} ${styles.enable}`}
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const nextStatus = u.status === "active" ? "inactive" : "active";
+                              setLoading(true);
+                              setError(null);
+                              await updateUser(u.id, {
+                                name: u.name,
+                                code: u.code ?? null,
+                                email: u.email ?? null,
+                                role: u.role ?? null,
+                                status: nextStatus,
+                                department_id: u.department_id ?? null
+                              });
+                              await refresh(query);
+                            } catch (e) {
+                              setError(getApiErrorMessage(e));
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        >
+                          {u.status === "active" ? <StopOutlined /> : <CheckOutlined />}
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Xóa" placement="top">
+                        <button
+                          className={`${styles.rowBtn} ${styles.del}`}
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm(`Xóa nhân viên "${u.name}"?`)) return;
+                            try {
+                              setLoading(true);
+                              setError(null);
+                              await deleteUser(u.id);
+                              await refresh(query);
+                            } catch (e) {
+                              setError(getApiErrorMessage(e));
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        >
+                          <DeleteOutlined />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>
@@ -437,7 +467,7 @@ export default function EmployeesPage() {
         </div>
         <div className={styles.pageControls}>
           <button className={styles.pageBtn} type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
-            ←
+            <LeftOutlined />
           </button>
           {pageButtons.map((p) => (
             <button
@@ -455,14 +485,19 @@ export default function EmployeesPage() {
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={pageSafe >= totalPages}
           >
-            →
+            <RightOutlined />
           </button>
         </div>
       </div>
 
       <Modal
         open={modalOpen}
-        title={editing ? "✏️ Sửa nhân viên" : "➕ Thêm nhân viên"}
+        title={
+          <span className={styles.modalTitle}>
+            {editing ? <EditOutlined /> : <PlusOutlined />}
+            {editing ? "Sửa nhân viên" : "Thêm nhân viên"}
+          </span>
+        }
         onClose={() => setModalOpen(false)}
         footer={
           <>
@@ -568,7 +603,12 @@ export default function EmployeesPage() {
 
       <Modal
         open={faceModalOpen}
-        title={`📷 Đăng ký gương mặt${faceUser ? ` • ${faceUser.name}` : ""}`}
+        title={
+          <span className={styles.modalTitle}>
+            <CameraOutlined />
+            {`Đăng ký gương mặt${faceUser ? ` • ${faceUser.name}` : ""}`}
+          </span>
+        }
         onClose={() => {
           setFaceModalOpen(false);
           cam.stop();
@@ -601,11 +641,11 @@ export default function EmployeesPage() {
             </button>
             {!cam.state.ready ? (
               <button className={styles.btnGhost} type="button" onClick={() => cam.start()} disabled={loading}>
-                📷 Bật camera
+                <CameraOutlined /> Bật camera
               </button>
             ) : (
               <button className={styles.btnGhost} type="button" onClick={() => cam.switchCamera()} disabled={loading}>
-                🔄 Đổi camera
+                <RetweetOutlined /> Đổi camera
               </button>
             )}
             <button

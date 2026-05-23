@@ -70,6 +70,9 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tab:hover {
@@ -90,6 +93,9 @@
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btnGhost:hover {
@@ -110,6 +116,9 @@
   color: #fff;
   font-weight: 900;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btnPrimary:hover {
@@ -144,6 +153,9 @@
 .searchIcon {
   color: var(--text3);
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .searchBox input {
@@ -284,6 +296,10 @@
   font-size: 13px;
   transition: all 0.15s;
   color: var(--text3);
+}
+
+.rowBtn :global(.anticon) {
+  font-size: 14px;
 }
 
 .rowBtn:hover {
@@ -474,6 +490,9 @@
   font-weight: 900;
   cursor: pointer;
   padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pageBtn:hover {
@@ -500,6 +519,13 @@
   font-size: 13px;
   font-weight: 800;
   margin-bottom: 12px;
+}
+
+.cardTitle,
+.modalTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .formRow {
