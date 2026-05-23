@@ -298,8 +298,8 @@ export default function SettingsPage() {
                     )}
                   </div>
                   <div className={styles.logoUploadMeta}>
-                    <div className={styles.logoUploadTitle}>Logo hiển thị cho từng công ty</div>
-                    <div className={styles.logoUploadHint}>PNG, JPG hoặc WEBP. Tối đa 2MB. Upload xong sẽ áp dụng ngay cho sidebar của công ty đó.</div>
+                    {/*<div className={styles.logoUploadTitle}>g c?ông Logo hiển thị cho từnty</div>*/}
+                    <div className={styles.logoUploadHint}>PNG, JPG hoặc WEBP (Tối đa 2MB).</div>
                     <div className={styles.actions}>
                       <button className={styles.btnGhost} type="button" disabled={companyLogoUploading} onClick={() => companyLogoInputRef.current?.click()}>
                         {companyLogoUploading ? "Đang upload..." : "Tải logo lên"}

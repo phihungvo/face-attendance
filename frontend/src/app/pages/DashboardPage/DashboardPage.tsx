@@ -619,7 +619,6 @@ export default function DashboardPage() {
                       <article className={styles.chartDetailCard}>
                         <span className={styles.chartDetailLabel}>Ngày đang xem</span>
                         <strong className={styles.chartDetailValue}>{activeTrend ? formatLongDate(activeTrend.day) : "--"}</strong>
-                        <span className={styles.chartDetailSub}>Di chuột hoặc cuộn chuột để đổi mốc</span>
                       </article>
                       <article className={styles.chartDetailCard}>
                         <span className={styles.chartDetailLabel}>Hiện diện</span>

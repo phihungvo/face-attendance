@@ -533,10 +533,11 @@
 
   .outletFrame {
     width: 100%;
-    min-height: 100%;
+    min-height: 0;
+    flex: 1 0 auto;
     margin: 0;
     border-radius: 0;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: none;
     background: var(--paper);
     border: none;
