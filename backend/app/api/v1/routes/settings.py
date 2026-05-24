@@ -34,7 +34,7 @@ def update_attendance_policy(
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
     actor=Depends(get_current_user),
-    _: object = Depends(require_permission("settings.read")),
+    _: object = Depends(require_permission("settings.manage")),
 ) -> ApiResponse[AttendancePolicyOut]:
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")

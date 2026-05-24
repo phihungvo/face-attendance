@@ -3,13 +3,14 @@ import Card from "../../components/Card/Card";
 import Table from "../../components/Table/Table";
 import { useClock } from "../../../shared/hooks/useClock";
 import { formatDateTimeVi } from "../../../shared/lib/date";
-import { listMyAttendanceLogs, scanMyAttendanceFromImageWithGeo, type AttendanceLog } from "../../../shared/api/attendance";
-import { getMyCompany } from "../../../shared/api/companies";
+import { listAttendanceLogs, scanAttendanceFromImageWithGeo, type AttendanceLog } from "../../../shared/api/attendance";
+import { getCompany, getMyCompany, type Company } from "../../../shared/api/companies";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { useAutoScan } from "../../../shared/hooks/useAutoScan";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
 import { useFaceTracking } from "../../../shared/hooks/useFaceTracking";
+import { useAuth } from "../../../shared/auth/auth";
 import {
   CameraOutlined,
   CheckCircleOutlined,
@@ -25,6 +26,7 @@ import {
 import styles from "./AttendancePage.module.scss";
 
 export default function AttendancePage() {
+  const auth = useAuth();
   const { now } = useClock(1000);
   const cameraBoxRef = useRef<HTMLDivElement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,9 +35,13 @@ export default function AttendancePage() {
   const [result, setResult] = useState<{ user: string; confidence: number; time: string; action: "checkin" | "checkout" } | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [requireGps, setRequireGps] = useState<boolean>(false);
+  const [scopeCompany, setScopeCompany] = useState<Company | null>(null);
   const cam = useCamera();
   const geo = useGeoPosition({ watch: requireGps, auto: requireGps });
   const tracker = useFaceTracking(cam.videoRef.current, { enabled: cam.state.ready, maxFaces: 6, intervalMs: 180 });
+  const isAdmin = auth.roleKeys.includes("admin");
+  const effectiveCompanyId = isAdmin ? auth.selectedCompanyId ?? auth.companyId ?? null : auth.companyId ?? null;
+  const scopeReady = effectiveCompanyId != null;
   const liveClock = useMemo(() => now.toLocaleTimeString("vi-VN"), [now]);
   const liveDate = useMemo(() => formatDateTimeVi(now, { dateOnly: true }), [now]);
   const overlayFaces = useMemo(() => {
@@ -68,8 +74,12 @@ export default function AttendancePage() {
   }, [cam.videoRef, tracker.faces, tracker.primaryFace?.id]);
 
   async function refreshLogs() {
+    if (!scopeReady) {
+      setLogs([]);
+      return;
+    }
     try {
-      const data = await listMyAttendanceLogs({ limit: 8, offset: 0 });
+      const data = await listAttendanceLogs({ limit: 8, offset: 0 });
       setLogs(data.slice(0, 8));
     } catch {
       // ignore
@@ -77,24 +87,39 @@ export default function AttendancePage() {
   }
 
   useEffect(() => {
-    refreshLogs();
-  }, []);
+    void refreshLogs();
+  }, [scopeReady, effectiveCompanyId]);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      try {
-        const c = await getMyCompany();
+      if (!scopeReady) {
         if (!mounted) return;
+        setScopeCompany(null);
+        setRequireGps(false);
+        return;
+      }
+      try {
+        const c = isAdmin && effectiveCompanyId ? await getCompany(effectiveCompanyId) : await getMyCompany();
+        if (!mounted) return;
+        setScopeCompany(c);
         setRequireGps(Boolean((c as any).require_gps_on_attendance ?? false));
       } catch {
+        if (!mounted) return;
+        setScopeCompany(null);
         // If cannot load company settings, keep GPS optional by default.
+        setRequireGps(false);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [scopeReady, effectiveCompanyId, isAdmin]);
+
+  useEffect(() => {
+    setError(null);
+    setResult(null);
+  }, [effectiveCompanyId]);
 
   useEffect(() => {
     return () => cam.stop();
@@ -124,12 +149,12 @@ export default function AttendancePage() {
     });
   }, [cam, tracker.primaryFace]);
   const scanOnce = useCallback(
-    (b: Blob) => scanMyAttendanceFromImageWithGeo(b, { latitude: geo.latitude, longitude: geo.longitude }),
+    (b: Blob) => scanAttendanceFromImageWithGeo(b, { latitude: geo.latitude, longitude: geo.longitude }),
     [geo.latitude, geo.longitude]
   );
 
   useAutoScan({
-    enabled: cam.state.ready && auto && !busy,
+    enabled: cam.state.ready && auto && !busy && scopeReady && (!requireGps || geo.enabled),
     intervalMs: 1200,
     capture: captureOnce,
     scan: scanOnce,
@@ -227,6 +252,14 @@ export default function AttendancePage() {
             <div className={styles.dateStr}>{liveDate}</div>
           </div>
 
+          <div className={styles.infoBox}>
+            <SafetyCertificateOutlined /> Công ty đang chấm công: <b>{scopeCompany?.name || (scopeReady ? `#${effectiveCompanyId}` : "Chưa chọn công ty")}</b>
+          </div>
+
+          {!scopeReady ? (
+            <div className={styles.warningBox}>Cần chọn công ty trước khi chấm công ở màn quản lý.</div>
+          ) : null}
+
           {cam.state.error ? <div className={styles.warningBox}>{cam.state.error}</div> : null}
           {requireGps && geo.supported && !geo.enabled ? (
             <div className={styles.warningBox}>
@@ -243,11 +276,11 @@ export default function AttendancePage() {
           {error ? <div className={styles.errorBox}>{error}</div> : null}
           {result ? (
             <div className={styles.infoBox}>
-              <CheckCircleOutlined /> <b>{result.user}</b> • {result.action === "checkout" ? "Checkout" : "Checkin"} • conf={result.confidence.toFixed(3)} •{" "}
+              <CheckCircleOutlined /> <b>{result.user}</b> • {result.action === "checkout" ? "Ra ca" : "Vào ca"} • conf={result.confidence.toFixed(3)} •{" "}
               {new Date(result.time).toLocaleString("vi-VN")}
             </div>
           ) : (
-            <div className={styles.infoBox}>Bật camera → đứng trước camera → hệ thống tự check-in/check-out liên tục.</div>
+            <div className={styles.infoBox}>Bật camera → đứng trước camera → hệ thống tự chấm công cho nhân viên của công ty đang thao tác.</div>
           )}
         </div>
       </div>

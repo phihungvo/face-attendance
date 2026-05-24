@@ -182,8 +182,8 @@ export async function listMyTimelog(params: { from_date: string; to_date: string
   return res.data.result ?? [];
 }
 
-export async function listAttendanceLogs() {
-  const res = await api.get<ApiResponse<AttendanceLog[]>>("/attendance/logs");
+export async function listAttendanceLogs(params?: { limit?: number; offset?: number }) {
+  const res = await api.get<ApiResponse<AttendanceLog[]>>("/attendance/logs", { params });
   return res.data.result ?? [];
 }
 

@@ -223,7 +223,14 @@ class NotificationService:
         except RuntimeError:
             pass
 
-        # Case 2: sync context (Celery, scheduler, background thread)
+        # Case 2: sync context inside an AnyIO worker thread.
+        try:
+            from_thread.run(_emit_all)
+            return
+        except RuntimeError:
+            pass
+
+        # Case 3: sync context (Celery, scheduler, background thread)
         # Lấy event loop của FastAPI app để submit task an toàn
         try:
             import asyncio as _asyncio
@@ -245,7 +252,7 @@ class NotificationService:
         except Exception:
             pass
 
-        # Case 3: fallback — chạy loop mới (không có WS connections nào đang live)
+        # Case 4: fallback — chạy loop mới (không có WS connections nào đang live)
         try:
             asyncio.run(_emit_all())
         except Exception as exc:

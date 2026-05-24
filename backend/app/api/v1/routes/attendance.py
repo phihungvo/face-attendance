@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, Query
+from fastapi import APIRouter, Depends, File, Form, UploadFile, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_company_scope_id, get_current_user, require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
+from app.core.settings import settings
+from app.core.throttling import get_client_ip, request_rate_limiter
+from app.core.uploads import read_validated_image_upload
 from app.db.session import get_db
 from app.schemas.attendance import (
     AttendanceLogOut,
@@ -128,6 +131,7 @@ def _notify_attendance_failure(
 
 @router.post("/checkin", response_model=ApiResponse[CheckInResponse])
 async def checkin(
+    request: Request,
     image: UploadFile = File(...),
     latitude: float | None = Form(default=None),
     longitude: float | None = Form(default=None),
@@ -141,7 +145,19 @@ async def checkin(
     try:
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
-        image_bytes = await image.read()
+        request_rate_limiter.hit(
+            scope="attendance-face",
+            key=get_client_ip(request),
+            limit=int(settings.FACE_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.FACE_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        image_bytes, _mime = await read_validated_image_upload(
+            image,
+            max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
+            field_label="Ảnh khuôn mặt",
+        )
         result = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         _notify_attendance_success(
             db,
@@ -160,6 +176,7 @@ async def checkin(
 
 @router.post("/checkout", response_model=ApiResponse[CheckOutResponse])
 async def checkout(
+    request: Request,
     image: UploadFile = File(...),
     latitude: float | None = Form(default=None),
     longitude: float | None = Form(default=None),
@@ -173,7 +190,19 @@ async def checkout(
     try:
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
-        image_bytes = await image.read()
+        request_rate_limiter.hit(
+            scope="attendance-face",
+            key=get_client_ip(request),
+            limit=int(settings.FACE_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.FACE_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        image_bytes, _mime = await read_validated_image_upload(
+            image,
+            max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
+            field_label="Ảnh khuôn mặt",
+        )
         result = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         _notify_attendance_success(
             db,
@@ -192,6 +221,7 @@ async def checkout(
 
 @router.post("/scan", response_model=ApiResponse[ScanResponse])
 async def scan(
+    request: Request,
     image: UploadFile = File(...),
     latitude: float | None = Form(default=None),
     longitude: float | None = Form(default=None),
@@ -205,7 +235,19 @@ async def scan(
     try:
         if company_id is None:
             raise ValueError("Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
-        image_bytes = await image.read()
+        request_rate_limiter.hit(
+            scope="attendance-face",
+            key=get_client_ip(request),
+            limit=int(settings.FACE_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.FACE_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        image_bytes, _mime = await read_validated_image_upload(
+            image,
+            max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
+            field_label="Ảnh khuôn mặt",
+        )
         result = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         _notify_attendance_success(
             db,
@@ -224,6 +266,7 @@ async def scan(
 
 @router.post("/me/scan", response_model=ApiResponse[ScanResponse])
 async def scan_me(
+    request: Request,
     image: UploadFile = File(...),
     latitude: float | None = Form(default=None),
     longitude: float | None = Form(default=None),
@@ -234,7 +277,19 @@ async def scan_me(
     Employee self-service scan (must match face with current account).
     """
     try:
-        image_bytes = await image.read()
+        request_rate_limiter.hit(
+            scope="attendance-face-self",
+            key=f"{get_client_ip(request)}:{int(user.id)}",
+            limit=int(settings.FACE_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.FACE_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        image_bytes, _mime = await read_validated_image_upload(
+            image,
+            max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
+            field_label="Ảnh khuôn mặt",
+        )
         result = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes, latitude=latitude, longitude=longitude)
         _notify_attendance_success(
             db,
@@ -283,11 +338,13 @@ def my_timelog_range(
 
 @router.get("/logs", response_model=ApiResponse[list[AttendanceLogOut]])
 def list_logs(
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
     _: object = Depends(require_permission("attendance.read")),
 ) -> ApiResponse[list[AttendanceLogOut]]:
-    return ok(service.list_logs(db, company_id=company_id))
+    return ok(service.list_logs(db, company_id=company_id, limit=limit, offset=offset))
 
 
 @router.get("/reports/daily", response_model=ApiResponse[list[DailyAttendanceRow]])

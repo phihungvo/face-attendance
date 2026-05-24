@@ -146,7 +146,7 @@ def create_leave(
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
     actor=Depends(get_current_user),
-    _: object = Depends(require_permission("leave.read")),
+    _: object = Depends(require_permission("leave.manage")),
 ) -> ApiResponse[LeaveOut]:
     try:
         item = service.create(
@@ -187,7 +187,7 @@ def update_leave(
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
     actor=Depends(get_current_user),
-    _: object = Depends(require_permission("leave.read")),
+    _: object = Depends(require_permission("leave.manage")),
 ) -> ApiResponse[LeaveOut]:
     try:
         item = service.update(
@@ -248,7 +248,7 @@ def delete_leave(
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
     actor=Depends(get_current_user),
-    _: object = Depends(require_permission("leave.read")),
+    _: object = Depends(require_permission("leave.manage")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         item = service.get(db, leave_id=leave_id, company_id=company_id)

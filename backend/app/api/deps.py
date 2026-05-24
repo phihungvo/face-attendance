@@ -5,7 +5,7 @@ from fastapi import Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.errors import FORBIDDEN, UNAUTHORIZED, AppException
+from app.core.errors import AUTH_ACCOUNT_DISABLED, AUTH_ACCOUNT_PENDING, FORBIDDEN, UNAUTHORIZED, AppException
 from app.core.security import get_token_subject
 from app.db.session import get_db
 from app.models.user import User
@@ -25,6 +25,12 @@ def get_current_user(
     user = db.get(User, int(account_id))
     if user is None:
         raise AppException(UNAUTHORIZED)
+    if (getattr(user, "auth_status", None) == "pending") or (user.password_hash is None):
+        raise AppException(AUTH_ACCOUNT_PENDING)
+    if str(getattr(user, "auth_status", "active") or "active").strip().lower() != "active":
+        raise AppException(AUTH_ACCOUNT_DISABLED)
+    if str(getattr(user, "status", "active") or "active").strip().lower() != "active":
+        raise AppException(AUTH_ACCOUNT_DISABLED)
     return user
 
 

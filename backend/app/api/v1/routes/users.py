@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_company_scope_id, get_current_user, get_permission_keys, require_permission
 from app.core.errors import BAD_REQUEST, FORBIDDEN, AppException
 from app.core.response import ok
+from app.core.settings import settings
+from app.core.throttling import get_client_ip, request_rate_limiter
+from app.core.uploads import read_validated_image_upload
 from app.db.session import get_db
 from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateRequest, UserMeOut, UserOut, UserUpdateRequest
 from app.schemas.common import ApiResponse
@@ -21,18 +24,31 @@ notification_service = NotificationService()
 
 @router.post("/enroll", response_model=ApiResponse[EnrollResponse])
 async def enroll_user(
+    request: Request,
     name: str = Form(...),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("employees.read")),
+    _: object = Depends(require_permission("employees.manage")),
 ) -> ApiResponse[EnrollResponse]:
     """
     Enroll a new user with a single face image.
     Route contains NO business logic; delegates to service layer.
     """
     try:
-        image_bytes = await image.read()
+        request_rate_limiter.hit(
+            scope="user-face-enroll",
+            key=get_client_ip(request),
+            limit=int(settings.FACE_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.FACE_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn gửi ảnh khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        image_bytes, _mime = await read_validated_image_upload(
+            image,
+            max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
+            field_label="Ảnh khuôn mặt",
+        )
         user_id = service.enroll(db, company_id=company_id, name=name, image_bytes=image_bytes)
         return ok(EnrollResponse(user_id=user_id, status="enrolled"))
     except ValueError as e:
@@ -42,15 +58,28 @@ async def enroll_user(
 @router.post("/{user_id:int}/enroll-face", response_model=ApiResponse[dict[str, object]])
 async def enroll_face_for_user(
     user_id: int,
+    request: Request,
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> ApiResponse[dict[str, object]]:
     try:
         keys = get_permission_keys(current_user)
-        if ("employees.read" not in keys) and (int(getattr(current_user, "id")) != int(user_id)):
+        if ("employees.manage" not in keys) and (int(getattr(current_user, "id")) != int(user_id)):
             raise AppException(FORBIDDEN)
-        image_bytes = await image.read()
+        request_rate_limiter.hit(
+            scope="user-face-enroll",
+            key=f"{get_client_ip(request)}:{int(getattr(current_user, 'id'))}",
+            limit=int(settings.FACE_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.FACE_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn gửi ảnh khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        image_bytes, _mime = await read_validated_image_upload(
+            image,
+            max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
+            field_label="Ảnh khuôn mặt",
+        )
         service.enroll_face(db, user_id=user_id, image_bytes=image_bytes)
         return ok({"enrolled": True})
     except ValueError as e:
@@ -65,7 +94,7 @@ def reset_face_for_user(
 ) -> ApiResponse[dict[str, object]]:
     try:
         keys = get_permission_keys(current_user)
-        if ("employees.read" not in keys) and (int(getattr(current_user, "id")) != int(user_id)):
+        if ("employees.manage" not in keys) and (int(getattr(current_user, "id")) != int(user_id)):
             raise AppException(FORBIDDEN)
         service.reset_face(db, user_id=user_id)
         return ok({"reset": True})
@@ -87,12 +116,25 @@ def my_face_status(
 
 @router.post("/me/enroll-face", response_model=ApiResponse[dict[str, object]])
 async def enroll_my_face(
+    request: Request,
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ) -> ApiResponse[dict[str, object]]:
     try:
-        image_bytes = await image.read()
+        request_rate_limiter.hit(
+            scope="user-face-enroll-self",
+            key=f"{get_client_ip(request)}:{int(user.id)}",
+            limit=int(settings.FACE_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.FACE_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn gửi ảnh khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        image_bytes, _mime = await read_validated_image_upload(
+            image,
+            max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
+            field_label="Ảnh khuôn mặt",
+        )
         data = service.enroll_face_self(db, user_id=int(user.id), image_bytes=image_bytes)
         return ok(data)
     except ValueError as e:
@@ -144,7 +186,7 @@ def create_user(
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
     actor=Depends(get_current_user),
-    _: object = Depends(require_permission("employees.read")),
+    _: object = Depends(require_permission("employees.manage")),
 ) -> ApiResponse[UserOut]:
     try:
         user = service.create_user(
@@ -188,7 +230,7 @@ def update_user(
     payload: UserUpdateRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("employees.read")),
+    _: object = Depends(require_permission("employees.manage")),
 ) -> ApiResponse[UserOut]:
     try:
         user = service.update_user(
@@ -212,7 +254,7 @@ def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("employees.read")),
+    _: object = Depends(require_permission("employees.manage")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         service.delete_user(db, user_id=user_id, company_id=company_id)
@@ -226,7 +268,7 @@ def resend_invite(
     user_id: int,
     db: Session = Depends(get_db),
     actor=Depends(get_current_user),
-    _: object = Depends(require_permission("employees.read")),
+    _: object = Depends(require_permission("employees.manage")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         auth_service.invite_pending_user(db, user_id=user_id)

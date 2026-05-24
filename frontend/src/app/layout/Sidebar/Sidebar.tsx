@@ -83,7 +83,7 @@ export default function Sidebar({
   const itemAllowed = (to: string) => {
     const map: Record<string, string> = {
       "/": "dashboard.read",
-      "/checkin": "attendance.read",
+      "/checkin": "attendance.manage",
       "/timelog": "timesheet.read",
       "/employees": "employees.read",
       "/departments": "departments.read",

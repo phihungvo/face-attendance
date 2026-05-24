@@ -100,7 +100,7 @@ def update_company_policies(
     payload: CompanyNotificationPolicyUpdateRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("settings.read")),
+    _: object = Depends(require_permission("settings.manage")),
 ) -> ApiResponse[CompanyNotificationPolicyOut]:
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
