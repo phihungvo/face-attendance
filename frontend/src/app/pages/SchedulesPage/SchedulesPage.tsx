@@ -116,6 +116,8 @@ export default function SchedulesPage() {
   const [reqLoading, setReqLoading] = useState(true);
   const [reqItems, setReqItems] = useState<WorkScheduleRegistrationRequestListItem[]>([]);
   const [reqStatus, setReqStatus] = useState<string>("pending");
+  const [reqQuery, setReqQuery] = useState<string>("");
+  const [reqQueryApplied, setReqQueryApplied] = useState<string>("");
   const [reqLimit, setReqLimit] = useState<number>(12);
   const [reqOffset, setReqOffset] = useState<number>(0);
   const [reqTotal, setReqTotal] = useState<number>(0);
@@ -125,6 +127,7 @@ export default function SchedulesPage() {
   const [calMonth, setCalMonth] = useState<number>(() => new Date().getMonth()); // 0-index
   const [calDepartmentId, setCalDepartmentId] = useState<number | "">("");
   const [calUserQuery, setCalUserQuery] = useState<string>("");
+  const [calUserSearch, setCalUserSearch] = useState<string>("");
   const [calUserId, setCalUserId] = useState<number | "">("");
   const [calStatus, setCalStatus] = useState<string>(""); // "" = all
   const [calRegs, setCalRegs] = useState<WorkScheduleRegistrationListItem[]>([]);
@@ -239,6 +242,13 @@ export default function SchedulesPage() {
     return { total: items.length, pending, approved, rejected };
   };
 
+  const clearCalendarUserFilter = () => {
+    setCalUserId("");
+    setCalUserQuery("");
+    setCalUserSearch("");
+    setUserSuggestions([]);
+  };
+
   const reloadSchedules = async () => {
     setSchedulesLoading(true);
     setError(null);
@@ -260,7 +270,12 @@ export default function SchedulesPage() {
     setReqLoading(true);
     setError(null);
     try {
-      const res = await listRegistrationRequests({ limit: reqLimit, offset: reqOffset, status: reqStatus || undefined });
+      const res = await listRegistrationRequests({
+        limit: reqLimit,
+        offset: reqOffset,
+        status: reqStatus || undefined,
+        q: reqQueryApplied || undefined
+      });
       setReqItems(res.items ?? []);
       setReqTotal(Number(res.total ?? 0));
     } catch (e) {
@@ -282,11 +297,13 @@ export default function SchedulesPage() {
       let total = 0;
 
       for (let i = 0; i < 20; i++) {
+        const q = calUserId === "" ? calUserSearch : "";
         const res = await listScheduleRegistrations({
           from_date: calendarRange.from,
           to_date: calendarRange.to,
           status: calStatus || undefined,
           user_id: calUserId === "" ? undefined : Number(calUserId),
+          q: q || undefined,
           department_id: calDepartmentId === "" ? undefined : Number(calDepartmentId),
           limit: pageLimit,
           offset
@@ -339,15 +356,25 @@ export default function SchedulesPage() {
   }, []);
 
   useEffect(() => {
+    const t = window.setTimeout(() => setReqQueryApplied(reqQuery.trim()), 250);
+    return () => window.clearTimeout(t);
+  }, [reqQuery]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setCalUserSearch(calUserQuery.trim()), 250);
+    return () => window.clearTimeout(t);
+  }, [calUserQuery]);
+
+  useEffect(() => {
     reloadReqs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reqStatus, reqLimit, reqOffset]);
+  }, [reqStatus, reqQueryApplied, reqLimit, reqOffset]);
 
   useEffect(() => {
     if (tab !== "calendar") return;
     reloadCalendar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, calendarRange.from, calendarRange.to, calDepartmentId, calUserId, calStatus]);
+  }, [tab, calendarRange.from, calendarRange.to, calDepartmentId, calUserId, calUserSearch, calStatus]);
 
   useEffect(() => {
     setSchedulePage(0);
@@ -355,7 +382,7 @@ export default function SchedulesPage() {
 
   useEffect(() => {
     setReqOffset(0);
-  }, [reqStatus, reqLimit]);
+  }, [reqStatus, reqQueryApplied, reqLimit]);
 
   const openCreateSchedule = () => {
     setEditingSchedule(null);
@@ -618,10 +645,24 @@ export default function SchedulesPage() {
                 <input
                   className={styles.searchInput}
                   value={calUserQuery}
-                  onChange={(e) => setCalUserQuery(e.target.value)}
+                  onChange={(e) => {
+                    setCalUserQuery(e.target.value);
+                    setCalUserId("");
+                  }}
                   placeholder="Tìm nhân viên (tên / mã)…"
                   aria-label="Tìm nhân viên"
                 />
+                {calUserId !== "" || calUserQuery.trim() ? (
+                  <button
+                    type="button"
+                    className={styles.searchClearBtn}
+                    onClick={clearCalendarUserFilter}
+                    aria-label="Xóa lựa chọn nhân viên"
+                    title="Xóa lựa chọn nhân viên"
+                  >
+                    <CloseOutlined />
+                  </button>
+                ) : null}
                 {userSuggestions.length ? (
                   <div className={styles.suggestBox} role="listbox" aria-label="Gợi ý nhân viên">
                     {userSuggestions.map((u) => (
@@ -676,19 +717,6 @@ export default function SchedulesPage() {
                   );
                 })}
               </div>
-
-              {calUserId !== "" ? (
-                <button
-                  type="button"
-                  className={styles.calClearBtn}
-                  onClick={() => {
-                    setCalUserId("");
-                    setCalUserQuery("");
-                  }}
-                >
-                  <CloseOutlined /> Bỏ chọn nhân viên
-                </button>
-              ) : null}
             </div>
 
             <div className={styles.calGrid}>
@@ -936,6 +964,15 @@ export default function SchedulesPage() {
             sub={reqLoading ? "Đang tải..." : `${reqTotal} yêu cầu • ${reqItems.length} hiển thị`}
             right={
               <div className={styles.headerTools}>
+                <div className={styles.searchWrap}>
+                  <input
+                    className={styles.searchInput}
+                    value={reqQuery}
+                    onChange={(e) => setReqQuery(e.target.value)}
+                    placeholder="Tìm nhân viên theo tên / mã…"
+                    aria-label="Tìm nhân viên trong yêu cầu"
+                  />
+                </div>
                 <div className={styles.segmented} role="tablist" aria-label="Lọc trạng thái">
                   {REQ_STATUSES.map((s) => {
                     const active = reqStatus === s.key;

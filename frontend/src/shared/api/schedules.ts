@@ -65,6 +65,33 @@ export async function listMyScheduleRegistrations(params?: { from_date?: string;
   return res.data.result ?? [];
 }
 
+export async function listAllMyScheduleRegistrations(params?: {
+  from_date?: string;
+  to_date?: string;
+  status?: string;
+  maxItems?: number;
+}) {
+  const pageLimit = 500;
+  const maxItems = Math.max(1, Number(params?.maxItems ?? 5000));
+  const all: WorkScheduleRegistration[] = [];
+  let offset = 0;
+
+  for (let i = 0; i < 50 && all.length < maxItems; i += 1) {
+    const page = await listMyScheduleRegistrations({
+      from_date: params?.from_date,
+      to_date: params?.to_date,
+      status: params?.status,
+      limit: pageLimit,
+      offset
+    });
+    all.push(...page);
+    offset += page.length;
+    if (page.length < pageLimit) break;
+  }
+
+  return all.slice(0, maxItems);
+}
+
 export async function registerMySchedule(payload: { schedule_id: number; day: string; note?: string | null }) {
   const res = await api.post<ApiResponse<WorkScheduleRegistration>>("/schedules/me/registrations", payload);
   return res.data.result!;
@@ -124,7 +151,7 @@ export async function createMyScheduleRegistrationRequest(payload: { schedule_id
   return res.data.result!;
 }
 
-export async function listRegistrationRequests(params?: { status?: string; limit?: number; offset?: number }) {
+export async function listRegistrationRequests(params?: { status?: string; q?: string; limit?: number; offset?: number }) {
   const res = await api.get<ApiResponse<WorkScheduleRegistrationRequestListResponse>>("/schedules/registration-requests", { params });
   return res.data.result ?? { items: [], total: 0 };
 }
@@ -165,6 +192,7 @@ export async function listScheduleRegistrations(params?: {
   to_date?: string;
   status?: string;
   user_id?: number;
+  q?: string;
   department_id?: number;
   limit?: number;
   offset?: number;

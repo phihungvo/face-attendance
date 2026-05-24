@@ -64,6 +64,11 @@ export default function EmployeeHomePage() {
     const [now, setNow] = useState(() => new Date());
     const [todayShift, setTodayShift] = useState<{ name: string; start: string; end: string } | null>(null);
     const [todayShiftErr, setTodayShiftErr] = useState<string | null>(null);
+    const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const monthKey = useMemo(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    }, []);
 
     const qMe = useCachedQuery({
         key: empKeys.meProfile(),
@@ -73,14 +78,14 @@ export default function EmployeeHomePage() {
     const me = qMe.data;
 
     const qSchedules = useCachedQuery({
-        key: empKeys.schedules(),
+        key: empKeys.schedules("active-summary"),
         ttlMs: 5 * 60_000,
         fetcher: () => listSchedules({status: "active", limit: 200, offset: 0})
     });
     const schedules = qSchedules.data ?? [];
 
     const qRegs = useCachedQuery({
-        key: empKeys.myScheduleRegs(),
+        key: empKeys.myScheduleRegs("today", todayKey),
         ttlMs: 30_000,
         fetcher: () => {
             const today = new Date().toISOString().slice(0, 10);
@@ -98,12 +103,6 @@ export default function EmployeeHomePage() {
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(t);
-    }, []);
-
-    const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
-    const monthKey = useMemo(() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     }, []);
 
     const qMonth = useCachedQuery({

@@ -719,6 +719,66 @@ button.calCell {
   color: var(--text2);
 }
 
+.statusLegend {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+}
+
+.statusLegendTitle {
+  font-size: 12px;
+  font-weight: 950;
+  color: var(--text3);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statusLegendGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.statusLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text2);
+}
+
+.statusSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.statusSwatchApproved {
+  background: color-mix(in oklab, var(--accent) 75%, white);
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+}
+
+.statusSwatchPending {
+  background: color-mix(in oklab, var(--warning) 78%, white);
+  border-color: color-mix(in oklab, var(--warning) 45%, var(--border));
+}
+
+.statusSwatchRejected {
+  background: color-mix(in oklab, var(--danger) 78%, white);
+  border-color: color-mix(in oklab, var(--danger) 45%, var(--border));
+}
+
+.statusSwatchCancelled {
+  background: color-mix(in oklab, black 80%, var(--surface));
+  border-color: color-mix(in oklab, black 35%, var(--border));
+}
+
 .legendHint {
   margin-left: auto;
   font-size: 12px;
@@ -730,6 +790,10 @@ button.calCell {
   .legendHint {
     width: 100%;
     margin-left: 0;
+  }
+
+  .statusLegendGrid {
+    grid-template-columns: 1fr;
   }
 }
 
