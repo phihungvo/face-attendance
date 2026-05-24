@@ -1,15 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./EmployeeCheckinPage.module.scss";
 import { useNavigate } from "react-router-dom";
-import { listMyAttendanceLogs, scanMyAttendanceFromImageWithGeo, type AttendanceLog } from "../../../shared/api/attendance";
+import { listMyAttendanceLogs, listMyTimelog, scanMyAttendanceFromImageWithGeo, type AttendanceLog, type TimelogRow } from "../../../shared/api/attendance";
 import { getMyCompany } from "../../../shared/api/companies";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { useAutoScan } from "../../../shared/hooks/useAutoScan";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
 import { CameraOutlined, CheckCircleOutlined, EnvironmentOutlined, LeftOutlined, PauseCircleOutlined, PlayCircleOutlined, StopOutlined, SwapOutlined } from "@ant-design/icons";
-import { cached, invalidateKey } from "../../../shared/lib/queryCache";
+import { cached, getCached, invalidateKey, setCached } from "../../../shared/lib/queryCache";
 import { empKeys } from "../../cacheKeys";
+
+function toYmd(dateLike: string | Date) {
+  const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function toMonthKey(dateLike: string | Date) {
+  const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthRange(monthKey: string) {
+  const [year, month] = monthKey.split("-").map((x) => Number(x));
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    from: `${monthKey}-01`,
+    to: `${monthKey}-${String(lastDay).padStart(2, "0")}`
+  };
+}
 
 export default function EmployeeCheckinPage() {
   const nav = useNavigate();
@@ -31,6 +50,50 @@ export default function EmployeeCheckinPage() {
     } catch {
       // ignore
     }
+  }
+
+  async function refreshMonthTimelog(isoTime: string) {
+    const monthKey = toMonthKey(isoTime);
+    const { from, to } = monthRange(monthKey);
+    const rows = await listMyTimelog({ from_date: from, to_date: to });
+    setCached(empKeys.myTimelogMonth(monthKey), rows, 60_000);
+    return rows;
+  }
+
+  function patchMonthTimelogCache(isoTime: string, action: "checkin" | "checkout") {
+    const monthKey = toMonthKey(isoTime);
+    const key = empKeys.myTimelogMonth(monthKey);
+    const existing = getCached<TimelogRow[]>(key);
+    if (!existing) return;
+
+    const dayKey = toYmd(isoTime);
+    let found = false;
+    const next = existing.map((row) => {
+      if (row.date !== dayKey) return row;
+      found = true;
+      return {
+        ...row,
+        absent: false,
+        checkin_time: action === "checkin" ? isoTime : row.checkin_time ?? isoTime,
+        checkout_time: action === "checkout" ? isoTime : row.checkout_time ?? null
+      };
+    });
+
+    if (!found) {
+      next.unshift({
+        user_id: 0,
+        user_name: "",
+        date: dayKey,
+        checkin_time: action === "checkin" ? isoTime : null,
+        checkout_time: action === "checkout" ? isoTime : null,
+        work_hours: 0,
+        late: false,
+        absent: false,
+        method: "face"
+      });
+    }
+
+    setCached(key, next, 60_000);
   }
 
   useEffect(() => {
@@ -100,8 +163,9 @@ export default function EmployeeCheckinPage() {
     onResult: async (res) => {
       setResult({ user: res.user_name, action: res.action, confidence: res.confidence, time: res.time });
       setError(null);
+      patchMonthTimelogCache(res.time, res.action);
       invalidateKey(empKeys.myAttendanceLogs(20, 0));
-      await refreshLogs();
+      await Promise.allSettled([refreshLogs(), refreshMonthTimelog(res.time)]);
     },
     onError: (e) => {
       // Avoid spamming UI on intermittent failures (keep last good state visible).
