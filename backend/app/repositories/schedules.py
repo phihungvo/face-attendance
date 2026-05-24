@@ -280,6 +280,7 @@ class WorkScheduleRegistrationRepository:
         to_date: date | None = None,
         status: str | None = None,
         user_id: int | None = None,
+        q: str | None = None,
         department_id: int | None = None,
         limit: int = 200,
         offset: int = 0,
@@ -294,6 +295,9 @@ class WorkScheduleRegistrationRepository:
             stmt = stmt.where(WorkScheduleRegistration.status == status)
         if user_id is not None:
             stmt = stmt.where(User.id == user_id)
+        if q:
+            like = f"%{q.strip()}%"
+            stmt = stmt.where(or_(User.name.ilike(like), User.code.ilike(like)))
         if department_id is not None:
             stmt = stmt.where(User.department_id == department_id)
         if from_date:
@@ -312,6 +316,7 @@ class WorkScheduleRegistrationRepository:
         to_date: date | None = None,
         status: str | None = None,
         user_id: int | None = None,
+        q: str | None = None,
         department_id: int | None = None,
     ) -> int:
         stmt = (
@@ -324,6 +329,9 @@ class WorkScheduleRegistrationRepository:
             stmt = stmt.where(WorkScheduleRegistration.status == status)
         if user_id is not None:
             stmt = stmt.where(User.id == user_id)
+        if q:
+            like = f"%{q.strip()}%"
+            stmt = stmt.where(or_(User.name.ilike(like), User.code.ilike(like)))
         if department_id is not None:
             stmt = stmt.where(User.department_id == department_id)
         if from_date:
@@ -439,10 +447,18 @@ class WorkScheduleRegistrationRequestRepository:
         stmt = stmt.order_by(WorkScheduleRegistrationRequest.id.desc()).limit(limit).offset(offset)
         return list(db.execute(stmt).scalars().all())
 
-    def count_for_company(self, db: Session, *, company_id: int, status: str | None = None) -> int:
-        stmt = select(func.count(WorkScheduleRegistrationRequest.id)).where(WorkScheduleRegistrationRequest.company_id == company_id)
+    def count_for_company(self, db: Session, *, company_id: int, status: str | None = None, q: str | None = None) -> int:
+        stmt = (
+            select(func.count(WorkScheduleRegistrationRequest.id))
+            .select_from(WorkScheduleRegistrationRequest)
+            .join(User, User.id == WorkScheduleRegistrationRequest.user_id)
+            .where(WorkScheduleRegistrationRequest.company_id == company_id)
+        )
         if status:
             stmt = stmt.where(WorkScheduleRegistrationRequest.status == status)
+        if q:
+            like = f"%{q.strip()}%"
+            stmt = stmt.where(or_(User.name.ilike(like), User.code.ilike(like)))
         return int(db.execute(stmt).scalar_one() or 0)
 
     def list_for_company(
@@ -451,6 +467,7 @@ class WorkScheduleRegistrationRequestRepository:
         *,
         company_id: int,
         status: str | None = None,
+        q: str | None = None,
         limit: int = 200,
         offset: int = 0,
     ) -> list[tuple[WorkScheduleRegistrationRequest, User, WorkSchedule]]:
@@ -462,6 +479,9 @@ class WorkScheduleRegistrationRequestRepository:
         )
         if status:
             stmt = stmt.where(WorkScheduleRegistrationRequest.status == status)
+        if q:
+            like = f"%{q.strip()}%"
+            stmt = stmt.where(or_(User.name.ilike(like), User.code.ilike(like)))
         stmt = stmt.order_by(WorkScheduleRegistrationRequest.id.desc()).limit(limit).offset(offset)
         return list(db.execute(stmt).all())
 

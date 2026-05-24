@@ -126,7 +126,7 @@
   border: 1px solid var(--border);
   background: color-mix(in oklab, var(--surface2) 70%, transparent);
   color: var(--text);
-  padding: 10px 12px;
+  padding: 10px 42px 10px 12px;
   font-weight: 800;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
@@ -141,6 +141,34 @@
   border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 16%, transparent);
   background: color-mix(in oklab, var(--surface2) 85%, transparent);
+}
+
+.searchClearBtn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  z-index: 1;
+}
+
+.searchClearBtn:hover {
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  color: var(--text);
+}
+
+.searchClearBtn:active {
+  transform: translateY(-50%) scale(0.97);
 }
 
 @media (max-width: 599px) {
@@ -949,23 +977,6 @@
 .calSelect:focus {
   border-color: color-mix(in oklab, var(--text3) 26%, var(--border));
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--surface2) 70%, transparent);
-}
-
-.calClearBtn {
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  color: var(--text2);
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-weight: 900;
-  cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-  white-space: nowrap;
-}
-.calClearBtn:hover {
-  background: color-mix(in oklab, var(--surface2) 84%, var(--surface));
-  border-color: color-mix(in oklab, var(--text3) 26%, var(--border));
-  color: var(--text);
 }
 
 .suggestBox {

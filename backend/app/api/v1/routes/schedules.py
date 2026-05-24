@@ -318,6 +318,7 @@ def list_registrations(
     to_date: date | None = Query(default=None),
     status: str | None = Query(default=None, description="pending|approved|rejected|cancelled"),
     user_id: int | None = Query(default=None),
+    q: str | None = Query(default=None, description="Search by employee name/code"),
     department_id: int | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
@@ -327,13 +328,25 @@ def list_registrations(
 ) -> ApiResponse[WorkScheduleRegistrationListResponse]:
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
-    data = service.list_registrations(db, company_id=int(company_id), from_date=from_date, to_date=to_date, status=status, user_id=user_id, department_id=department_id, limit=limit, offset=offset)
+    data = service.list_registrations(
+        db,
+        company_id=int(company_id),
+        from_date=from_date,
+        to_date=to_date,
+        status=status,
+        user_id=user_id,
+        q=q.strip() if q else None,
+        department_id=department_id,
+        limit=limit,
+        offset=offset,
+    )
     return ok(WorkScheduleRegistrationListResponse(**data))
 
 
 @router.get("/registration-requests", response_model=ApiResponse[WorkScheduleRegistrationRequestListResponse])
 def list_registration_requests(
     status: str | None = Query(default=None, description="pending|approved|rejected|cancelled"),
+    q: str | None = Query(default=None, description="Search by employee name/code"),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -342,7 +355,7 @@ def list_registration_requests(
 ) -> ApiResponse[WorkScheduleRegistrationRequestListResponse]:
     if company_id is None:
         raise AppException(BAD_REQUEST, detail="Thiếu company scope (X-Company-Id)")
-    data = service.list_registration_requests(db, company_id=int(company_id), status=status, limit=limit, offset=offset)
+    data = service.list_registration_requests(db, company_id=int(company_id), status=status, q=q.strip() if q else None, limit=limit, offset=offset)
     return ok(WorkScheduleRegistrationRequestListResponse(**data))
 
 

@@ -400,11 +400,12 @@ class ScheduleService:
         *,
         company_id: int,
         status: str | None = None,
+        q: str | None = None,
         limit: int = 200,
         offset: int = 0,
     ) -> dict[str, object]:
-        total = self._reqs.count_for_company(db, company_id=company_id, status=status)
-        rows = self._reqs.list_for_company(db, company_id=company_id, status=status, limit=limit, offset=offset)
+        total = self._reqs.count_for_company(db, company_id=company_id, status=status, q=q)
+        rows = self._reqs.list_for_company(db, company_id=company_id, status=status, q=q, limit=limit, offset=offset)
         items = []
         for req, user, sched in rows:
             items.append(
@@ -480,12 +481,33 @@ class ScheduleService:
         to_date: date | None = None,
         status: str | None = None,
         user_id: int | None = None,
+        q: str | None = None,
         department_id: int | None = None,
         limit: int = 200,
         offset: int = 0,
     ) -> dict[str, object]:
-        total = self._regs.count_for_company(db, company_id=company_id, from_date=from_date, to_date=to_date, status=status, user_id=user_id, department_id=department_id)
-        rows = self._regs.list_for_company(db, company_id=company_id, from_date=from_date, to_date=to_date, status=status, user_id=user_id, department_id=department_id, limit=limit, offset=offset)
+        total = self._regs.count_for_company(
+            db,
+            company_id=company_id,
+            from_date=from_date,
+            to_date=to_date,
+            status=status,
+            user_id=user_id,
+            q=q,
+            department_id=department_id,
+        )
+        rows = self._regs.list_for_company(
+            db,
+            company_id=company_id,
+            from_date=from_date,
+            to_date=to_date,
+            status=status,
+            user_id=user_id,
+            q=q,
+            department_id=department_id,
+            limit=limit,
+            offset=offset,
+        )
         items = []
         for reg, user, sched in rows:
             items.append(
@@ -561,28 +583,33 @@ class ScheduleService:
     ):
         if self._users.get(db, user_id, company_id=company_id) is None:
             raise ValueError("User not found")
-        s = self._schedules.get(db, schedule_id, company_id=company_id)
-        if s is None:
-            raise ValueError("Schedule not found")
-        existing = self._regs.get_for_user_day(db, company_id=company_id, user_id=user_id, day=day)
-        if existing is not None and existing.status in {"pending", "approved"}:
-            raise ValueError("User đã có lịch làm cho ngày này")
         status_v = status.strip() if status else "approved"
         if status_v not in {"approved", "pending"}:
             raise ValueError("Invalid status")
         approved_at = datetime.now(timezone.utc).replace(tzinfo=None) if status_v == "approved" else None
         approved_by = actor_user_id if status_v == "approved" else None
-        r = self._regs.create(
-            db,
-            company_id=company_id,
-            user_id=user_id,
-            schedule_id=schedule_id,
-            day=day,
-            status=status_v,
-            response_note=note.strip() if note else None,
-            approved_by_user_id=approved_by,
-            approved_at=approved_at,
-        )
-        db.commit()
-        db.refresh(r)
-        return r
+        try:
+            r = self._register_my_schedule_no_commit(
+                db,
+                company_id=company_id,
+                user_id=user_id,
+                day=day,
+                schedule_id=schedule_id,
+                status=status_v,
+                note=None,
+            )
+            if note:
+                r.response_note = note.strip()
+            if approved_by is not None:
+                r.approved_by_user_id = approved_by
+            if approved_at is not None:
+                r.approved_at = approved_at
+            db.commit()
+            db.refresh(r)
+            return r
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Không thể gán ca làm (ràng buộc DB)")
+        except ValueError:
+            db.rollback()
+            raise

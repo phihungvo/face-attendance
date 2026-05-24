@@ -6,7 +6,7 @@ import {getApiErrorMessage} from "../../../shared/lib/apiClient";
 import {
     cancelMyScheduleRegistration,
     createMyScheduleRegistrationRequest,
-    listMyScheduleRegistrations,
+    listAllMyScheduleRegistrations,
     listSchedules,
     type WorkSchedule,
     type WorkScheduleRegistration
@@ -98,6 +98,14 @@ function clampRange(from: string, to: string) {
     return from <= to ? {from, to} : {from: to, to: from};
 }
 
+function shiftStartMin(s?: WorkSchedule) {
+    const value = String(s?.shift_start ?? "99:99");
+    const hh = Number(value.slice(0, 2));
+    const mm = Number(value.slice(3, 5));
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return Number.MAX_SAFE_INTEGER;
+    return hh * 60 + mm;
+}
+
 function listDaysInRange(from: string, to: string, limit = 186) {
     const r = clampRange(from, to);
     const out: string[] = [];
@@ -136,9 +144,28 @@ export default function EmployeeSchedulesPage() {
     const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
     const [calMonth, setCalMonth] = useState<number>(() => new Date().getMonth()); // 0-index
     const [selectedDay, setSelectedDay] = useState<string | null>(null);
+    const schedulesCacheKey = empKeys.schedules("active-full");
+    const regsCacheKey = empKeys.myScheduleRegs("all");
 
     const scheduleOptions = useMemo(() => schedules.filter((s) => s.status === "active"), [schedules]);
     const scheduleById = useMemo(() => new Map(schedules.map((s) => [s.id, s])), [schedules]);
+    const compareRegs = (a: WorkScheduleRegistration, b: WorkScheduleRegistration) => {
+        const da = normalizeYmd(a.day);
+        const db = normalizeYmd(b.day);
+        if (da !== db) return db.localeCompare(da);
+        const sa = shiftStartMin(scheduleById.get(a.schedule_id));
+        const sb = shiftStartMin(scheduleById.get(b.schedule_id));
+        if (sa !== sb) return sa - sb;
+        return a.id - b.id;
+    };
+    const regCountByScheduleId = useMemo(() => {
+        const counts = new Map<number, number>();
+        for (const r of regs) {
+            if (r.status !== "pending" && r.status !== "approved") continue;
+            counts.set(r.schedule_id, (counts.get(r.schedule_id) ?? 0) + 1);
+        }
+        return counts;
+    }, [regs]);
 
     const isScheduleApplicable = (s: WorkSchedule | undefined, day: string) => {
         if (!s) return true;
@@ -156,14 +183,9 @@ export default function EmployeeSchedulesPage() {
 
     const regsSorted = useMemo(() => {
         const items = [...regs];
-        items.sort((a, b) => {
-            const da = normalizeYmd(a.day);
-            const db = normalizeYmd(b.day);
-            // Newest first (closest dates first) for better UX + pagination.
-            return da === db ? b.id - a.id : db.localeCompare(da);
-        });
+        items.sort(compareRegs);
         return items;
-    }, [regs]);
+    }, [regs, scheduleById]);
 
     const regsByDay = useMemo(() => {
         const m = new Map<string, WorkScheduleRegistration[]>();
@@ -174,25 +196,25 @@ export default function EmployeeSchedulesPage() {
             arr.push(r);
             m.set(key, arr);
         }
-        for (const [, arr] of m) arr.sort((a, b) => a.id - b.id);
+        for (const [, arr] of m) arr.sort(compareRegs);
         return m;
-    }, [regs]);
+    }, [regs, scheduleById]);
 
     const reload = async (opts?: { keepError?: boolean }) => {
         setLoading(true);
         if (!opts?.keepError) setError(null);
         try {
-            invalidateKey(empKeys.schedules());
-            invalidateKey(empKeys.myScheduleRegs());
+            invalidateKey(schedulesCacheKey);
+            invalidateKey(regsCacheKey);
             const [sch, my] = await Promise.all([listSchedules({
                 limit: 500,
                 offset: 0,
                 status: "active"
-            }), listMyScheduleRegistrations({limit: 200, offset: 0})]);
+            }), listAllMyScheduleRegistrations()]);
             setSchedules(sch);
             setRegs(my);
-            setCached(empKeys.schedules(), sch, 5 * 60_000);
-            setCached(empKeys.myScheduleRegs(), my, 30_000);
+            setCached(schedulesCacheKey, sch, 5 * 60_000);
+            setCached(regsCacheKey, my, 30_000);
         } catch (e) {
             setError(getApiErrorMessage(e));
         } finally {
@@ -205,14 +227,14 @@ export default function EmployeeSchedulesPage() {
     }, []);
 
     const qSchedules = useCachedQuery({
-        key: empKeys.schedules(),
+        key: schedulesCacheKey,
         ttlMs: 5 * 60_000,
         fetcher: () => listSchedules({limit: 500, offset: 0, status: "active"})
     });
     const qRegs = useCachedQuery({
-        key: empKeys.myScheduleRegs(),
+        key: regsCacheKey,
         ttlMs: 30_000,
-        fetcher: () => listMyScheduleRegistrations({limit: 200, offset: 0})
+        fetcher: () => listAllMyScheduleRegistrations()
     });
 
     useEffect(() => {
@@ -342,8 +364,8 @@ export default function EmployeeSchedulesPage() {
 
     const selectedRegs = useMemo(() => {
         if (!selectedDay) return [];
-        return regsSorted.filter((r) => normalizeYmd(r.day) === selectedDay);
-    }, [regsSorted, selectedDay]);
+        return regsByDay.get(selectedDay) ?? [];
+    }, [regsByDay, selectedDay]);
 
     const handleTabChange = (newTab: TabKey) => {
         setTab(newTab);
@@ -422,6 +444,12 @@ export default function EmployeeSchedulesPage() {
                                                     <span className={styles.dot}>•</span>
                                                     <span
                                                         className={styles.muted}>Tối đa: {Number(s.max_registrations)}</span>
+                                                </>
+                                            ) : null}
+                                            {(regCountByScheduleId.get(s.id) ?? 0) > 0 ? (
+                                                <>
+                                                    <span className={styles.dot}>•</span>
+                                                    <span className={styles.muted}>Đã đăng ký: {regCountByScheduleId.get(s.id)} ngày</span>
                                                 </>
                                             ) : null}
                                             {s.note ? (
@@ -675,6 +703,26 @@ export default function EmployeeSchedulesPage() {
                                 }
                                 return cells;
                             })()}
+                        </div>
+                        <div className={styles.statusLegend}>
+                            <div className={styles.statusLegendGrid}>
+                                <div className={styles.statusLegendItem}>
+                                    <span className={`${styles.statusSwatch} ${styles.statusSwatchApproved}`}/>
+                                    <span>Xanh lá: ca đã được duyệt.</span>
+                                </div>
+                                <div className={styles.statusLegendItem}>
+                                    <span className={`${styles.statusSwatch} ${styles.statusSwatchPending}`}/>
+                                    <span>Vàng: ca đang chờ duyệt.</span>
+                                </div>
+                                <div className={styles.statusLegendItem}>
+                                    <span className={`${styles.statusSwatch} ${styles.statusSwatchRejected}`}/>
+                                    <span>Đỏ: ca bị từ chối.</span>
+                                </div>
+                                <div className={styles.statusLegendItem}>
+                                    <span className={`${styles.statusSwatch} ${styles.statusSwatchCancelled}`}/>
+                                    <span>Đen: ca đã hủy hoặc không còn hiệu lực.</span>
+                                </div>
+                            </div>
                         </div>
                     </Card>
 
