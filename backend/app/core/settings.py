@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +35,24 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change_me"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    JWT_SECRET_MIN_LENGTH: int = 32
+
+    # Security / CORS
+    CORS_ALLOW_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    AUTH_PUBLIC_REGISTRATION_ENABLED: bool = False
+    LOGIN_MAX_FAILURES: int = 5
+    LOGIN_WINDOW_SECONDS: int = 300
+    LOGIN_BLOCK_SECONDS: int = 900
+    AUTH_WRITE_MAX_ATTEMPTS: int = 10
+    AUTH_WRITE_WINDOW_SECONDS: int = 600
+    AUTH_WRITE_BLOCK_SECONDS: int = 900
+    FACE_UPLOAD_MAX_BYTES: int = 5 * 1024 * 1024
+    FACE_UPLOAD_MAX_REQUESTS: int = 30
+    FACE_UPLOAD_WINDOW_SECONDS: int = 60
+    FACE_UPLOAD_BLOCK_SECONDS: int = 120
+    LOGO_UPLOAD_MAX_REQUESTS: int = 10
+    LOGO_UPLOAD_WINDOW_SECONDS: int = 300
+    LOGO_UPLOAD_BLOCK_SECONDS: int = 300
 
     # Frontend URL (used for invite activation links)
     FRONTEND_BASE_URL: str = "http://localhost:3000"
@@ -59,6 +79,7 @@ class Settings(BaseSettings):
     BOOTSTRAP_ADMIN_COMPANY_NAME: str = "Default Company"
 
     # Bootstrap test accounts (created on first start if missing)
+    BOOTSTRAP_TEST_USERS_ENABLED: bool = False
     BOOTSTRAP_MANAGER_USERNAME: str = "manager"
     BOOTSTRAP_MANAGER_PASSWORD: str = "manager123"
     BOOTSTRAP_EMPLOYEE_USERNAME: str = "employee"
@@ -72,6 +93,22 @@ class Settings(BaseSettings):
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
             "?charset=utf8mb4"
         )
+
+    @property
+    def cors_allow_origins_list(self) -> list[str]:
+        origins = [x.strip() for x in self.CORS_ALLOW_ORIGINS.split(",") if x.strip()]
+        frontend = self.FRONTEND_BASE_URL.strip()
+        if frontend:
+            parsed = urlparse(frontend)
+            if parsed.scheme and parsed.netloc:
+                origin = f"{parsed.scheme}://{parsed.netloc}"
+                if origin not in origins:
+                    origins.append(origin)
+        return origins
+
+    @property
+    def is_production_like(self) -> bool:
+        return self.ENV.strip().lower() not in {"dev", "development", "test", "testing", "local"}
 
 
 settings = Settings()

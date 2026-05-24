@@ -51,6 +51,23 @@
   flex-shrink: 0;
 }
 
+.logoImageWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  flex-shrink: 0;
+}
+
+.logoImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .logoText {
   min-width: 0;
 

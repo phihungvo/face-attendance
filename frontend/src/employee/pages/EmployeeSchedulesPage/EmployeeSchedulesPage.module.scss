@@ -118,19 +118,65 @@
   border: 1px solid var(--border);
 }
 
+.shiftIcon,
+.cartIcon,
+.dayIcon,
+.legendIcon {
+  backdrop-filter: blur(10px);
+}
+
 .vMorning {
-  background: color-mix(in oklab, var(--warning) 16%, transparent);
-  border-color: color-mix(in oklab, var(--warning) 40%, var(--border));
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 196, 87, 0.20),
+      rgba(255, 214, 102, 0.10)
+    );
+
+  border-color:
+    rgba(255, 184, 77, 0.38);
+
+  color: #ffb84d;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 4px 14px rgba(255, 184, 77, 0.12);
 }
 
 .vAfternoon {
-  background: color-mix(in oklab, var(--purple) 14%, transparent);
-  border-color: color-mix(in oklab, var(--purple) 38%, var(--border));
+  background:
+    linear-gradient(
+      135deg,
+      rgba(168, 139, 250, 0.18),
+      rgba(124, 92, 255, 0.10)
+    );
+
+  border-color:
+    rgba(139, 92, 246, 0.34);
+
+  color: #b197fc;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 4px 14px rgba(139, 92, 246, 0.12);
 }
 
 .vNight {
-  background: color-mix(in oklab, var(--primary) 14%, transparent);
-  border-color: color-mix(in oklab, var(--primary) 38%, var(--border));
+  background:
+    linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.18),
+      rgba(37, 99, 235, 0.10)
+    );
+
+  border-color:
+    rgba(59, 130, 246, 0.34);
+
+  color: #7cc4ff;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 4px 14px rgba(59, 130, 246, 0.12);
 }
 
 .shiftMain {
@@ -164,14 +210,23 @@
 
 .cartItem {
   display: grid;
-  grid-template-columns: 44px 1fr 148px 36px;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 10px;
-  border-radius: 14px;
+  grid-template-columns: 44px 1fr 148px;
+  gap: 12px;
+
+  align-items: start;
+
+  padding: 12px;
+
+  border-radius: 16px;
+
   border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--surface) 70%, transparent);
+
+  background:
+    color-mix(in oklab, var(--surface) 70%, transparent);
+
   box-shadow: var(--shadow-sm);
+
+  position: relative;
 }
 
 .cartDates {

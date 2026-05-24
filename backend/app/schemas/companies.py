@@ -5,7 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class CompanyOut(BaseModel):
+class CompanyListOut(BaseModel):
     id: int
     code: str
     name: str
@@ -18,6 +18,10 @@ class CompanyOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class CompanyOut(CompanyListOut):
+    logo_data_url: str | None = None
 
 
 class CompanyCreateRequest(BaseModel):

@@ -1,12 +1,14 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { api, type ApiResponse, getApiErrorMessage, getCompanyId, getToken, setCompanyId, setToken } from "../lib/apiClient";
 import { useEffect } from "react";
+import { clearQueryCache } from "../lib/queryCache";
 
 type AuthContextValue = {
   token: string | null;
   username: string | null;
   companyId: number | null;
   companyName: string | null;
+  companyLogoDataUrl: string | null;
   selectedCompanyId: number | null;
   setSelectedCompanyId(companyId: number | null): void;
   roleKeys: string[];
@@ -26,23 +28,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(null);
   const [companyId, setCompanyIdState] = useState<number | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [companyLogoDataUrl, setCompanyLogoDataUrl] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyIdState] = useState<number | null>(() => getCompanyId());
   const [roleKeys, setRoleKeys] = useState<string[]>([]);
   const [permissionKeys, setPermissionKeys] = useState<string[]>([]);
   const [meLoading, setMeLoading] = useState(false);
+
+  function clearSessionState() {
+    clearQueryCache();
+    setCompanyId(null);
+    setTokenState(null);
+    setUsername(null);
+    setCompanyIdState(null);
+    setCompanyName(null);
+    setCompanyLogoDataUrl(null);
+    setSelectedCompanyIdState(null);
+    setRoleKeys([]);
+    setPermissionKeys([]);
+  }
 
   async function refreshMe() {
     const t = getToken();
     if (!t) return;
     setMeLoading(true);
     try {
-      const res = await api.get<ApiResponse<{ username: string; company_id?: number | null; company_name?: string | null; role_keys: string[]; permission_keys: string[] }>>("/auth/me");
+      const res = await api.get<
+        ApiResponse<{
+          username: string;
+          company_id?: number | null;
+          company_name?: string | null;
+          company_logo_data_url?: string | null;
+          role_keys: string[];
+          permission_keys: string[];
+        }>
+      >("/auth/me");
       const me = res.data.result;
       if (!me) throw new Error("Không thể lấy thông tin user");
       setUsername(me.username);
       const cid = (me.company_id ?? null) as number | null;
       setCompanyIdState(cid);
       setCompanyName((me.company_name ?? null) as string | null);
+      setCompanyLogoDataUrl((me.company_logo_data_url ?? null) as string | null);
       // Default selected company to user's company on first login.
       if (!getCompanyId() && cid) {
         setCompanyId(cid);
@@ -60,10 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshMe().catch(() => {
       // token invalid or server down -> logout state
       setToken(null);
-      setTokenState(null);
-      setUsername(null);
-      setRoleKeys([]);
-      setPermissionKeys([]);
+      clearSessionState();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -76,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissionKeys,
       meLoading,
       async login(identifier, password) {
+        clearQueryCache();
         const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/login", { identifier, password });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
@@ -84,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshMe();
       },
       async register(username, password, role) {
+        clearQueryCache();
         const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/register", { username, password, role });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
@@ -92,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshMe();
       },
       async acceptInvite(token, password) {
+        clearQueryCache();
         const res = await api.post<ApiResponse<{ access_token: string }>>("/auth/activate", { token, password });
         const t = res.data.result?.access_token;
         if (!t) throw new Error("Không nhận được token từ server");
@@ -102,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshMe,
       companyId,
       companyName,
+      companyLogoDataUrl,
       selectedCompanyId,
       setSelectedCompanyId(companyId) {
         setCompanyId(companyId);
@@ -109,17 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       logout() {
         setToken(null);
-        setCompanyId(null);
-        setTokenState(null);
-        setUsername(null);
-        setCompanyIdState(null);
-        setCompanyName(null);
-        setSelectedCompanyIdState(null);
-        setRoleKeys([]);
-        setPermissionKeys([]);
+        clearSessionState();
       }
     }),
-    [companyId, companyName, meLoading, permissionKeys, roleKeys, selectedCompanyId, token, username]
+    [companyId, companyLogoDataUrl, companyName, meLoading, permissionKeys, roleKeys, selectedCompanyId, token, username]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

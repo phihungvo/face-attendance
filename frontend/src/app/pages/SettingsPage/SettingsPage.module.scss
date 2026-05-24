@@ -96,6 +96,10 @@
   color: var(--text3);
 }
 
+.hiddenInput {
+  display: none;
+}
+
 .input {
   width: 100%;
   padding: 10px 12px;
@@ -299,6 +303,59 @@
   color: var(--text3);
   font-weight: 800;
   border-top: 1px solid var(--border2);
+}
+
+.logoUploadBlock {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.logoPreviewCard {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logoPreviewImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.logoPreviewFallback {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--text2);
+}
+
+.logoUploadMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.logoUploadTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.logoUploadHint {
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text3);
 }
 
 .rangeInputs {
@@ -509,5 +566,9 @@
   }
   .rangeInputs {
     width: 100%;
+  }
+  .logoUploadBlock {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

@@ -3,11 +3,12 @@ from __future__ import annotations
 import time
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.exception_handlers import register_exception_handlers
+from app.core.security import validate_runtime_security
 from app.core.settings import settings
 from app.db.session import engine
 from app.db.migrate import run_lightweight_migrations
@@ -24,17 +25,30 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
 
-    # Basic CORS for local/prod behind same origin (nginx proxies /api).
+    allow_origins = settings.cors_allow_origins_list
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allow_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Company-Id"],
     )
+
+    @app.middleware("http")
+    async def _security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if request.url.path.startswith("/api/v1/auth/"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        if request.headers.get("x-forwarded-proto", "").strip().lower() == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
 
     @app.on_event("startup")
     def _startup() -> None:
+        validate_runtime_security()
         # Basic production-friendly default: create tables if not exist.
         # For real deployments, prefer Alembic migrations.
         if settings.DB_STARTUP_FAIL_FAST:

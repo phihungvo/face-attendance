@@ -150,6 +150,10 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
             _exec(engine, "ALTER TABLE companies ADD COLUMN latitude DOUBLE NULL")
         if not _column_exists(engine, table="companies", column="longitude", schema=schema):
             _exec(engine, "ALTER TABLE companies ADD COLUMN longitude DOUBLE NULL")
+        if not _column_exists(engine, table="companies", column="logo_blob", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN logo_blob MEDIUMBLOB NULL")
+        if not _column_exists(engine, table="companies", column="logo_mime_type", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN logo_mime_type VARCHAR(64) NULL")
     if not _column_exists(engine, table="companies", column="geo_radius_meters", schema=schema):
         _exec(engine, "ALTER TABLE companies ADD COLUMN geo_radius_meters DOUBLE NULL")
     if not _column_exists(engine, table="companies", column="require_gps_on_attendance", schema=schema):
@@ -250,6 +254,61 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
         _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN break_threshold_hours DOUBLE NOT NULL DEFAULT 6.0")
     if not _column_exists(engine, table="attendance_policies", column="auto_checkout_time", schema=schema):
         _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN auto_checkout_time VARCHAR(5) NOT NULL DEFAULT '23:59'")
+    if not _column_exists(engine, table="attendance_policies", column="checkin_from", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN checkin_from VARCHAR(5) NOT NULL DEFAULT '06:00'")
+    if not _column_exists(engine, table="attendance_policies", column="checkin_to", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN checkin_to VARCHAR(5) NOT NULL DEFAULT '12:00'")
+    if not _column_exists(engine, table="attendance_policies", column="checkout_from", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN checkout_from VARCHAR(5) NOT NULL DEFAULT '12:00'")
+    if not _column_exists(engine, table="attendance_policies", column="checkout_to", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN checkout_to VARCHAR(5) NOT NULL DEFAULT '23:00'")
+    if not _column_exists(engine, table="attendance_policies", column="min_minutes_between_same_type", schema=schema):
+        _exec(engine, "ALTER TABLE attendance_policies ADD COLUMN min_minutes_between_same_type INT NOT NULL DEFAULT 2")
+    if not _column_exists(engine, table="attendance_policies", column="updated_at", schema=schema):
+        _exec(
+            engine,
+            "ALTER TABLE attendance_policies ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+        )
+
+    # company_attendance_policies table extensions
+    if _table_exists(engine, table="company_attendance_policies", schema=schema):
+        if not _column_exists(engine, table="company_attendance_policies", column="timezone", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN timezone VARCHAR(64) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh'")
+        if not _column_exists(engine, table="company_attendance_policies", column="face_match_threshold", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN face_match_threshold DOUBLE NOT NULL DEFAULT 0.5")
+        if not _column_exists(engine, table="company_attendance_policies", column="shift_start", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN shift_start VARCHAR(5) NOT NULL DEFAULT '09:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="shift_end", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN shift_end VARCHAR(5) NOT NULL DEFAULT '18:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="late_grace_minutes", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN late_grace_minutes INT NOT NULL DEFAULT 0")
+        if not _column_exists(engine, table="company_attendance_policies", column="early_leave_grace_minutes", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN early_leave_grace_minutes INT NOT NULL DEFAULT 0")
+        if not _column_exists(engine, table="company_attendance_policies", column="break_start", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN break_start VARCHAR(5) NOT NULL DEFAULT '12:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="break_end", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN break_end VARCHAR(5) NOT NULL DEFAULT '13:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="break_duration_minutes", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN break_duration_minutes INT NOT NULL DEFAULT 60")
+        if not _column_exists(engine, table="company_attendance_policies", column="break_threshold_hours", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN break_threshold_hours DOUBLE NOT NULL DEFAULT 6.0")
+        if not _column_exists(engine, table="company_attendance_policies", column="auto_checkout_time", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN auto_checkout_time VARCHAR(5) NOT NULL DEFAULT '23:59'")
+        if not _column_exists(engine, table="company_attendance_policies", column="checkin_from", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN checkin_from VARCHAR(5) NOT NULL DEFAULT '06:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="checkin_to", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN checkin_to VARCHAR(5) NOT NULL DEFAULT '12:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="checkout_from", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN checkout_from VARCHAR(5) NOT NULL DEFAULT '12:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="checkout_to", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN checkout_to VARCHAR(5) NOT NULL DEFAULT '23:00'")
+        if not _column_exists(engine, table="company_attendance_policies", column="min_minutes_between_same_type", schema=schema):
+            _exec(engine, "ALTER TABLE company_attendance_policies ADD COLUMN min_minutes_between_same_type INT NOT NULL DEFAULT 2")
+        if not _column_exists(engine, table="company_attendance_policies", column="updated_at", schema=schema):
+            _exec(
+                engine,
+                "ALTER TABLE company_attendance_policies ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+            )
 
     # users table extensions
     if not _column_exists(engine, table="users", column="face_enrolled_at", schema=schema):

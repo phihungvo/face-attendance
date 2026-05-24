@@ -28,6 +28,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.error.http_status,
             content=fail(exc.error, message=exc.detail).model_dump(),
+            headers=exc.headers,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -69,4 +70,3 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=UNCATEGORIZED_EXCEPTION.http_status,
             content=fail(UNCATEGORIZED_EXCEPTION).model_dump(),
         )
-

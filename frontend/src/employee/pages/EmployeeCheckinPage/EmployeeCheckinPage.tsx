@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./EmployeeCheckinPage.module.scss";
 import { useNavigate } from "react-router-dom";
-import { listMyAttendanceLogs, scanMyAttendanceFromImage, type AttendanceLog } from "../../../shared/api/attendance";
+import { listMyAttendanceLogs, scanMyAttendanceFromImageWithGeo, type AttendanceLog } from "../../../shared/api/attendance";
+import { getMyCompany } from "../../../shared/api/companies";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useCamera } from "../../../shared/hooks/useCamera";
 import { useAutoScan } from "../../../shared/hooks/useAutoScan";
-import { CameraOutlined, CheckCircleOutlined, LeftOutlined, PauseCircleOutlined, PlayCircleOutlined, StopOutlined, SwapOutlined } from "@ant-design/icons";
+import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
+import { CameraOutlined, CheckCircleOutlined, EnvironmentOutlined, LeftOutlined, PauseCircleOutlined, PlayCircleOutlined, StopOutlined, SwapOutlined } from "@ant-design/icons";
 import { cached, invalidateKey } from "../../../shared/lib/queryCache";
 import { empKeys } from "../../cacheKeys";
 
@@ -18,6 +20,8 @@ export default function EmployeeCheckinPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ user: string; action: "checkin" | "checkout"; confidence: number; time: string } | null>(null);
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
+  const [requireGps, setRequireGps] = useState(false);
+  const geo = useGeoPosition({ watch: requireGps, auto: requireGps });
 
   async function refreshLogs() {
     try {
@@ -31,6 +35,23 @@ export default function EmployeeCheckinPage() {
 
   useEffect(() => {
     refreshLogs();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const company = await getMyCompany();
+        if (!mounted) return;
+        setRequireGps(Boolean(company.require_gps_on_attendance ?? false));
+      } catch {
+        if (!mounted) return;
+        setRequireGps(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -66,10 +87,13 @@ export default function EmployeeCheckinPage() {
   }, [completedToday]);
 
   const captureOnce = useCallback(() => cam.capture({ quality: 0.9, type: "image/jpeg" }), [cam]);
-  const scanOnce = useCallback((b: Blob) => scanMyAttendanceFromImage(b), []);
+  const scanOnce = useCallback(
+    (b: Blob) => scanMyAttendanceFromImageWithGeo(b, { latitude: geo.latitude, longitude: geo.longitude }),
+    [geo.latitude, geo.longitude]
+  );
 
   useAutoScan({
-    enabled: cam.state.ready && auto && !busy && !completed,
+    enabled: cam.state.ready && auto && !busy && !completed && (!requireGps || geo.enabled),
     intervalMs: 1400,
     capture: captureOnce,
     scan: scanOnce,
@@ -85,6 +109,9 @@ export default function EmployeeCheckinPage() {
       if (msg) setError(msg);
       if (msg.includes("Đã check-in và check-out rồi")) {
         setCompleted(true);
+        setAuto(false);
+      }
+      if (msg.includes("Thiếu vị trí GPS") || msg.includes("bật định vị")) {
         setAuto(false);
       }
     }
@@ -115,6 +142,18 @@ export default function EmployeeCheckinPage() {
         </div>
 
         {cam.state.error ? <div className={styles.warnBox}>{cam.state.error}</div> : null}
+        {requireGps && geo.supported && !geo.enabled ? (
+          <div className={styles.warnBox}>
+            ⚠️ Công ty đang bật GPS. Bạn cần cho phép định vị để chấm công.
+            {geo.error ? <div style={{ marginTop: 6, opacity: 0.9 }}>{geo.error}</div> : null}
+            <div style={{ marginTop: 8 }}>
+              <button className={styles.ghost} type="button" onClick={() => geo.refresh()} disabled={geo.loading}>
+                <EnvironmentOutlined /> Lấy GPS lại
+              </button>
+              {!auto ? <span style={{ marginLeft: 10, opacity: 0.9 }}>Auto đang tắt do thiếu GPS.</span> : null}
+            </div>
+          </div>
+        ) : null}
         {error ? <div className={styles.errBox}>{error}</div> : null}
         {result ? (
           <div className={styles.infoBox}>

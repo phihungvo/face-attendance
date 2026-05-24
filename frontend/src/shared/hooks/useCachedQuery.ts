@@ -24,7 +24,12 @@ export function useCachedQuery<T>(opts: {
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setData(opts.initialData ?? null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     const hit = getCached<T>(key);
     if (hit !== undefined) {
       setData(hit);
@@ -37,6 +42,7 @@ export function useCachedQuery<T>(opts: {
       try {
         setLoading(true);
         setError(null);
+        setData(opts.initialData ?? null);
         const v = await cached<T>(key, opts.fetcher, opts.ttlMs);
         if (!alive) return;
         setData(v);
@@ -51,7 +57,7 @@ export function useCachedQuery<T>(opts: {
     return () => {
       alive = false;
     };
-  }, [enabled, key, nonce, opts.fetcher, opts.ttlMs]);
+  }, [enabled, key, nonce, opts.fetcher, opts.initialData, opts.ttlMs]);
 
   return {
     data,

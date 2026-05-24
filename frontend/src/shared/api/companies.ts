@@ -10,6 +10,7 @@ export type Company = {
   longitude?: number | null;
   geo_radius_meters?: number | null;
   require_gps_on_attendance?: boolean;
+  logo_data_url?: string | null;
   created_at: string;
 };
 
@@ -45,6 +46,13 @@ export async function updateCompany(
   return res.data.result!;
 }
 
+export async function uploadCompanyLogo(id: number, file: File) {
+  const form = new FormData();
+  form.append("logo", file);
+  const res = await api.put<ApiResponse<Company>>(`/companies/${id}/logo`, form);
+  return res.data.result!;
+}
+
 export async function deleteCompany(id: number) {
   const res = await api.delete<ApiResponse<{ deleted: boolean }>>(`/companies/${id}`);
   return res.data.result?.deleted ?? false;
@@ -66,5 +74,12 @@ export async function updateMyCompany(payload: {
   require_gps_on_attendance?: boolean | null;
 }) {
   const res = await api.put<ApiResponse<Company>>("/companies/me", payload);
+  return res.data.result!;
+}
+
+export async function uploadMyCompanyLogo(file: File) {
+  const form = new FormData();
+  form.append("logo", file);
+  const res = await api.put<ApiResponse<Company>>("/companies/me/logo", form);
   return res.data.result!;
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import unittest
 
 from sqlalchemy import create_engine
@@ -52,3 +53,16 @@ class TestCompanyUpdateClearGeo(unittest.TestCase):
             self.assertEqual(updated.longitude, 106.0)
             self.assertEqual(updated.geo_radius_meters, 250.0)
 
+    def test_update_company_logo_persists_blob_and_data_url(self) -> None:
+        with self.SessionLocal() as db:
+            c = Company(code="c1", name="C1")
+            db.add(c)
+            db.commit()
+
+            svc = CompanyService()
+            payload = b"\x89PNG\r\n\x1a\nlogo"
+            updated = svc.update_company_logo(db, company_id=int(c.id), logo_bytes=payload, content_type="image/png")
+
+            self.assertEqual(updated.logo_blob, payload)
+            self.assertEqual(updated.logo_mime_type, "image/png")
+            self.assertEqual(updated.logo_data_url, f"data:image/png;base64,{base64.b64encode(payload).decode('ascii')}")

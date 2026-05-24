@@ -23,6 +23,7 @@ VALIDATION_FAILED = ErrorCode(code=1001, message="Dữ liệu không hợp lệ"
 UNAUTHORIZED = ErrorCode(code=1002, message="Bạn chưa đăng nhập hoặc token không hợp lệ", http_status=401)
 FORBIDDEN = ErrorCode(code=1003, message="Bạn không có quyền truy cập", http_status=403)
 NOT_FOUND = ErrorCode(code=1004, message="Không tìm thấy dữ liệu", http_status=404)
+TOO_MANY_REQUESTS = ErrorCode(code=1005, message="Bạn thao tác quá nhanh, vui lòng thử lại sau", http_status=429)
 
 BAD_REQUEST = ErrorCode(code=1100, message="Yêu cầu không hợp lệ", http_status=400)
 DB_ERROR = ErrorCode(code=1200, message="Lỗi cơ sở dữ liệu", http_status=500)
@@ -37,6 +38,8 @@ AUTH_IDENTIFIER_AMBIGUOUS = ErrorCode(
     message="Email này tồn tại ở nhiều công ty. Vui lòng đăng nhập bằng username hoặc mã nhân viên.",
     http_status=400,
 )
+AUTH_ACCOUNT_DISABLED = ErrorCode(code=2007, message="Tài khoản đã bị vô hiệu hóa", http_status=403)
+AUTH_PUBLIC_REGISTRATION_DISABLED = ErrorCode(code=2008, message="Tính năng tự đăng ký đang bị tắt", http_status=403)
 
 ML_NOT_READY = ErrorCode(
     code=3001,
@@ -52,7 +55,8 @@ ML_INVALID_INPUT = ErrorCode(
 
 
 class AppException(Exception):
-    def __init__(self, error: ErrorCode, *, detail: str | None = None) -> None:
+    def __init__(self, error: ErrorCode, *, detail: str | None = None, headers: dict[str, str] | None = None) -> None:
         super().__init__(detail or error.message)
         self.error = error
         self.detail = detail
+        self.headers = headers or {}

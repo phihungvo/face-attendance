@@ -23,7 +23,7 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .toolbar {
@@ -78,17 +78,24 @@
   color: #fff;
 }
 
+/* ─── NOTIFICATION ITEM ─── */
 .item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: var(--surface2);
   border: 1px solid var(--border);
-  position: relative;
+  cursor: pointer;
   width: 100%;
   min-width: 0;
+  transition: background 0.15s;
+}
+
+.item:hover {
+  background: var(--muted-bg);
 }
 
 .unread {
@@ -100,7 +107,7 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   border: none;
   background: transparent;
@@ -109,16 +116,67 @@
   padding: 0;
 }
 
+.closeBtn {
+  position: absolute;
+
+  top: -7px;
+  right: -9px;
+
+  width: 22px;
+  height: 22px;
+
+  border-radius: 50%;
+  border: 1px solid #e5e2dd;
+
+  background: #292525;
+
+  color: var(--text3);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  opacity: 0.65;
+
+  z-index: 2;
+
+  transition: opacity 0.18s ease,
+  background 0.18s ease,
+  color 0.18s ease,
+  border-color 0.18s ease;
+}
+
+.closeBtn :global(svg) {
+  font-size: 12px;
+}
+
+.item:hover .closeBtn {
+  opacity: 1;
+}
+
+.closeBtn:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
 .icon {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--surface);
   border: 1px solid var(--border);
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: 18px;
+}
+
+.unread .icon {
+  background: var(--bg);
 }
 
 .main {
@@ -126,63 +184,124 @@
   flex: 1;
 }
 
+/* top row: title + meta (label + time + dot) */
 .itemTopRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 3px;
 }
 
 .title {
   font-size: 13px;
   font-weight: 900;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.metaRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .categoryPill {
   border-radius: 999px;
-  padding: 4px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  color: var(--text3);
+  padding: 2px 8px;
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.sub {
-  font-size: 12px;
-  color: var(--text3);
-  margin-top: 2px;
-  font-weight: 700;
+/* per-category pill colors — map to your CSS vars or use hardcoded */
+.pillLeave {
+  background: #EEEDFE;
+  color: #3C3489;
+}
+
+.pillSchedule {
+  background: #E1F5EE;
+  color: #085041;
+}
+
+.pillAttendance {
+  background: #FAEEDA;
+  color: #633806;
+}
+
+.pillIam {
+  background: #FAECE7;
+  color: #711B0C;
+}
+
+.pillSettings {
+  background: var(--muted-bg);
+  color: var(--text2);
+}
+
+.pillSystem {
+  background: var(--muted-bg);
+  color: var(--text2);
 }
 
 .time {
   font-size: 11px;
   color: var(--text3);
-  margin-top: 6px;
+  white-space: nowrap;
+  margin-left: 5px;
   font-weight: 700;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--danger);
-  box-shadow: 0 0 0 4px var(--danger-bg-soft);
-  margin-left: auto;
+  border: 1.5px solid var(--danger-bg-soft);
+  flex-shrink: 0;
+}
+
+.sub {
+  font-size: 12px;
+  color: var(--text3);
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .btnLight {
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--border2);
   background: var(--bg);
   color: var(--text2);
-  border-radius: 10px;
-  padding: 7px 11px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btnLight:hover {
+  color: var(--text);
 }
 
 .empty,
@@ -216,6 +335,7 @@
   cursor: pointer;
 }
 
+/* ─── PREFERENCES ─── */
 .prefGrid {
   display: flex;
   flex-direction: column;
@@ -239,7 +359,7 @@
 }
 
 .prefSub {
-  margin-top: 3px;
+  margin-top: 5px;
   color: var(--text3);
   font-size: 12px;
   font-weight: 700;
@@ -283,86 +403,63 @@
   font-weight: 800;
 }
 
+/* ─── RESPONSIVE ─── */
 @media (max-width: 599px) {
   .page {
     gap: 16px;
   }
-
-  .toolbar,
-  .filters {
+  .toolbar, .filters {
     align-items: stretch;
   }
-
-  .chips,
-  .filters {
+  .chips, .filters {
     width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
   .select {
     flex: 1 1 100%;
     width: 100%;
     min-height: 40px;
   }
-
-  .filterBtn,
-  .btnGhost {
+  .filterBtn, .btnGhost {
     min-height: 38px;
   }
 
   .item {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 12px;
+    flex-wrap: wrap;
   }
-
-  .btnLight {
-    align-self: stretch;
-    width: 100%;
-    min-height: 38px;
-  }
-
   .itemMain {
     width: 100%;
-    align-items: flex-start;
   }
-
   .itemTopRow {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+    flex-wrap: wrap;
   }
-
-  .categoryPill {
-    max-width: 100%;
-    word-break: break-word;
+  .actions {
+    width: 100%;
+  }
+  .btnLight {
+    flex: 1;
+    height: 36px;
+    width: auto;
+    border-radius: 10px;
   }
 
   .prefRow {
     align-items: flex-start;
     padding: 12px;
   }
-
-  .prefSub,
-  .sub {
+  .prefSub, .sub {
     line-height: 1.5;
+    margin-top: 5px;
   }
 }
 
 @media (max-width: 399px) {
   .chips {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-
   .filterBtn {
     width: 100%;
-  }
-
-  .itemMain {
-    flex-direction: column;
-  }
-
-  .dot {
-    margin-left: 0;
   }
 }

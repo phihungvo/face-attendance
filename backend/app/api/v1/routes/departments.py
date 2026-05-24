@@ -45,7 +45,7 @@ def create_department(
     payload: DepartmentCreateRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("departments.read")),
+    _: object = Depends(require_permission("departments.manage")),
 ) -> ApiResponse[DepartmentOut]:
     try:
         return ok(service.create_department(db, company_id=company_id, code=payload.code, name=payload.name, location=payload.location))
@@ -59,7 +59,7 @@ def update_department(
     payload: DepartmentUpdateRequest,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("departments.read")),
+    _: object = Depends(require_permission("departments.manage")),
 ) -> ApiResponse[DepartmentOut]:
     try:
         return ok(service.update_department(db, dept_id=dept_id, company_id=company_id, code=payload.code, name=payload.name, location=payload.location))
@@ -72,7 +72,7 @@ def delete_department(
     dept_id: int,
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("departments.read")),
+    _: object = Depends(require_permission("departments.manage")),
 ) -> ApiResponse[dict[str, object]]:
     try:
         service.delete_department(db, dept_id=dept_id, company_id=company_id)

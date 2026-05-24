@@ -7,6 +7,7 @@ import { useUnreadNotificationCount } from "../../../shared/notifications/useUnr
 import { listNotifications, markAllNotificationsRead, markNotificationRead, type NotificationItem } from "../../../shared/api/notifications";
 import { formatDateTimeVi } from "../../../shared/lib/date";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { useAuth } from "../../../shared/auth/auth";
 
 function getNotificationGlyph(item: NotificationItem) {
   if (item.category === "leave") return "📝";
@@ -21,6 +22,7 @@ export default function EmployeeShell() {
   const { pathname } = useLocation();
   const nav = useNavigate();
   const { setMode } = useTheme();
+  const auth = useAuth();
   const hideNav = pathname.startsWith("/employee/checkin");
   const unreadCount = useUnreadNotificationCount([pathname]);
 
@@ -116,6 +118,8 @@ export default function EmployeeShell() {
   const [latestItems, setLatestItems] = useState<NotificationItem[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
+  const companyBadgeText = auth.companyName || "Công ty của bạn";
+  const companyBadgeInitial = companyBadgeText.trim().slice(0, 1).toUpperCase() || "C";
 
   useEffect(() => {
     if (!isMobile) return;
@@ -263,10 +267,16 @@ export default function EmployeeShell() {
       <div className={styles.shellInner}>
         <aside className={hideNav ? styles.hideNav : styles.sideNav} aria-label="Điều hướng nhân viên (desktop)">
           <div className={styles.sideBrand}>
-            <div className={styles.sideBrandIcon}>FT</div>
+            {auth.companyLogoDataUrl ? (
+              <div className={styles.sideBrandLogoWrap}>
+                <img className={styles.sideBrandLogo} src={auth.companyLogoDataUrl} alt={companyBadgeText} />
+              </div>
+            ) : (
+              <div className={styles.sideBrandIcon}>{companyBadgeInitial}</div>
+            )}
             <div>
               <div className={styles.sideBrandTitle}>FaceTime HR</div>
-              <div className={styles.sideBrandSub}>Cổng nhân viên</div>
+              <div className={styles.sideBrandSub}>{companyBadgeText}</div>
             </div>
           </div>
           <div className={styles.sideNavLinks}>

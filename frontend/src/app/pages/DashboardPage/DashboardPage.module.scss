@@ -6,37 +6,281 @@
 
 .errorBox {
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   background: color-mix(in oklab, var(--danger) 12%, transparent);
-  border: 1px solid color-mix(in oklab, var(--danger) 28%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 24%, transparent);
   color: var(--danger);
   font-weight: 800;
 }
 
+.heroGrid {
+  display: grid;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.commandCard,
+.attentionCard {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.commandCard {
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(520px 220px at 0% 0%, color-mix(in oklab, var(--primary) 12%, transparent), transparent 72%),
+    radial-gradient(420px 200px at 100% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%),
+    var(--surface);
+}
+
+.commandTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.commandTitle {
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+}
+
+.generatedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface2) 84%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.commandBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.78fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.commandScoreBlock {
+  display: grid;
+  gap: 10px;
+}
+
+.commandScore {
+  color: var(--text);
+  font-size: 72px;
+  line-height: 0.9;
+  font-weight: 1000;
+  letter-spacing: -0.07em;
+}
+
+.commandScoreMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.commandScoreMeta span {
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.commandScoreMeta strong {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.commandQuickStats {
+  display: grid;
+  gap: 10px;
+}
+
+.quickStat {
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 78%, transparent);
+  display: grid;
+  gap: 6px;
+}
+
+.quickLabel {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quickStat strong {
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.heroMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.heroMetaPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface2) 84%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.attentionCard {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  background:
+    radial-gradient(340px 180px at 100% 0%, color-mix(in oklab, var(--warning, #f59e0b) 10%, transparent), transparent 70%),
+    var(--surface);
+}
+
+.attentionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.attentionCount {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--primary) 10%, var(--surface2));
+  border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border));
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.alertList {
+  display: grid;
+  gap: 10px;
+}
+
+.alertRow {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 74%, transparent);
+}
+
+.alertIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.alertBody {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.alertBody strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.alertBody span {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.alertDanger .alertIcon {
+  color: #dc2626;
+  background: color-mix(in oklab, #dc2626 10%, white);
+}
+
+.alertWarn .alertIcon {
+  color: #d97706;
+  background: color-mix(in oklab, #f59e0b 12%, white);
+}
+
+.alertInfo .alertIcon {
+  color: #2563eb;
+  background: color-mix(in oklab, #2563eb 10%, white);
+}
+
+.alertGood .alertIcon {
+  color: #16a34a;
+  background: color-mix(in oklab, #22c55e 10%, white);
+}
+
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
 }
 
 .statCard {
   position: relative;
   overflow: hidden;
-  padding: 18px;
+  padding: 16px;
   border-radius: 18px;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .statCard::after {
   content: "";
   position: absolute;
-  inset: auto -20% -55% auto;
-  width: 140px;
-  height: 140px;
+  inset: auto -22% -54% auto;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
   opacity: 0.08;
   background: currentColor;
@@ -44,7 +288,7 @@
 }
 
 .toneBlue {
-  color: #1677ff;
+  color: #0284c7;
 }
 
 .toneGreen {
@@ -56,69 +300,65 @@
 }
 
 .toneRose {
-  color: #e11d48;
+  color: #dc2626;
+}
+
+.toneViolet {
+  color: #7c3aed;
+}
+
+.toneSlate {
+  color: #475569;
+}
+
+.statTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .statIcon {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 14px;
   display: grid;
   place-items: center;
   background: color-mix(in oklab, currentColor 12%, white);
-  border: 1px solid color-mix(in oklab, currentColor 22%, var(--border));
-  font-size: 20px;
-}
-
-.statHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.statHint {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--surface2) 84%, transparent);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.statHint strong {
-  color: var(--text);
-  font-weight: 900;
-}
-
-.statValue {
-  font-size: 30px;
-  line-height: 1;
-  font-weight: 950;
-  color: var(--text);
+  border: 1px solid color-mix(in oklab, currentColor 18%, var(--border));
+  font-size: 19px;
 }
 
 .statLabel {
   color: var(--text2);
   font-size: 12px;
   font-weight: 850;
-  letter-spacing: 0.01em;
+  text-align: right;
 }
 
-.mainGrid {
+.statValue {
+  color: var(--text);
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.statFoot {
+  color: var(--text3);
+  font-size: 11.5px;
+  line-height: 1.45;
+  font-weight: 750;
+}
+
+.analyticsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
   min-width: 0;
 }
 
-.mainGrid > :first-child {
+.spanFull {
   grid-column: 1 / -1;
 }
 
@@ -138,7 +378,7 @@
   display: inline-grid;
   place-items: center;
   background: color-mix(in oklab, var(--primary) 10%, var(--surface2));
-  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border));
   color: var(--primary);
   font-size: 17px;
 }
@@ -151,7 +391,7 @@
   padding: 0 10px;
   border-radius: 999px;
   background: color-mix(in oklab, var(--primary) 9%, var(--surface2));
-  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border));
   color: var(--text2);
   font-size: 12px;
   font-weight: 900;
@@ -159,7 +399,7 @@
 
 .chartLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(250px, 0.8fr);
   gap: 18px;
   min-width: 0;
 }
@@ -174,44 +414,43 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
 }
 
-.chartSummaryMain {
+.chartHeadline {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-width: 0;
 }
 
-.chartSummaryValue {
-  font-size: 44px;
-  line-height: 0.95;
-  font-weight: 950;
+.chartHeadlineValue {
   color: var(--text);
-  letter-spacing: -0.05em;
+  font-size: 48px;
+  line-height: 0.95;
+  font-weight: 1000;
+  letter-spacing: -0.06em;
 }
 
-.chartSummaryText {
+.chartHeadlineMeta {
   display: grid;
   gap: 3px;
 }
 
-.chartSummaryText span {
+.chartHeadlineMeta span {
   color: var(--text3);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 850;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.chartSummaryText strong {
+.chartHeadlineMeta strong {
   color: var(--text);
   font-size: 14px;
   font-weight: 900;
 }
 
-.chartSummarySide {
+.chartPills {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -229,12 +468,26 @@
   border: 1px solid var(--border);
   color: var(--text2);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 850;
+}
+
+.chartWheelHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary) 10%, var(--surface2));
+  border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border));
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .chartCanvas {
   position: relative;
-  min-height: 240px;
+  min-height: 250px;
   padding: 10px 10px 6px 42px;
   border-radius: 22px;
   border: 1px solid var(--border);
@@ -242,6 +495,7 @@
     radial-gradient(420px 180px at 0% 0%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 68%),
     linear-gradient(180deg, color-mix(in oklab, var(--surface2) 82%, transparent), var(--surface));
   overflow: hidden;
+  cursor: ew-resize;
 }
 
 .chartYAxis {
@@ -278,23 +532,33 @@
   fill: url(#dashboardTrendArea);
 }
 
+.chartFocusLine {
+  stroke: color-mix(in oklab, var(--primary) 32%, transparent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 6;
+}
+
 .chartLine {
   fill: none;
   stroke: url(#dashboardTrendLine);
   stroke-width: 3.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 8px 14px rgba(22, 119, 255, 0.14));
+  filter: drop-shadow(0 8px 14px rgba(14, 165, 233, 0.14));
 }
 
 .chartPointOuter {
   fill: white;
-  stroke: #1677ff;
+  stroke: #0ea5e9;
   stroke-width: 3;
 }
 
+.chartPointHalo {
+  fill: rgba(14, 165, 233, 0.12);
+}
+
 .chartPointInner {
-  fill: #14b8a6;
+  fill: #22c55e;
 }
 
 .chartAxisRow {
@@ -309,6 +573,20 @@
   display: grid;
   gap: 2px;
   text-align: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.chartAxisItem:hover {
+  background: color-mix(in oklab, var(--surface2) 84%, transparent);
+}
+
+.chartAxisItemActive {
+  background: color-mix(in oklab, var(--primary) 10%, var(--surface2));
+  transform: translateY(-1px);
 }
 
 .chartAxisItem strong {
@@ -323,122 +601,179 @@
   font-weight: 700;
 }
 
-.sideMetrics {
+.chartDetailGrid {
   display: grid;
-  gap: 12px;
-  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.metricCard {
-  padding: 16px;
+.chartDetailCard {
+  padding: 14px;
   border-radius: 16px;
   border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--surface2) 68%, transparent);
+  background: color-mix(in oklab, var(--surface2) 76%, transparent);
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
-.metricIcon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+.chartDetailLabel {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chartDetailValue {
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 950;
+}
+
+.chartDetailSub {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.trendFacts {
+  display: grid;
+  gap: 12px;
+}
+
+.factCard {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 70%, transparent);
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.factIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
   display: grid;
   place-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--primary);
-  font-size: 16px;
+  font-size: 17px;
 }
 
-.metricLabel {
+.factLabel {
   color: var(--text3);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 850;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
-.metricValue {
+.factValue {
+  display: block;
+  margin-top: 4px;
   color: var(--text);
   font-size: 24px;
-  line-height: 1.15;
-  font-weight: 900;
+  line-height: 1.05;
+  font-weight: 950;
 }
 
-.metricSub {
+.factSub {
+  margin-top: 6px;
   color: var(--text2);
   font-size: 12.5px;
-  line-height: 1.5;
+  line-height: 1.45;
   font-weight: 700;
 }
 
-.leaveList,
-.activityList {
+.departmentOverview {
+  display: grid;
+  gap: 16px;
+}
+
+.calloutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.calloutCard {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 72%, transparent);
+  display: grid;
+  gap: 6px;
+}
+
+.calloutLabel {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.calloutValue {
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.05;
+  font-weight: 950;
+}
+
+.calloutSub {
+  color: var(--text2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.departmentList,
+.queueList {
   display: grid;
   gap: 12px;
 }
 
-.leaveRow,
-.activityRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+.departmentRow,
+.queueRow {
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid var(--border);
   background: color-mix(in oklab, var(--surface2) 74%, transparent);
 }
 
-.leaveAvatar,
-.activityAvatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  background: color-mix(in oklab, var(--primary) 16%, white);
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 950;
-  border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border));
-}
-
-.leaveMain,
-.activityMain {
-  min-width: 0;
-  flex: 1;
-}
-
-.leaveTop,
-.activityTop {
+.departmentHead,
+.queueTop {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.leaveTop strong,
-.activityTop strong {
+.departmentName {
   color: var(--text);
   font-size: 14px;
   font-weight: 900;
 }
 
-.leaveSub,
-.leaveMeta,
-.activitySub {
-  margin-top: 6px;
+.departmentMeta,
+.queueMeta {
+  margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
+  gap: 8px;
 }
 
 .metaPill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 26px;
+  min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
   background: var(--surface);
@@ -448,24 +783,126 @@
   font-weight: 800;
 }
 
-.iconBadge {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  display: inline-grid;
-  place-items: center;
-  background: color-mix(in oklab, #f59e0b 12%, white);
-  color: #b45309;
-  border: 1px solid color-mix(in oklab, #f59e0b 24%, var(--border));
-  flex-shrink: 0;
-}
-
-.activityTime {
-  flex-shrink: 0;
+.rateBadge {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 26px;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.rateGood {
+  background: color-mix(in oklab, #22c55e 14%, white);
+  color: #15803d;
+  border: 1px solid color-mix(in oklab, #22c55e 24%, var(--border));
+}
+
+.rateWarn {
+  background: color-mix(in oklab, #f59e0b 14%, white);
+  color: #b45309;
+  border: 1px solid color-mix(in oklab, #f59e0b 24%, var(--border));
+}
+
+.rateBad {
+  background: color-mix(in oklab, #ef4444 14%, white);
+  color: #b91c1c;
+  border: 1px solid color-mix(in oklab, #ef4444 24%, var(--border));
+}
+
+.progressTrack {
+  margin-top: 12px;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--surface) 45%, var(--surface2));
+  border: 1px solid var(--border);
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0ea5e9, #22c55e);
+}
+
+.leaveSummaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.summaryMini {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 76%, transparent);
+  display: grid;
+  gap: 5px;
+}
+
+.summaryMini span {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summaryMini strong {
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.queueRow {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.queueAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--primary) 14%, white);
+  color: var(--primary);
+  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.queueMain {
+  min-width: 0;
+}
+
+.queueTop strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.queueSub {
+  margin-top: 6px;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.timeBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
   background: var(--surface);
@@ -473,27 +910,32 @@
   color: var(--text2);
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .emptyState {
-  padding: 16px;
+  padding: 18px;
   border-radius: 16px;
   border: 1px dashed var(--border2);
-  background: color-mix(in oklab, var(--surface2) 70%, transparent);
+  background: color-mix(in oklab, var(--surface2) 72%, transparent);
   color: var(--text3);
   font-size: 13px;
   font-weight: 700;
   text-align: center;
 }
 
-@media (max-width: 1199px) {
-  .mainGrid,
+@media (max-width: 1279px) {
+  .heroGrid,
   .chartLayout {
     grid-template-columns: 1fr;
   }
 
-  .sideMetrics {
+  .statsGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .commandBody {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -502,21 +944,24 @@
     gap: 16px;
   }
 
-  .statsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .statsGrid,
+  .analyticsGrid,
+  .calloutGrid,
+  .leaveSummaryStrip,
+  .chartDetailGrid {
+    grid-template-columns: 1fr;
   }
 
-  .chartSummary {
+  .chartSummary,
+  .departmentHead,
+  .queueTop,
+  .commandTop {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .chartSummarySide {
+  .chartPills {
     justify-content: flex-start;
-  }
-
-  .sideMetrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .chartAxisRow {
@@ -535,31 +980,27 @@
 }
 
 @media (max-width: 599px) {
-  .page {
-    gap: 14px;
-  }
-
-  .statsGrid {
-    grid-template-columns: 1fr;
-  }
-
+  .commandCard,
+  .attentionCard,
   .statCard,
-  .metricCard,
-  .leaveRow,
-  .activityRow {
+  .departmentRow,
+  .queueRow,
+  .factCard,
+  .calloutCard,
+  .summaryMini {
     padding: 14px;
   }
 
-  .statValue {
-    font-size: 28px;
+  .commandTitle {
+    font-size: 21px;
   }
 
-  .chartSummaryValue {
-    font-size: 36px;
+  .commandScore {
+    font-size: 56px;
   }
 
-  .chartSummarySide {
-    justify-content: flex-start;
+  .chartHeadlineValue {
+    font-size: 38px;
   }
 
   .chartCanvas {
@@ -577,38 +1018,32 @@
     font-size: 10px;
   }
 
-  .sideMetrics {
+  .queueRow {
     grid-template-columns: 1fr;
   }
 
-  .leaveTop,
-  .activityTop {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .iconBadge,
-  .activityTime {
-    align-self: flex-start;
+  .queueAvatar {
+    width: 40px;
+    height: 40px;
   }
 
   .metaPill,
-  .activityTime,
   .summaryPill,
+  .chartWheelHint,
   .softBadge,
-  .statHint {
+  .heroMetaPill,
+  .generatedBadge,
+  .timeBadge {
     font-size: 11px;
-  }
-
-  .chartAxisItem {
-    flex-basis: 68px;
   }
 }
 
 @media (max-width: 399px) {
-  .statHead,
-  .chartSummaryMain {
-    flex-direction: column;
-    align-items: flex-start;
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .commandScore {
+    font-size: 48px;
   }
 }

@@ -11,6 +11,11 @@ export const api = axios.create({
 
 const TOKEN_KEY = "fa_token";
 const COMPANY_KEY = "fa_company_id";
+const SESSION_SCOPE_KEY = "fa_session_scope";
+
+function newSessionScope() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function getToken() {
   try {
@@ -22,10 +27,29 @@ export function getToken() {
 
 export function setToken(token: string | null) {
   try {
-    if (!token) localStorage.removeItem(TOKEN_KEY);
-    else localStorage.setItem(TOKEN_KEY, token);
+    if (!token) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(SESSION_SCOPE_KEY);
+    } else {
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(SESSION_SCOPE_KEY, newSessionScope());
+    }
   } catch {
     // ignore
+  }
+}
+
+export function getAuthCacheScope() {
+  try {
+    const existing = localStorage.getItem(SESSION_SCOPE_KEY);
+    if (existing) return existing;
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return "guest";
+    const next = newSessionScope();
+    localStorage.setItem(SESSION_SCOPE_KEY, next);
+    return next;
+  } catch {
+    return "guest";
   }
 }
 

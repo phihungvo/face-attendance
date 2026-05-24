@@ -5,6 +5,8 @@ import Modal from "../../components/Modal/Modal";
 import { createDepartment, deleteDepartment, listDepartments, updateDepartment } from "../../../shared/api/departments";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import type { Department } from "../../../shared/types/department";
+import { ApartmentOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
 import styles from "./DepartmentsPage.module.scss";
 
 const pageSize = 20;
@@ -53,7 +55,13 @@ export default function DepartmentsPage() {
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
-        <Card title="🏢 Tổng quan phòng ban">
+        <Card
+          title={
+            <span className={styles.cardTitle}>
+              <ApartmentOutlined /> Tổng quan phòng ban
+            </span>
+          }
+        >
           <div className={styles.kpis}>
             {kpis.map((k) => (
               <div key={k.label} className={styles.kpi}>
@@ -71,15 +79,21 @@ export default function DepartmentsPage() {
       </div>
 
       <Card
-        title="🏢 Danh sách phòng ban"
+        title={
+          <span className={styles.cardTitle}>
+            <ApartmentOutlined /> Danh sách phòng ban
+          </span>
+        }
         right={
           <div className={styles.actions}>
             <div className={styles.searchBox}>
-              <span className={styles.searchIcon}>🔍</span>
+              <span className={styles.searchIcon}>
+                <SearchOutlined />
+              </span>
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm theo mã/tên..." />
             </div>
             <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh(query)}>
-              {loading ? "Đang tải..." : "Làm mới"}
+              <ReloadOutlined /> {loading ? "Đang tải..." : "Làm mới"}
             </button>
             <button
               className={styles.btnGhost}
@@ -92,7 +106,7 @@ export default function DepartmentsPage() {
                 setModalOpen(true);
               }}
             >
-              ➕ Thêm phòng ban
+              <PlusOutlined /> Thêm phòng ban
             </button>
           </div>
         }
@@ -112,7 +126,9 @@ export default function DepartmentsPage() {
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className={styles.deptCell}>
-                  <span className={styles.deptIcon}>🏢</span>
+                  <span className={styles.deptIcon}>
+                    <ApartmentOutlined />
+                  </span>
                   <span className={styles.deptName}>{r.name}</span>
                 </td>
                 <td className={styles.mono}>{r.code}</td>
@@ -120,40 +136,42 @@ export default function DepartmentsPage() {
                 <td className={styles.muted}>{new Date(r.created_at).toLocaleString("vi-VN")}</td>
                 <td>
                   <div className={styles.rowActions}>
-                    <button
-                      className={`${styles.rowBtn} ${styles.edit}`}
-                      type="button"
-                      title="Sửa"
-                      onClick={() => {
-                        setEditing(r);
-                        setCode(r.code);
-                        setName(r.name);
-                        setLocation(r.location || "");
-                        setModalOpen(true);
-                      }}
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className={`${styles.rowBtn} ${styles.del}`}
-                      type="button"
-                      title="Xóa"
-                      onClick={async () => {
-                        if (!confirm(`Xóa phòng ban "${r.name}"?`)) return;
-                        try {
-                          setLoading(true);
-                          setError(null);
-                          await deleteDepartment(r.id);
-                          await refresh(query);
-                        } catch (e) {
-                          setError(getApiErrorMessage(e));
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                    >
-                      🗑
-                    </button>
+                    <Tooltip title="Sửa" placement="top">
+                      <button
+                        className={`${styles.rowBtn} ${styles.edit}`}
+                        type="button"
+                        onClick={() => {
+                          setEditing(r);
+                          setCode(r.code);
+                          setName(r.name);
+                          setLocation(r.location || "");
+                          setModalOpen(true);
+                        }}
+                      >
+                        <EditOutlined />
+                      </button>
+                    </Tooltip>
+                    <Tooltip title="Xóa" placement="top">
+                      <button
+                        className={`${styles.rowBtn} ${styles.del}`}
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Xóa phòng ban "${r.name}"?`)) return;
+                          try {
+                            setLoading(true);
+                            setError(null);
+                            await deleteDepartment(r.id);
+                            await refresh(query);
+                          } catch (e) {
+                            setError(getApiErrorMessage(e));
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      >
+                        <DeleteOutlined />
+                      </button>
+                    </Tooltip>
                   </div>
                 </td>
               </tr>
@@ -179,7 +197,12 @@ export default function DepartmentsPage() {
 
       <Modal
         open={modalOpen}
-        title={editing ? "✏️ Sửa phòng ban" : "➕ Thêm phòng ban"}
+        title={
+          <span className={styles.modalTitle}>
+            {editing ? <EditOutlined /> : <PlusOutlined />}
+            {editing ? "Sửa phòng ban" : "Thêm phòng ban"}
+          </span>
+        }
         onClose={() => setModalOpen(false)}
         footer={
           <>

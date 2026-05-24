@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.clients.email_client import EmailClient
 from app.core.errors import (
+    AUTH_ACCOUNT_DISABLED,
     AUTH_ACCOUNT_PENDING,
     AUTH_IDENTIFIER_AMBIGUOUS,
     AUTH_INVALID_CREDENTIALS,
@@ -17,7 +18,7 @@ from app.core.errors import (
     BAD_REQUEST,
     AppException,
 )
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, hash_password, validate_password_strength, verify_password
 from app.core.settings import settings
 from app.repositories.iam_users import IamUserRepository
 from app.repositories.rbac import RbacRepository
@@ -43,6 +44,7 @@ class AuthService:
     def register(self, db: Session, *, username: str, password: str, role_key: str = "employee") -> str:
         if self._users.get_by_username(db, username) is not None:
             raise AppException(AUTH_USERNAME_TAKEN)
+        validate_password_strength(password, username=username)
         company_id = None
         try:
             from sqlalchemy import select
@@ -75,6 +77,10 @@ class AuthService:
             raise AppException(AUTH_INVALID_CREDENTIALS)
         if (getattr(user, "auth_status", None) == "pending") or (user.password_hash is None):
             raise AppException(AUTH_ACCOUNT_PENDING)
+        if str(getattr(user, "auth_status", "active") or "active").strip().lower() != "active":
+            raise AppException(AUTH_ACCOUNT_DISABLED)
+        if str(getattr(user, "status", "active") or "active").strip().lower() != "active":
+            raise AppException(AUTH_ACCOUNT_DISABLED)
         if not verify_password(password, user.password_hash):
             raise AppException(AUTH_INVALID_CREDENTIALS)
         return create_access_token(subject=str(user.id))
@@ -120,6 +126,7 @@ class AuthService:
         if exp is None or exp < now:
             raise AppException(AUTH_INVITE_EXPIRED)
 
+        validate_password_strength(password, username=getattr(user, "username", None))
         user.password_hash = hash_password(password)
         user.auth_status = "active"
         user.invite_token_hash = None
@@ -143,8 +150,13 @@ class AuthService:
             raise AppException(BAD_REQUEST, detail="User không tồn tại")
         if (getattr(user, "auth_status", None) == "pending") or (user.password_hash is None):
             raise AppException(AUTH_ACCOUNT_PENDING)
+        if str(getattr(user, "auth_status", "active") or "active").strip().lower() != "active":
+            raise AppException(AUTH_ACCOUNT_DISABLED)
+        if str(getattr(user, "status", "active") or "active").strip().lower() != "active":
+            raise AppException(AUTH_ACCOUNT_DISABLED)
         if not verify_password(current_password, user.password_hash):
             raise AppException(AUTH_INVALID_CREDENTIALS)
+        validate_password_strength(new_password, username=getattr(user, "username", None))
         user.password_hash = hash_password(new_password)
         db.add(user)
         db.commit()

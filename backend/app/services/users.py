@@ -61,15 +61,6 @@ class UserService:
         policy = self._policy.get_or_create(db, company_id=cid)
         now = datetime.now(ZoneInfo(policy.timezone)).replace(tzinfo=None)
 
-        last = getattr(user, "face_enrolled_at", None)
-        if isinstance(last, datetime) and (last.year == now.year and last.month == now.month):
-            # next allowed: first day of next month 00:00
-            if now.month == 12:
-                next_allowed = datetime(now.year + 1, 1, 1, 0, 0, 0)
-            else:
-                next_allowed = datetime(now.year, now.month + 1, 1, 0, 0, 0)
-            raise ValueError(f"Bạn đã đăng ký khuôn mặt trong tháng này. Vui lòng thử lại sau {next_allowed.isoformat(sep=' ', timespec='minutes')}")
-
         emb = self._ml.extract_embedding(image_bytes=image_bytes)
         import json
 
@@ -94,17 +85,8 @@ class UserService:
         if user is None:
             raise ValueError("User not found")
 
-        cid = int(getattr(user, "company_id", 0) or 0) or None
-        policy = self._policy.get_or_create(db, company_id=cid)
-        now = datetime.now(ZoneInfo(policy.timezone)).replace(tzinfo=None)
         last = getattr(user, "face_enrolled_at", None)
-        next_allowed: datetime | None = None
-        if isinstance(last, datetime) and (last.year == now.year and last.month == now.month):
-            if now.month == 12:
-                next_allowed = datetime(now.year + 1, 1, 1, 0, 0, 0)
-            else:
-                next_allowed = datetime(now.year, now.month + 1, 1, 0, 0, 0)
-        return {"last_enrolled_at": last, "next_allowed_at": next_allowed}
+        return {"last_enrolled_at": last, "next_allowed_at": None}
 
     def list_users(self, db: Session, *, company_id: int | None = None, limit: int = 100, offset: int = 0, q: str | None = None):
         return self._users.list(db, company_id=company_id, limit=limit, offset=offset, q=q)

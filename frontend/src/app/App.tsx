@@ -78,7 +78,7 @@ function PrivateRoutes() {
         <Route
           path="/checkin"
           element={
-            <RequirePermission permission="attendance.read" fallback={<Navigate to="/" replace />}>
+            <RequirePermission permission="attendance.manage" fallback={<Navigate to="/" replace />}>
               <AttendancePage />
             </RequirePermission>
           }

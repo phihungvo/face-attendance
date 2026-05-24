@@ -9,6 +9,20 @@ import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import type { Department } from "../../../shared/types/department";
 import type { User } from "../../../shared/types/user";
 import type { LeaveRequest, LeaveStatus } from "../../../shared/types/leave";
+import {
+  CalendarOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  LeftOutlined,
+  LoadingOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  RightOutlined,
+  SearchOutlined
+} from "@ant-design/icons";
+import { Tooltip } from "antd";
 import styles from "./LeavePage.module.scss";
 
 function initialsFromName(name: string) {
@@ -146,7 +160,13 @@ export default function LeavePage() {
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
-        <Card title="🌴 Trạng thái duyệt">
+        <Card
+          title={
+            <span className={styles.cardTitle}>
+              <CalendarOutlined /> Trạng thái duyệt
+            </span>
+          }
+        >
           <div className={styles.kpis}>
             <div className={styles.kpi}>
               <div className={styles.kpiLabel}>Chờ duyệt</div>
@@ -164,7 +184,13 @@ export default function LeavePage() {
         </Card>
       </div>
 
-      <Card title="🌴 Đơn nghỉ phép">
+      <Card
+        title={
+          <span className={styles.cardTitle}>
+            <CalendarOutlined /> Đơn nghỉ phép
+          </span>
+        }
+      >
         {error ? <div className={styles.error}>{error}</div> : null}
 
         <div className={styles.toolbar}>
@@ -176,7 +202,9 @@ export default function LeavePage() {
           </select>
 
           <div className={styles.searchBox}>
-            <span className={styles.searchIcon}>🔍</span>
+            <span className={styles.searchIcon}>
+              <SearchOutlined />
+            </span>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm theo tên/mã nhân viên..." />
           </div>
 
@@ -191,12 +219,14 @@ export default function LeavePage() {
 
           <div className={styles.dateFilters}>
             <input className={styles.dateInput} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} aria-label="Từ ngày" />
-            <span className={styles.dateSep}>→</span>
+            <span className={styles.dateSep}>
+              <RightOutlined />
+            </span>
             <input className={styles.dateInput} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} aria-label="Đến ngày" />
           </div>
 
           <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh()}>
-            {loading ? "⏳" : "🔄"}
+            {loading ? <LoadingOutlined /> : <ReloadOutlined />}
           </button>
 
           <button
@@ -213,7 +243,7 @@ export default function LeavePage() {
               setModalOpen(true);
             }}
           >
-            + Tạo đơn
+            <PlusOutlined /> Tạo đơn
           </button>
         </div>
 
@@ -265,36 +295,84 @@ export default function LeavePage() {
                     <div className={styles.rowActions}>
                       {r.status === "pending" ? (
                         <>
-                          <button
-                            className={`${styles.actionBtn} ${styles.ok}`}
-                            type="button"
-                            disabled={loading}
-                            title="Duyệt"
-                            onClick={async () => {
-                              try {
-                                setLoading(true);
-                                setError(null);
-                                await approveLeave(r.id);
-                                await Promise.all([refresh(), refreshKpis()]);
-                              } catch (e) {
-                                setError(getApiErrorMessage(e));
-                              } finally {
-                                setLoading(false);
-                              }
-                            }}
-                          >
-                            ✅
-                          </button>
+                          <Tooltip title="Duyệt" placement="top">
+                            <span>
+                              <button
+                                className={`${styles.actionBtn} ${styles.ok}`}
+                                type="button"
+                                disabled={loading}
+                                onClick={async () => {
+                                  try {
+                                    setLoading(true);
+                                    setError(null);
+                                    await approveLeave(r.id);
+                                    await Promise.all([refresh(), refreshKpis()]);
+                                  } catch (e) {
+                                    setError(getApiErrorMessage(e));
+                                  } finally {
+                                    setLoading(false);
+                                  }
+                                }}
+                              >
+                                <CheckOutlined />
+                              </button>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title="Từ chối" placement="top">
+                            <span>
+                              <button
+                                className={`${styles.actionBtn} ${styles.no}`}
+                                type="button"
+                                disabled={loading}
+                                onClick={async () => {
+                                  try {
+                                    setLoading(true);
+                                    setError(null);
+                                    await rejectLeave(r.id);
+                                    await Promise.all([refresh(), refreshKpis()]);
+                                  } catch (e) {
+                                    setError(getApiErrorMessage(e));
+                                  } finally {
+                                    setLoading(false);
+                                  }
+                                }}
+                              >
+                                <CloseOutlined />
+                              </button>
+                            </span>
+                          </Tooltip>
+                        </>
+                      ) : null}
+
+                      <Tooltip title="Sửa" placement="top">
+                        <button
+                          className={styles.actionBtn}
+                          type="button"
+                          onClick={() => {
+                            setEditing(r);
+                            setUserId(String(r.user_id));
+                            setType(r.type);
+                            setStartDate(r.start_date);
+                            setEndDate(r.end_date);
+                            setReason(r.reason || "");
+                            setModalOpen(true);
+                          }}
+                        >
+                          <EditOutlined />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Xóa" placement="top">
+                        <span>
                           <button
                             className={`${styles.actionBtn} ${styles.no}`}
                             type="button"
                             disabled={loading}
-                            title="Từ chối"
                             onClick={async () => {
+                              if (!confirm(`Xóa đơn nghỉ phép của "${name}"?`)) return;
                               try {
                                 setLoading(true);
                                 setError(null);
-                                await rejectLeave(r.id);
+                                await deleteLeave(r.id);
                                 await Promise.all([refresh(), refreshKpis()]);
                               } catch (e) {
                                 setError(getApiErrorMessage(e));
@@ -303,47 +381,10 @@ export default function LeavePage() {
                               }
                             }}
                           >
-                            ❌
+                            <DeleteOutlined />
                           </button>
-                        </>
-                      ) : null}
-
-                      <button
-                        className={styles.actionBtn}
-                        type="button"
-                        title="Sửa"
-                        onClick={() => {
-                          setEditing(r);
-                          setUserId(String(r.user_id));
-                          setType(r.type);
-                          setStartDate(r.start_date);
-                          setEndDate(r.end_date);
-                          setReason(r.reason || "");
-                          setModalOpen(true);
-                        }}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className={`${styles.actionBtn} ${styles.no}`}
-                        type="button"
-                        disabled={loading}
-                        onClick={async () => {
-                          if (!confirm(`Xóa đơn nghỉ phép của "${name}"?`)) return;
-                          try {
-                            setLoading(true);
-                            setError(null);
-                            await deleteLeave(r.id);
-                            await Promise.all([refresh(), refreshKpis()]);
-                          } catch (e) {
-                            setError(getApiErrorMessage(e));
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                      >
-                        🗑
-                      </button>
+                        </span>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>
@@ -358,7 +399,7 @@ export default function LeavePage() {
           <div className={styles.pageHint}>{total === 0 ? "0 kết quả" : `Trang ${pageSafe}/${totalPages} • ${total} đơn`}</div>
           <div className={styles.pageControls}>
             <button className={styles.pageBtn} type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
-              ←
+              <LeftOutlined />
             </button>
             {pageButtons.map((p) => (
               <button
@@ -371,7 +412,7 @@ export default function LeavePage() {
               </button>
             ))}
             <button className={styles.pageBtn} type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe >= totalPages}>
-              →
+              <RightOutlined />
             </button>
           </div>
         </div>
@@ -379,7 +420,12 @@ export default function LeavePage() {
 
       <Modal
         open={modalOpen}
-        title={editing ? "✏️ Sửa đơn nghỉ phép" : "➕ Tạo đơn nghỉ phép"}
+        title={
+          <span className={styles.modalTitle}>
+            {editing ? <EditOutlined /> : <PlusOutlined />}
+            {editing ? "Sửa đơn nghỉ phép" : "Tạo đơn nghỉ phép"}
+          </span>
+        }
         onClose={() => setModalOpen(false)}
         footer={
           <>

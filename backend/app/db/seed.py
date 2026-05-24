@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.core.settings import settings
+from app.repositories.attendance_policy import AttendancePolicyRepository
+from app.repositories.notifications import NotificationRepository
 from app.models.company import Company
 from app.models.rbac import Permission, Role
 from app.models.user import User
@@ -16,8 +18,11 @@ PERMISSIONS: list[tuple[str, str]] = [
     ("attendance.manage", "Quản lý chấm công"),
     ("timesheet.read", "Xem bảng giờ công"),
     ("employees.read", "Xem nhân viên"),
+    ("employees.manage", "Quản lý nhân viên"),
     ("departments.read", "Xem phòng ban"),
+    ("departments.manage", "Quản lý phòng ban"),
     ("leave.read", "Xem nghỉ phép"),
+    ("leave.manage", "Quản lý nghỉ phép"),
     ("leave.approve", "Duyệt nghỉ phép"),
     ("reports.read", "Xem báo cáo"),
     ("overtime.read", "Xem tăng ca"),
@@ -25,6 +30,7 @@ PERMISSIONS: list[tuple[str, str]] = [
     ("payroll.read", "Xem bảng lương"),
     ("notifications.read", "Xem thông báo"),
     ("settings.read", "Xem cài đặt"),
+    ("settings.manage", "Quản lý cài đặt"),
     ("iam.manage", "Quản lý phân quyền (IAM)"),
     ("companies.read", "Xem danh sách công ty"),
     ("companies.manage", "Quản lý công ty"),
@@ -150,8 +156,18 @@ def seed_rbac(db: Session) -> None:
     company = _ensure_default_company(db)
     _ensure_bootstrap_admin(db, company=company, admin_role=admin_role)
 
-    # Optional bootstrap manager/employee accounts for testing (from env).
-    if manager_role is not None:
+    # Prewarm foundational singleton/company-scoped config rows so the first
+    # settings reads do not need to mutate the database.
+    try:
+        policy_repo = AttendancePolicyRepository()
+        policy_repo.get_default_or_create(db)
+        policy_repo.get_or_create_for_company(db, company_id=int(company.id))
+        NotificationRepository().get_or_create_company_policy(db, company_id=int(company.id))
+    except Exception:
+        pass
+
+    # Optional bootstrap manager/employee accounts for testing.
+    if settings.BOOTSTRAP_TEST_USERS_ENABLED and manager_role is not None:
         _ensure_bootstrap_user(
             db,
             company=company,
@@ -160,7 +176,7 @@ def seed_rbac(db: Session) -> None:
             role=manager_role,
             display_name="Manager",
         )
-    if employee_role is not None:
+    if settings.BOOTSTRAP_TEST_USERS_ENABLED and employee_role is not None:
         _ensure_bootstrap_user(
             db,
             company=company,

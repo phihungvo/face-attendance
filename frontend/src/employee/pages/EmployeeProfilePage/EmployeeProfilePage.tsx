@@ -2,9 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../shared/auth/auth";
 import styles from "./EmployeeProfilePage.module.scss";
 import { useCamera } from "../../../shared/hooks/useCamera";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { enrollMyFace, getMyFaceStatus } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { formatDateTimeVi } from "../../../shared/lib/date";
 import { getMyProfile } from "../../../shared/api/users";
 import { listMyTimelog } from "../../../shared/api/attendance";
 import { useTheme } from "../../../shared/theme/theme";
@@ -12,11 +13,10 @@ import { getMyCompany, type Company } from "../../../shared/api/companies";
 import {
   BankOutlined,
   CameraOutlined,
-  CheckCircleOutlined,
+  IdcardOutlined,
   LockOutlined,
   LogoutOutlined,
   MoonOutlined,
-  RightOutlined,
   SafetyOutlined,
   StopOutlined,
   SunOutlined,
@@ -26,6 +26,14 @@ import {
 import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
 import { invalidateKey } from "../../../shared/lib/queryCache";
 import { empKeys } from "../../cacheKeys";
+
+type DetailItem = {
+  key: string;
+  label: string;
+  value: string;
+  icon: ReactNode;
+  tone: "indigo" | "green" | "amber" | "rose";
+};
 
 export default function EmployeeProfilePage() {
   const auth = useAuth();
@@ -59,7 +67,6 @@ export default function EmployeeProfilePage() {
     fetcher: getMyFaceStatus
   });
   const lastFace = qFace.data?.last_enrolled_at ?? null;
-  const nextAllowed = qFace.data?.next_allowed_at ?? null;
 
   const initials = (me?.name || auth.username || "ME")
     .split(" ")
@@ -99,224 +106,226 @@ export default function EmployeeProfilePage() {
     setAttendancePct(total > 0 ? Math.round((present / total) * 100) : null);
   }, [qMonth.data]);
 
+  const companyLogo = company?.logo_data_url ?? auth.companyLogoDataUrl ?? null;
+  const companyName = company?.name || auth.companyName || "Công ty của bạn";
+  const faceStatusText = lastFace ? `Đã cập nhật ${formatDateTimeVi(new Date(lastFace))}` : "Chưa đăng ký khuôn mặt";
+  const faceReady = Boolean(lastFace);
+  const faceToneClass = faceReady ? styles.good : styles.warn;
+
+  const details = useMemo<DetailItem[]>(
+    () => [
+      {
+        key: "username",
+        label: "Tài khoản",
+        value: auth.username ?? "—",
+        icon: <UserOutlined />,
+        tone: "indigo"
+      },
+      {
+        key: "code",
+        label: "Mã nhân viên",
+        value: me?.code || "Chưa cấp mã",
+        icon: <IdcardOutlined />,
+        tone: "green"
+      },
+      {
+        key: "department",
+        label: "Phòng ban",
+        value: me?.department_name || "Chưa gắn phòng ban",
+        icon: <BankOutlined />,
+        tone: "amber"
+      },
+      {
+        key: "permissions",
+        label: "Quyền truy cập",
+        value: `${auth.permissionKeys.length} quyền`,
+        icon: <SafetyOutlined />,
+        tone: "rose"
+      }
+    ],
+    [auth.permissionKeys.length, auth.username, me?.code, me?.department_name]
+  );
+
   return (
     <div className={styles.page}>
-      <div className={styles.profileHeader}>
-        <div className={styles.profileAvatar}>{initials || "ME"}</div>
-        <div className={styles.profileName}>{me?.name || auth.username || "—"}</div>
-        <div className={styles.profileRole}>Nhân viên{me?.department_name ? ` · ${me.department_name}` : ""}</div>
-        <div className={styles.profileId}>Mã NV: {me?.code || "—"}</div>
-      </div>
+      <section className={styles.hero}>
+        <div className={styles.heroMain}>
+          <div className={styles.heroIdentity}>
+            <div className={styles.avatar}>{initials || "ME"}</div>
+            <div className={styles.heroText}>
+              <h1 className={styles.heroName}>{me?.name || auth.username || "—"}</h1>
+              <div className={styles.heroSub}>
+                <span>{me?.department_name || "Nhân viên"}</span>
+                <span>{me?.code ? `Mã ${me.code}` : "Chưa cấp mã"}</span>
+              </div>
+            </div>
+          </div>
 
-      <div className={styles.profileStats}>
-        <div className={styles.profileStat}>
-          <div className={styles.profileStatVal} style={{ color: "var(--indigo)" }}>
-            {attendancePct !== null ? `${attendancePct}%` : "—"}
+          <div className={styles.heroCompany}>
+            {companyLogo ? (
+              <div className={styles.companyLogoWrap}>
+                <img className={styles.companyLogo} src={companyLogo} alt={companyName} />
+              </div>
+            ) : (
+              <div className={styles.companyFallback}>{companyName.trim().slice(0, 1).toUpperCase() || "C"}</div>
+            )}
+            <div className={styles.heroCompanyText}>
+              <div className={styles.heroCompanyLabel}>Công ty</div>
+              <div className={styles.heroCompanyName}>{companyName}</div>
+            </div>
           </div>
-          <div className={styles.profileStatLbl}>Chuyên cần</div>
         </div>
-        <div className={styles.profileStat}>
-          <div className={styles.profileStatVal} style={{ color: "var(--green)" }}>
-            {monthDays !== null ? monthDays : "—"}
-          </div>
-          <div className={styles.profileStatLbl}>Ngày công</div>
-        </div>
-        <div className={styles.profileStat}>
-          <div className={styles.profileStatVal} style={{ color: "var(--amber)" }}>
-            {expLabel}
-          </div>
-          <div className={styles.profileStatLbl}>Kinh nghiệm</div>
-        </div>
-      </div>
 
-      <div className={styles.profileScroll}>
-        <div className={styles.profileSection}>
-          <div className={styles.profileSectionTitle}>Thông tin tài khoản</div>
-          <div className={styles.profileRow}>
-            <div className={styles.profileItem}>
-              <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
-                <UserOutlined />
-              </div>
-              <div>
-                <div className={styles.profileItemKey}>Username</div>
-                <div className={styles.profileItemVal}>{auth.username ?? "—"}</div>
-              </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
-              </div>
+        <div className={styles.heroMetrics}>
+          <div className={styles.metricPrimary}>
+            <span className={styles.metricLabel}>Chuyên cần</span>
+            <strong className={styles.metricValue}>{attendancePct !== null ? `${attendancePct}%` : "—"}</strong>
+          </div>
+
+          <div className={styles.metricPair}>
+            <div className={styles.metricSecondary}>
+              <span className={styles.metricLabel}>Ngày công</span>
+              <strong className={styles.metricSmallValue}>{monthDays !== null ? monthDays : "—"}</strong>
             </div>
-            <div className={styles.profileItem}>
-              <div className={styles.profileItemIcon} style={{ background: "var(--amber-light)" }}>
-                <SafetyOutlined />
-              </div>
-              <div>
-                <div className={styles.profileItemKey}>Roles</div>
-                <div className={styles.profileItemVal}>{auth.roleKeys.join(", ") || "—"}</div>
-              </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
-              </div>
+            <div className={styles.metricSecondary}>
+              <span className={styles.metricLabel}>Kinh nghiệm</span>
+              <strong className={styles.metricSmallValue}>{expLabel}</strong>
             </div>
-            <div className={styles.profileItem}>
-              <div className={styles.profileItemIcon} style={{ background: "var(--green-light)" }}>
-                <CheckCircleOutlined />
-              </div>
-              <div>
-                <div className={styles.profileItemKey}>Quyền</div>
-                <div className={styles.profileItemVal}>{auth.permissionKeys.length} permissions</div>
-              </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
-              </div>
+          </div>
+        </div>
+      </section>
+
+      <div className={styles.content}>
+        <section className={styles.panel}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionEyebrow}>Thông tin chính</div>
             </div>
-            <div className={styles.profileItem}>
-              <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
-                <BankOutlined />
-              </div>
-              <div>
-                <div className={styles.profileItemKey}>Công ty</div>
-                <div className={styles.profileItemVal}>
-                  {company ? `${company.name}${company.code ? ` (${company.code})` : ""}` : "—"}
-                  {company?.address ? ` • ${company.address}` : ""}
+          </div>
+
+          <div className={styles.detailGrid}>
+            {details.map((item) => (
+              <div className={styles.detailCard} key={item.key}>
+                <div className={`${styles.detailIcon} ${styles[item.tone]}`}>{item.icon}</div>
+                <div className={styles.detailBody}>
+                  <div className={styles.detailLabel}>{item.label}</div>
+                  <div className={styles.detailValue}>{item.value}</div>
                 </div>
               </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
+            ))}
+          </div>
+        </section>
+
+        <div className={styles.columns}>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <div>
+                <div className={styles.sectionEyebrow}>Bảo mật và giao diện</div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className={styles.profileSection}>
-          <div className={styles.profileSectionTitle}>Đăng ký khuôn mặt</div>
-          <div className={styles.faceCard} id="face-section">
-            <div className={styles.faceCamera}>
-              {!cam.state.ready ? (
-                <div className={styles.facePlaceholder}>
-                  <CameraOutlined /> Camera chưa bật
+            <div className={styles.actionList}>
+              <button className={styles.actionRow} type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối">
+                <div className={`${styles.actionIcon} ${styles.indigo}`}>{resolvedTheme === "dark" ? <MoonOutlined /> : <SunOutlined />}</div>
+                <div className={styles.actionText}>
+                  <div className={styles.actionTitle}>Giao diện</div>
+                  <div className={styles.actionSub}>{resolvedTheme === "dark" ? "Đang tối" : "Đang sáng"}</div>
                 </div>
-              ) : null}
-              <video ref={cam.videoRef} className={styles.faceVideo} playsInline muted />
-            </div>
-
-            {cam.state.error ? <div className={styles.faceWarn}>{cam.state.error}</div> : null}
-            {faceError ? <div className={styles.faceErr}>{faceError}</div> : null}
-            {faceInfo ? <div className={styles.faceInfo}>{faceInfo}</div> : null}
-
-            <div className={styles.faceActions}>
-              {!cam.state.ready ? (
-                <button className={styles.faceBtnPrimary} type="button" disabled={busy} onClick={() => cam.start()}>
-                  <CameraOutlined /> Bật camera
-                </button>
-              ) : (
-                <button
-                  className={styles.faceBtnPrimary}
-                  type="button"
-                  disabled={!cam.state.ready || busy}
-                  onClick={async () => {
-                    try {
-                      setBusy(true);
-                      setFaceError(null);
-                      setFaceInfo(null);
-                      const blob = await cam.capture({ quality: 0.9, type: "image/jpeg" });
-                      const res = await enrollMyFace(blob);
-                      setFaceInfo("Đăng ký khuôn mặt thành công");
-                      invalidateKey(empKeys.myFaceStatus());
-                      qFace.refresh();
-                      return res;
-                    } catch (e) {
-                      setFaceError(getApiErrorMessage(e));
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  {busy ? "Đang đăng ký..." : "Đăng ký / Cập nhật"}
-                </button>
-              )}
-              <button className={styles.faceBtnGhost} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.switchCamera()}>
-                <SwapOutlined /> Đổi camera
               </button>
-              <button className={styles.faceBtnGhost} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.stop()}>
-                <StopOutlined /> Tắt camera
+
+              <button className={styles.actionRow} type="button" onClick={() => nav("/employee/change-password")}>
+                <div className={`${styles.actionIcon} ${styles.amber}`}>
+                  <LockOutlined />
+                </div>
+                <div className={styles.actionText}>
+                  <div className={styles.actionTitle}>Đổi mật khẩu</div>
+                  <div className={styles.actionSub}>Cập nhật bảo mật tài khoản</div>
+                </div>
+              </button>
+
+              <button
+                className={`${styles.actionRow} ${styles.actionDanger}`}
+                type="button"
+                onClick={() => {
+                  auth.logout();
+                  nav("/", { replace: true });
+                }}
+              >
+                <div className={`${styles.actionIcon} ${styles.rose}`}>
+                  <LogoutOutlined />
+                </div>
+                <div className={styles.actionText}>
+                  <div className={styles.actionTitle}>Đăng xuất</div>
+                  <div className={styles.actionSub}>Thoát khỏi tài khoản hiện tại</div>
+                </div>
               </button>
             </div>
-            <div className={styles.faceHint}>Giới hạn: mỗi tài khoản chỉ được đăng ký khuôn mặt 1 lần / tháng.</div>
-          </div>
-        </div>
+          </section>
 
-        <div className={styles.profileSection}>
-          <div className={styles.profileSectionTitle}>Cài đặt & Bảo mật</div>
-          <div className={styles.profileRow}>
-            <button className={`${styles.profileItem} ${styles.clickable}`} type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối">
-              <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
-                {resolvedTheme === "dark" ? <MoonOutlined /> : <SunOutlined />}
-              </div>
+          <section className={styles.panel} id="face-section">
+            <div className={styles.sectionHead}>
               <div>
-                <div className={styles.profileItemKey}>Giao diện</div>
-                <div className={styles.profileItemVal} style={{ color: "var(--indigo)" }}>
-                  {resolvedTheme === "dark" ? "Đang tối" : "Đang sáng"}
+                <div className={styles.sectionEyebrow}>Sinh trắc học</div>
+              </div>
+              <div className={`${styles.statusChip} ${faceToneClass}`}>{faceStatusText}</div>
+            </div>
+
+            <div className={styles.faceCard}>
+              <div className={styles.faceCamera}>
+                {!cam.state.ready ? (
+                  <div className={styles.facePlaceholder}>
+                    <CameraOutlined />
+                    <span>Camera chưa bật</span>
+                  </div>
+                ) : null}
+                <video ref={cam.videoRef} className={styles.faceVideo} playsInline muted />
+              </div>
+
+              <div className={styles.faceControls}>
+                {cam.state.error ? <div className={`${styles.notice} ${styles.warn}`}>{cam.state.error}</div> : null}
+                {faceError ? <div className={`${styles.notice} ${styles.danger}`}>{faceError}</div> : null}
+                {faceInfo ? <div className={`${styles.notice} ${styles.good}`}>{faceInfo}</div> : null}
+
+                <div className={styles.faceButtons}>
+                  {!cam.state.ready ? (
+                    <button className={styles.primaryBtn} type="button" disabled={busy} onClick={() => cam.start()}>
+                      <CameraOutlined /> Bật camera
+                    </button>
+                  ) : (
+                    <button
+                      className={styles.primaryBtn}
+                      type="button"
+                      disabled={!cam.state.ready || busy}
+                      onClick={async () => {
+                        try {
+                          setBusy(true);
+                          setFaceError(null);
+                          setFaceInfo(null);
+                          const blob = await cam.capture({ quality: 0.9, type: "image/jpeg" });
+                          await enrollMyFace(blob);
+                          setFaceInfo("Đã lưu khuôn mặt thành công");
+                          invalidateKey(empKeys.myFaceStatus());
+                          qFace.refresh();
+                        } catch (e) {
+                          setFaceError(getApiErrorMessage(e));
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      {busy ? "Đang lưu..." : "Lưu khuôn mặt"}
+                    </button>
+                  )}
+                  <button className={styles.secondaryBtn} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.switchCamera()}>
+                    <SwapOutlined /> Đổi camera
+                  </button>
+                  <button className={styles.secondaryBtn} type="button" disabled={!cam.state.ready || busy} onClick={() => cam.stop()}>
+                    <StopOutlined /> Tắt camera
+                  </button>
                 </div>
               </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
-              </div>
-            </button>
-            <button
-              className={`${styles.profileItem} ${styles.clickable}`}
-              type="button"
-              onClick={() => document.getElementById("face-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            >
-              <div className={styles.profileItemIcon} style={{ background: "var(--indigo-light)" }}>
-                <CameraOutlined />
-              </div>
-              <div>
-                <div className={styles.profileItemKey}>Khuôn mặt đã đăng ký</div>
-                <div className={styles.profileItemVal}>
-                  {lastFace ? `Cập nhật lần cuối: ${new Date(lastFace).toLocaleString("vi-VN")}` : "Chưa đăng ký"}
-                  {nextAllowed ? ` • Có thể đăng ký lại sau: ${new Date(nextAllowed).toLocaleString("vi-VN")}` : ""}
-                </div>
-              </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
-              </div>
-            </button>
-            <button className={`${styles.profileItem} ${styles.clickable}`} type="button" onClick={() => nav("/employee/change-password")}>
-              <div className={styles.profileItemIcon} style={{ background: "#FFE9E9" }}>
-                <LockOutlined />
-              </div>
-              <div>
-                <div className={styles.profileItemKey}>Đổi mật khẩu</div>
-                <div className={styles.profileItemVal} style={{ color: "var(--indigo)" }}>
-                  Thay đổi
-                </div>
-              </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
-              </div>
-            </button>
-            <button
-              className={`${styles.profileItem} ${styles.clickable}`}
-              type="button"
-              onClick={() => {
-                auth.logout();
-                nav("/", { replace: true });
-              }}
-            >
-              <div className={styles.profileItemIcon} style={{ background: "#FFE9E9" }}>
-                <LogoutOutlined />
-              </div>
-              <div>
-                <div className={styles.profileItemKey}>Đăng xuất</div>
-                <div className={styles.profileItemVal} style={{ color: "var(--rose)" }}>
-                  Thoát khỏi tài khoản
-                </div>
-              </div>
-              <div className={styles.profileItemArrow}>
-                <RightOutlined />
-              </div>
-            </button>
-          </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>

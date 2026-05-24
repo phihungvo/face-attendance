@@ -44,11 +44,10 @@ class AccountOut(BaseModel):
 
 class AccountCreateRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=8, max_length=128)
     role_keys: list[str] = Field(default_factory=list)
 
 
 class AccountUpdateRequest(BaseModel):
     role_keys: list[str] = Field(default_factory=list)
     permission_keys: list[str] = Field(default_factory=list)
-

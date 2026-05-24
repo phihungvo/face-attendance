@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
 from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
+from app.core.settings import settings
+from app.core.throttling import get_client_ip, request_rate_limiter
+from app.core.uploads import read_validated_image_upload
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
-from app.schemas.companies import CompanyCreateRequest, CompanyOut, CompanyUpdateRequest
+from app.schemas.companies import CompanyCreateRequest, CompanyListOut, CompanyOut, CompanyUpdateRequest
 from app.services.companies import CompanyService
 from app.services.notifications import NotificationService
 from app.api.deps import get_current_user
@@ -18,14 +21,14 @@ service = CompanyService()
 notification_service = NotificationService()
 
 
-@router.get("", response_model=ApiResponse[list[CompanyOut]])
+@router.get("", response_model=ApiResponse[list[CompanyListOut]])
 def list_companies(
     q: str | None = Query(default=None, description="Search by name/code"),
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: object = Depends(require_permission("companies.read")),
-) -> ApiResponse[list[CompanyOut]]:
+) -> ApiResponse[list[CompanyListOut]]:
     return ok(service.list_companies(db, limit=limit, offset=offset, q=q.strip() if q else None))
 
 
@@ -37,6 +40,36 @@ def get_company(
 ) -> ApiResponse[CompanyOut]:
     try:
         return ok(service.get_company(db, company_id=company_id))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.put("/{company_id:int}/logo", response_model=ApiResponse[CompanyOut])
+async def update_company_logo(
+    company_id: int,
+    request: Request,
+    logo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("companies.manage")),
+) -> ApiResponse[CompanyOut]:
+    try:
+        request_rate_limiter.hit(
+            scope="company-logo",
+            key=get_client_ip(request),
+            limit=int(settings.LOGO_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.LOGO_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.LOGO_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn tải logo lên quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        logo_bytes, normalized_type = await read_validated_image_upload(logo, max_bytes=2 * 1024 * 1024, field_label="Logo công ty")
+        return ok(
+            service.update_company_logo(
+                db,
+                company_id=company_id,
+                logo_bytes=logo_bytes,
+                content_type=normalized_type,
+            )
+        )
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 
@@ -133,7 +166,7 @@ def update_my_company(
     payload: CompanyUpdateRequest,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
-    _: object = Depends(require_permission("settings.read")),
+    _: object = Depends(require_permission("settings.manage")),
 ) -> ApiResponse[CompanyOut]:
     cid = getattr(user, "company_id", None)
     if cid is None:
@@ -174,6 +207,39 @@ def update_my_company(
             except Exception:
                 pass
         return ok(result)
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.put("/me/logo", response_model=ApiResponse[CompanyOut])
+async def update_my_company_logo(
+    request: Request,
+    logo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    _: object = Depends(require_permission("settings.manage")),
+) -> ApiResponse[CompanyOut]:
+    cid = getattr(user, "company_id", None)
+    if cid is None:
+        raise AppException(BAD_REQUEST, detail="User chưa gắn company")
+    try:
+        request_rate_limiter.hit(
+            scope="company-logo",
+            key=f"{get_client_ip(request)}:{int(user.id)}",
+            limit=int(settings.LOGO_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.LOGO_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.LOGO_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn tải logo lên quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        logo_bytes, normalized_type = await read_validated_image_upload(logo, max_bytes=2 * 1024 * 1024, field_label="Logo công ty")
+        return ok(
+            service.update_company_logo(
+                db,
+                company_id=int(cid),
+                logo_bytes=logo_bytes,
+                content_type=normalized_type,
+            )
+        )
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 

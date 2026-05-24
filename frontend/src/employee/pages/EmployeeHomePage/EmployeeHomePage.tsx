@@ -5,6 +5,7 @@ import {getMyProfile} from "../../../shared/api/users";
 import {listMyTimelog} from "../../../shared/api/attendance";
 import {getMyLeaveBalance} from "../../../shared/api/leaves";
 import {useTheme} from "../../../shared/theme/theme";
+import {useAuth} from "../../../shared/auth/auth";
 import {
     listMyScheduleRegistrations,
     listSchedules,
@@ -28,6 +29,7 @@ import {useCachedQuery} from "../../../shared/hooks/useCachedQuery";
 import {empKeys} from "../../cacheKeys";
 
 export default function EmployeeHomePage() {
+    const auth = useAuth();
     const {resolvedTheme, toggle} = useTheme();
     const [today, setToday] = useState<{ checkin: string; checkout: string; worked: string; status: "in" | "idle" }>({
         checkin: "—",
@@ -299,6 +301,8 @@ export default function EmployeeHomePage() {
         .slice(-2)
         .map((s) => s[0]?.toUpperCase() ?? "")
         .join("");
+    const companyName = auth.companyName || "Công ty của bạn";
+    const companyInitial = companyName.trim().slice(0, 1).toUpperCase() || "C";
 
     return (
         <div className={styles.page}>

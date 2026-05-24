@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import styles from "./StatCard.module.scss";
 
 export default function StatCard({
@@ -7,7 +8,7 @@ export default function StatCard({
   delta,
   variant
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   value: string | number;
   delta?: { label: string; tone?: "green" | "red" | "neutral" };
