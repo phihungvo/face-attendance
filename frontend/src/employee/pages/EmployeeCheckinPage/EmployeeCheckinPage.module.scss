@@ -1,30 +1,27 @@
 .page {
-  background: var(--paper);
   min-height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.page {
-  /* Reduce scroll-jank on iOS when camera is active */
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.12), transparent 36%),
+    linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
   overscroll-behavior: none;
 }
 
 .screenHeader {
-  background: var(--surface);
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 18px 16px 14px;
 }
 
 .backBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,104 +29,191 @@
   cursor: pointer;
 }
 
-.screenHeaderTitle {
-  font-size: 18px;
+.screenHeaderEyebrow {
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7a90;
+}
+
+.screenHeaderTitle {
+  font-size: 20px;
+  font-weight: 900;
+  color: #102033;
 }
 
 .content {
-  padding: 20px;
-  padding-bottom: var(--bottom-safe);
-  scroll-padding-bottom: var(--bottom-safe);
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 0 16px calc(22px + var(--bottom-safe));
 }
 
-@media (min-width: 900px) {
-  .screenHeader {
-    padding: 22px 24px 16px;
-  }
-
-  .content {
-    padding: 24px;
-  }
+.heroCard,
+.cameraCard,
+.primaryPanel,
+.logList,
+.warnBox,
+.errBox,
+.infoBox {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(12px);
 }
 
-.statusRow {
+.heroCard {
+  padding: 18px;
+  border-radius: 26px;
+}
+
+.heroTop {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 16px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.statusReady {
+  background: rgba(13, 148, 136, 0.12);
+  color: #0f766e;
+}
+
+.statusWorking {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.statusDone {
+  background: rgba(100, 116, 139, 0.14);
+  color: #334155;
+}
+
+.heroTitle {
+  margin: 12px 0 6px;
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 900;
+  color: #102033;
+}
+
+.heroSubtitle {
+  margin: 0;
+  color: #66768c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.heroProgress {
+  min-width: 84px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(16, 32, 51, 0.04), rgba(16, 32, 51, 0.08));
+  text-align: right;
+}
+
+.heroProgress span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #6b7a90;
+}
+
+.heroProgress strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 26px;
+  font-weight: 900;
+  color: #102033;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  margin-top: 18px;
+}
+
+.statCard {
+  padding: 12px 13px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eff5fb 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.statCard span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #73839a;
+}
+
+.statCard strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #102033;
+}
+
+.cameraCard {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 26px;
+}
+
+.cameraTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 14px;
 }
 
-.autoChip {
-  padding: 6px 10px;
+.cameraTitleWrap {
+  min-width: 0;
+}
+
+.cameraTitle {
+  font-size: 17px;
+  font-weight: 900;
+  color: #102033;
+}
+
+.cameraHint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7a90;
+}
+
+.cameraMeta {
+  flex: 0 0 auto;
+  padding: 7px 10px;
   border-radius: 999px;
+  background: rgba(16, 32, 51, 0.06);
+  color: #506076;
   font-size: 11px;
   font-weight: 900;
-  background: rgba(91, 79, 232, 0.12);
-  border: 1px solid rgba(91, 79, 232, 0.18);
-  color: var(--indigo);
-  white-space: nowrap;
 }
 
-.statusChip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.statusChip::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-.in {
-  background: var(--green-light);
-  color: #1a9e5a;
-}
-.in::before {
-  background: var(--green);
-}
-
-.out {
-  background: var(--rose-light);
-  color: #c02050;
-}
-.out::before {
-  background: var(--rose);
-}
-
-.ghost {
-  border: 1.5px solid var(--border);
-  background: var(--surface2);
-  color: var(--ink);
-  border-radius: 12px;
-  padding: 10px 12px;
-  cursor: pointer;
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.camera {
-  border-radius: 18px;
-  border: 1.5px solid var(--border);
-  background: linear-gradient(135deg, #ffffff, #f2f1fc);
-  height: 260px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
+.cameraStage {
   position: relative;
-}
-
-.cameraInner {
-  color: var(--ink3);
-  font-weight: 900;
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  aspect-ratio: 3 / 4;
+  min-height: 320px;
 }
 
 .video {
@@ -137,128 +221,323 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transform: translateZ(0);
 }
 
-@media (max-width: 599px) {
-  .content {
-    padding: 16px;
-    padding-bottom: var(--bottom-safe);
-  }
-
-  .camera {
-    height: min(62dvh, 420px);
-    border-radius: 20px;
-  }
-
-  .actions {
-    position: sticky;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, rgba(247, 246, 255, 0.92), rgba(247, 246, 255, 0));
-    padding: 10px 0 0;
-    margin-top: 10px;
-    backdrop-filter: blur(8px);
-  }
+.cameraPlaceholder,
+.scanGuide {
+  position: absolute;
+  inset: 0;
 }
 
-.actions {
+.cameraPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.cameraPlaceholder :global(svg) {
+  font-size: 34px;
+}
+
+.scanGuide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.35));
+}
+
+.scanGuideFrame {
+  width: min(68vw, 246px);
+  height: min(84vw, 296px);
+  max-width: 72%;
+  max-height: 72%;
+  border-radius: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 0 0 999px rgba(15, 23, 42, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.scanGuideText {
+  margin-top: 16px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.48);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cameraTools {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 14px;
 }
 
-.primary,
-.danger {
-  border: none;
-  border-radius: 14px;
-  padding: 14px;
-  cursor: pointer;
+.toolBtn {
+  min-height: 50px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  background: #f6f9fc;
+  color: #102033;
+  font-size: 12px;
   font-weight: 900;
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 0 12px;
 }
 
-.primary {
-  background: linear-gradient(135deg, var(--green), #22b068);
+.toolBtnPrimary {
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
   color: #fff;
-  box-shadow: 0 4px 18px rgba(52, 200, 119, 0.35);
+  border-color: transparent;
 }
 
-.danger {
-  background: linear-gradient(135deg, var(--rose), #e03060);
-  color: #fff;
-  box-shadow: 0 4px 18px rgba(242, 92, 122, 0.35);
+.toolBtnActive {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.02));
+}
+
+.toolBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .warnBox,
 .errBox,
 .infoBox {
   margin-top: 12px;
-  border-radius: 12px;
-  padding: 10px 12px;
+  padding: 13px 14px;
+  border-radius: 18px;
   font-size: 13px;
-  font-weight: 800;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  font-weight: 700;
+  line-height: 1.5;
+  color: #102033;
 }
 
 .warnBox {
-  border-left: 3px solid var(--warning);
+  border-left: 4px solid #f59e0b;
 }
 
 .errBox {
-  border-left: 3px solid var(--danger);
+  border-left: 4px solid #ef4444;
 }
 
 .infoBox {
-  border-left: 3px solid var(--primary);
+  border-left: 4px solid #10b981;
+}
+
+.inlineMeta {
+  margin-top: 6px;
+  color: #6b7a90;
+  font-weight: 600;
+}
+
+.primaryPanel {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 24px;
+  position: sticky;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+.primaryAction {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.primaryCheckin {
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  box-shadow: 0 18px 32px rgba(20, 184, 166, 0.28);
+}
+
+.primaryCheckout {
+  background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%);
+  box-shadow: 0 18px 32px rgba(37, 99, 235, 0.24);
+}
+
+.primaryDone {
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+  box-shadow: none;
+}
+
+.primaryAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.primaryHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: #5d6d83;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.logSection {
+  margin-top: 16px;
 }
 
 .sectionTitle {
-  margin-top: 16px;
+  margin-bottom: 10px;
   font-size: 13px;
   font-weight: 900;
+  color: #516178;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .logList {
-  margin-top: 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
   overflow: hidden;
+  border-radius: 24px;
 }
 
 .logRow {
   display: grid;
-  grid-template-columns: 90px 1fr 70px;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
+  padding: 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
 }
 
 .logRow:last-child {
   border-bottom: none;
 }
 
+.logIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.logIconIn {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.logIconOut {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.logBody {
+  min-width: 0;
+}
+
 .logType {
+  font-size: 14px;
   font-weight: 900;
+  color: #102033;
 }
 
 .logTime {
-  color: var(--ink2);
+  margin-top: 4px;
+  color: #66768c;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .logConf {
-  text-align: right;
   font-family: var(--mono);
   font-size: 12px;
-  color: var(--ink3);
+  font-weight: 800;
+  color: #6b7a90;
 }
 
 .empty {
-  padding: 14px;
-  color: var(--ink3);
-  font-weight: 800;
+  padding: 18px 14px;
+  color: #6b7a90;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 599px) {
+  .content {
+    padding-inline: 12px;
+  }
+
+  .heroCard,
+  .cameraCard,
+  .primaryPanel,
+  .logList,
+  .warnBox,
+  .errBox,
+  .infoBox {
+    border-radius: 22px;
+  }
+
+  .heroTop {
+    flex-direction: column;
+  }
+
+  .heroProgress {
+    width: 100%;
+    text-align: left;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cameraTopRow {
+    flex-direction: column;
+  }
+
+  .cameraMeta {
+    align-self: flex-start;
+  }
+
+  .cameraStage {
+    min-height: 360px;
+  }
+
+  .cameraTools {
+    grid-template-columns: 1fr;
+  }
+
+  .toolBtn {
+    justify-content: flex-start;
+  }
+}
+
+@media (min-width: 600px) {
+  .screenHeader {
+    padding-inline: 24px;
+  }
+
+  .content {
+    padding-inline: 20px;
+  }
+
+  .primaryPanel {
+    bottom: 18px;
+  }
 }
