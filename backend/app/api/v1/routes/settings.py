@@ -8,7 +8,12 @@ from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
-from app.schemas.settings import AttendancePolicyOut, AttendancePolicyUpdateRequest
+from app.schemas.settings import (
+    AttendanceEvidenceSettingsOut,
+    AttendanceEvidenceSettingsUpdateRequest,
+    AttendancePolicyOut,
+    AttendancePolicyUpdateRequest,
+)
 from app.services.notifications import NotificationService
 from app.services.settings import SettingsService
 
@@ -60,5 +65,31 @@ def update_attendance_policy(
         except Exception:
             pass
         return ok(result)
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.get("/attendance-evidence", response_model=ApiResponse[AttendanceEvidenceSettingsOut])
+def get_attendance_evidence_settings(
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("settings.read")),
+) -> ApiResponse[AttendanceEvidenceSettingsOut]:
+    if company_id is None:
+        raise AppException(BAD_REQUEST, detail="Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
+    return ok(service.get_attendance_evidence_settings(db, company_id=int(company_id)))
+
+
+@router.put("/attendance-evidence", response_model=ApiResponse[AttendanceEvidenceSettingsOut])
+def update_attendance_evidence_settings(
+    payload: AttendanceEvidenceSettingsUpdateRequest,
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("settings.manage")),
+) -> ApiResponse[AttendanceEvidenceSettingsOut]:
+    if company_id is None:
+        raise AppException(BAD_REQUEST, detail="Thiếu công ty. Vui lòng chọn công ty (X-Company-Id).")
+    try:
+        return ok(service.update_attendance_evidence_settings(db, company_id=int(company_id), data=payload.model_dump()))
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))

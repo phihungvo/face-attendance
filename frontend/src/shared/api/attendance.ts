@@ -105,7 +105,34 @@ export type TimelogRow = {
   work_hours: number;
   late: boolean;
   absent: boolean;
+  break_minutes?: number | null;
+  working_minutes?: number | null;
+  late_minutes?: number | null;
+  early_leave_minutes?: number | null;
+  overtime_minutes?: number | null;
+  auto_checkout_applied?: boolean | null;
   method: string;
+};
+
+export type AttendanceHistoryRow = {
+  id: number;
+  employee_id: number;
+  employee_name?: string | null;
+  employee_code?: string | null;
+  type: "checkin" | "checkout";
+  check_time: string;
+  confidence_score: number;
+  image_url?: string | null;
+  image_size_kb?: number | null;
+  image_format?: "webp" | "jpeg" | null;
+  upload_status: "pending" | "retry" | "failed" | "uploaded" | "disabled" | "deleted";
+  created_at: string;
+};
+
+export type AttendanceEvidenceUrl = {
+  history_id: number;
+  url: string;
+  expires_in_seconds: number;
 };
 
 function fileFromBlob(blob: Blob, filename: string) {
@@ -185,6 +212,24 @@ export async function listMyTimelog(params: { from_date: string; to_date: string
 export async function listAttendanceLogs(params?: { limit?: number; offset?: number }) {
   const res = await api.get<ApiResponse<AttendanceLog[]>>("/attendance/logs", { params });
   return res.data.result ?? [];
+}
+
+export async function listAttendanceHistory(params?: {
+  employee?: number;
+  from_date?: string;
+  to_date?: string;
+  type?: "checkin" | "checkout";
+  limit?: number;
+  offset?: number;
+}) {
+  const res = await api.get<ApiResponse<AttendanceHistoryRow[]>>("/attendance/history", { params });
+  return res.data.result ?? [];
+}
+
+export async function getAttendanceEvidenceUrl(historyId: number) {
+  const res = await api.get<ApiResponse<AttendanceEvidenceUrl>>(`/attendance/history/${historyId}/evidence`);
+  if (!res.data.result) throw new Error("Không lấy được ảnh bằng chứng");
+  return res.data.result;
 }
 
 export async function getAttendanceStats(params: { from_date: string; to_date: string }) {

@@ -22,13 +22,50 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./.env
+    volumes:
+      - attendance_evidence_spool:/tmp/attendance-evidence-spool
     depends_on:
       mysql:
         condition: service_healthy
       ml:
         condition: service_started
+      minio:
+        condition: service_started
     ports:
       - "8000:8000"
+
+  attendance_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    command: ["python", "-m", "app.workers.attendance_evidence_worker"]
+    volumes:
+      - attendance_evidence_spool:/tmp/attendance-evidence-spool
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  attendance_cleanup:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    command:
+      - sh
+      - -lc
+      - while true; do python -m app.jobs.attendance_evidence_cleanup; sleep 86400; done
+    volumes:
+      - attendance_evidence_spool:/tmp/attendance-evidence-spool
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   ml:
     build:
@@ -60,6 +97,20 @@ services:
     ports:
       - "8080:80"
 
+  minio:
+    image: minio/minio:RELEASE.2025-03-12T18-04-18Z
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports:
+      - "9010:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
 volumes:
   mysql_data:
   insightface_cache:
+  minio_data:
+  attendance_evidence_spool:

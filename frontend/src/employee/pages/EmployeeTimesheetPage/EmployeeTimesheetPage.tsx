@@ -5,6 +5,7 @@ import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { ProfileOutlined } from "@ant-design/icons";
 import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
 import { empKeys } from "../../cacheKeys";
+import AttendanceEvidenceHistoryPanel from "../../../shared/attendanceEvidence/AttendanceEvidenceHistoryPanel";
 
 export default function EmployeeTimesheetPage() {
   const now = useMemo(() => new Date(), []);
@@ -91,6 +92,16 @@ export default function EmployeeTimesheetPage() {
             </div>
           );
         })}
+
+        <div className={styles.evidenceSection}>
+          <AttendanceEvidenceHistoryPanel
+            title="Ảnh bằng chứng"
+            sub="Ảnh lưu theo từng lần vào/ra ca. Chỉ những bản ghi đã upload thành công mới mở được ảnh."
+            defaultDays={14}
+            pageSize={12}
+            compact
+          />
+        </div>
       </div>
     </div>
   );

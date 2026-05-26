@@ -1,0 +1,272 @@
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+}
+
+.panelCompact {
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text3);
+  font-weight: 700;
+}
+
+.refreshBtn,
+.loadMoreBtn {
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 900;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+.refreshBtn:hover,
+.loadMoreBtn:hover {
+  background: var(--muted-bg);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filterField span {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text3);
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.statCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface2);
+  padding: 12px;
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.statLabel {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text3);
+}
+
+.errorBox {
+  margin-bottom: 12px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.primaryCell {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.secondaryCell {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text3);
+}
+
+.typePill,
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.typeIn {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.typeOut {
+  background: var(--info-bg);
+  color: var(--primary);
+}
+
+.toneSuccess {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.toneWarning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.toneDanger {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.toneMuted {
+  background: var(--surface2);
+  color: var(--text3);
+}
+
+.linkBtn {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 0;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.emptyCell {
+  padding: 22px 12px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.loadingInline {
+  margin-top: 12px;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.loadMoreWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.modal {
+  width: min(960px, calc(100vw - 24px));
+}
+
+.previewBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.previewMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--text3);
+}
+
+.previewImage {
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+:global(.wrap table) th,
+:global(.wrap table) td {
+  vertical-align: top;
+}
+
+@media (max-width: 899px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .panel {
+    padding: 14px;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .filters,
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}

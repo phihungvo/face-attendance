@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, Query, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_company_scope_id, get_current_user, require_permission
-from app.core.errors import BAD_REQUEST, AppException
+from app.api.deps import get_company_scope_id, get_current_user, get_permission_keys, require_permission
+from app.core.errors import BAD_REQUEST, FORBIDDEN, NOT_FOUND, AppException
 from app.core.response import ok
 from app.core.settings import settings
 from app.core.throttling import get_client_ip, request_rate_limiter
 from app.core.uploads import read_validated_image_upload
 from app.db.session import get_db
 from app.schemas.attendance import (
+    AttendanceEvidenceUrlOut,
+    AttendanceHistoryOut,
     AttendanceLogOut,
     AttendanceStats,
     CheckInResponse,
@@ -26,11 +29,14 @@ from app.schemas.attendance import (
 )
 from app.schemas.common import ApiResponse
 from app.services.attendance import AttendanceService
+from app.services.attendance_evidence import AttendanceEvidenceService
 from app.services.notifications import NotificationService
 
 router = APIRouter()
 service = AttendanceService()
+evidence_service = AttendanceEvidenceService()
 notification_service = NotificationService()
+logger = logging.getLogger(__name__)
 
 
 def _safe_notify(fn) -> None:
@@ -38,6 +44,50 @@ def _safe_notify(fn) -> None:
         fn()
     except Exception:
         pass
+
+
+def _safe_record_evidence(
+    db: Session,
+    *,
+    company_id: int | None,
+    employee_id: int,
+    attendance_log_id: int | None,
+    history_type: str,
+    check_time,
+    confidence_score: float,
+    image_bytes: bytes,
+    source_mime: str | None,
+) -> None:
+    try:
+        evidence_service.record_success(
+            db,
+            company_id=company_id,
+            employee_id=employee_id,
+            attendance_log_id=attendance_log_id,
+            history_type=history_type,
+            check_time=check_time,
+            confidence_score=confidence_score,
+            image_bytes=image_bytes,
+            source_mime=source_mime,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to record attendance evidence company_id=%s employee_id=%s log_id=%s",
+            company_id,
+            employee_id,
+            attendance_log_id,
+        )
+
+
+def _resolve_history_employee_filter(*, user, requested_employee_id: int | None) -> int | None:
+    keys = get_permission_keys(user)
+    if "attendance.read" in keys:
+        return int(requested_employee_id) if requested_employee_id is not None else None
+    if "employee.portal" in keys:
+        if requested_employee_id is not None and int(requested_employee_id) != int(user.id):
+            raise AppException(FORBIDDEN)
+        return int(user.id)
+    raise AppException(FORBIDDEN)
 
 
 def _notify_attendance_success(
@@ -153,12 +203,23 @@ async def checkin(
             block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
             detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
         )
-        image_bytes, _mime = await read_validated_image_upload(
+        image_bytes, mime = await read_validated_image_upload(
             image,
             max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
             field_label="Ảnh khuôn mặt",
         )
         result = service.checkin(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _safe_record_evidence(
+            db,
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            employee_id=int(result["user_id"]),
+            attendance_log_id=int(result["attendance_log_id"]) if result.get("attendance_log_id") is not None else None,
+            history_type="checkin",
+            check_time=result["time"],
+            confidence_score=float(result["confidence"]),
+            image_bytes=image_bytes,
+            source_mime=mime,
+        )
         _notify_attendance_success(
             db,
             user_id=int(result["user_id"]),
@@ -198,12 +259,23 @@ async def checkout(
             block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
             detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
         )
-        image_bytes, _mime = await read_validated_image_upload(
+        image_bytes, mime = await read_validated_image_upload(
             image,
             max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
             field_label="Ảnh khuôn mặt",
         )
         result = service.checkout(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _safe_record_evidence(
+            db,
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            employee_id=int(result["user_id"]),
+            attendance_log_id=int(result["attendance_log_id"]) if result.get("attendance_log_id") is not None else None,
+            history_type="checkout",
+            check_time=result["time"],
+            confidence_score=float(result["confidence"]),
+            image_bytes=image_bytes,
+            source_mime=mime,
+        )
         _notify_attendance_success(
             db,
             user_id=int(result["user_id"]),
@@ -243,12 +315,23 @@ async def scan(
             block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
             detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
         )
-        image_bytes, _mime = await read_validated_image_upload(
+        image_bytes, mime = await read_validated_image_upload(
             image,
             max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
             field_label="Ảnh khuôn mặt",
         )
         result = service.scan(db, company_id=company_id, image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _safe_record_evidence(
+            db,
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            employee_id=int(result["user_id"]),
+            attendance_log_id=int(result["attendance_log_id"]) if result.get("attendance_log_id") is not None else None,
+            history_type=str(result["action"]),
+            check_time=result["time"],
+            confidence_score=float(result["confidence"]),
+            image_bytes=image_bytes,
+            source_mime=mime,
+        )
         _notify_attendance_success(
             db,
             user_id=int(result["user_id"]),
@@ -285,12 +368,23 @@ async def scan_me(
             block_seconds=int(settings.FACE_UPLOAD_BLOCK_SECONDS),
             detail="Bạn quét khuôn mặt quá nhiều lần. Vui lòng thử lại sau.",
         )
-        image_bytes, _mime = await read_validated_image_upload(
+        image_bytes, mime = await read_validated_image_upload(
             image,
             max_bytes=int(settings.FACE_UPLOAD_MAX_BYTES),
             field_label="Ảnh khuôn mặt",
         )
         result = service.scan_for_user(db, user_id=int(user.id), image_bytes=image_bytes, latitude=latitude, longitude=longitude)
+        _safe_record_evidence(
+            db,
+            company_id=int(result["company_id"]) if result["company_id"] is not None else None,
+            employee_id=int(result["user_id"]),
+            attendance_log_id=int(result["attendance_log_id"]) if result.get("attendance_log_id") is not None else None,
+            history_type=str(result["action"]),
+            check_time=result["time"],
+            confidence_score=float(result["confidence"]),
+            image_bytes=image_bytes,
+            source_mime=mime,
+        )
         _notify_attendance_success(
             db,
             user_id=int(result["user_id"]),
@@ -345,6 +439,81 @@ def list_logs(
     _: object = Depends(require_permission("attendance.read")),
 ) -> ApiResponse[list[AttendanceLogOut]]:
     return ok(service.list_logs(db, company_id=company_id, limit=limit, offset=offset))
+
+
+@router.get("/history", response_model=ApiResponse[list[AttendanceHistoryOut]])
+def list_attendance_history(
+    employee_id: int | None = Query(default=None, alias="employee"),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    history_type: str | None = Query(default=None, alias="type"),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    user=Depends(get_current_user),
+) -> ApiResponse[list[AttendanceHistoryOut]]:
+    if history_type is not None and history_type not in {"checkin", "checkout"}:
+        raise AppException(BAD_REQUEST, detail="type chỉ hỗ trợ checkin hoặc checkout")
+    scoped_employee_id = _resolve_history_employee_filter(user=user, requested_employee_id=employee_id)
+    rows = evidence_service.list_history(
+        db,
+        company_id=company_id,
+        employee_id=scoped_employee_id,
+        from_date=from_date,
+        to_date=to_date,
+        history_type=history_type,
+        limit=limit,
+        offset=offset,
+    )
+    return ok(
+        [
+            AttendanceHistoryOut(
+                id=int(row.id),
+                employee_id=int(row.employee_id),
+                employee_name=getattr(row, "employee_name", None),
+                employee_code=getattr(row, "employee_code", None),
+                type=str(row.type),
+                check_time=row.check_time,
+                confidence_score=float(row.confidence_score),
+                image_url=row.image_url,
+                image_size_kb=row.image_size_kb,
+                image_format=row.image_format,
+                upload_status=str(row.upload_status),
+                created_at=row.created_at,
+            )
+            for row in rows
+        ]
+    )
+
+
+@router.get("/history/{history_id}/evidence", response_model=ApiResponse[AttendanceEvidenceUrlOut])
+def get_attendance_evidence_url(
+    history_id: int,
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    user=Depends(get_current_user),
+) -> ApiResponse[AttendanceEvidenceUrlOut]:
+    history = evidence_service.get_history(db, history_id=history_id)
+    if history is None:
+        raise AppException(NOT_FOUND, detail="Không tìm thấy lịch sử chấm công")
+
+    keys = get_permission_keys(user)
+    if "attendance.read" in keys:
+        if company_id is not None and int(getattr(history, "company_id", 0) or 0) != int(company_id):
+            raise AppException(FORBIDDEN)
+    elif "employee.portal" in keys:
+        if int(history.employee_id) != int(user.id):
+            raise AppException(FORBIDDEN)
+    else:
+        raise AppException(FORBIDDEN)
+
+    try:
+        expires_in = int(settings.ATTENDANCE_EVIDENCE_PRESIGNED_EXPIRE_SECONDS)
+        url = evidence_service.generate_presigned_evidence_url(db, history_id=history_id, expires_in=expires_in)
+        return ok(AttendanceEvidenceUrlOut(history_id=history_id, url=url, expires_in_seconds=expires_in))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
 
 
 @router.get("/reports/daily", response_model=ApiResponse[list[DailyAttendanceRow]])

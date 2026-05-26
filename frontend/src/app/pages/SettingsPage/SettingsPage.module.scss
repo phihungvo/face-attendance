@@ -512,6 +512,48 @@
   color: var(--text2);
 }
 
+.simpleHint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text3);
+  font-weight: 700;
+  max-width: 420px;
+}
+
+.evidenceMetaGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.evidenceMetaCard {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  padding: 12px;
+}
+
+.evidenceMetaValue {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.evidenceMetaLabel {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text3);
+}
+
+@media (max-width: 599px) {
+  .evidenceMetaGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .statusList {
   display: flex;
   flex-direction: column;

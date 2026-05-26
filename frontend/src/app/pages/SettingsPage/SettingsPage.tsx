@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "../../components/Card/Card";
 import { mockSettings } from "../../../shared/mock/mockData";
-import { getAttendancePolicy, updateAttendancePolicy } from "../../../shared/api/settings";
+import {
+  getAttendanceEvidenceSettings,
+  getAttendancePolicy,
+  updateAttendanceEvidenceSettings,
+  updateAttendancePolicy
+} from "../../../shared/api/settings";
 import { getCompany, getMyCompany, updateCompany, updateMyCompany, uploadCompanyLogo, uploadMyCompanyLogo } from "../../../shared/api/companies";
 import { getCompanyNotificationPolicies, updateCompanyNotificationPolicies } from "../../../shared/api/notifications";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
@@ -130,6 +135,14 @@ export default function SettingsPage() {
 
   const [policyLoadedOnce, setPolicyLoadedOnce] = useState(false);
   const geo = useGeoPosition({ watch: false });
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [evidenceSaving, setEvidenceSaving] = useState(false);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [evidenceEnabled, setEvidenceEnabled] = useState(true);
+  const [evidenceQuality, setEvidenceQuality] = useState(82);
+  const [evidenceMaxWidth, setEvidenceMaxWidth] = useState(1280);
+  const [evidenceFormat, setEvidenceFormat] = useState<"webp" | "jpeg">("webp");
+  const [evidenceRetentionDays, setEvidenceRetentionDays] = useState(30);
 
   const [notifLate, setNotifLate] = useState(true);
   const [notifAbsent, setNotifAbsent] = useState(true);
@@ -233,6 +246,25 @@ export default function SettingsPage() {
         setNotifError(getApiErrorMessage(e));
       } finally {
         setNotifLoading(false);
+      }
+    })();
+  }, [auth.selectedCompanyId, auth.companyId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setEvidenceLoading(true);
+        setEvidenceError(null);
+        const settings = await getAttendanceEvidenceSettings();
+        setEvidenceEnabled(Boolean(settings.enable_evidence_image));
+        setEvidenceQuality(Number(settings.image_quality));
+        setEvidenceMaxWidth(Number(settings.image_max_width));
+        setEvidenceFormat(settings.image_format);
+        setEvidenceRetentionDays(Number(settings.image_retention_days));
+      } catch (e) {
+        setEvidenceError(getApiErrorMessage(e));
+      } finally {
+        setEvidenceLoading(false);
       }
     })();
   }, [auth.selectedCompanyId, auth.companyId]);
@@ -880,6 +912,120 @@ export default function SettingsPage() {
               <div className={`${styles.simpleRow} ${styles.simpleRowLast}`}>
                 <div className={styles.simpleLabel}>Đổi cấu hình GPS công ty</div>
                 <Toggle checked={notifGpsPolicy} onChange={setNotifGpsPolicy} label="Đổi cấu hình GPS công ty" />
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            title="🖼️ Attendance Evidence"
+            sub={evidenceLoading ? "Đang tải cấu hình lưu ảnh..." : "Điều khiển lưu ảnh, nén ảnh và thời gian giữ ảnh theo từng công ty"}
+            right={
+              <button
+                className={styles.btnGhost}
+                type="button"
+                disabled={evidenceSaving || evidenceLoading}
+                onClick={async () => {
+                  try {
+                    setEvidenceSaving(true);
+                    setEvidenceError(null);
+                    const next = await updateAttendanceEvidenceSettings({
+                      enable_evidence_image: evidenceEnabled,
+                      image_quality: evidenceQuality,
+                      image_max_width: evidenceMaxWidth,
+                      image_format: evidenceFormat,
+                      image_retention_days: evidenceRetentionDays
+                    });
+                    setEvidenceEnabled(Boolean(next.enable_evidence_image));
+                    setEvidenceQuality(Number(next.image_quality));
+                    setEvidenceMaxWidth(Number(next.image_max_width));
+                    setEvidenceFormat(next.image_format);
+                    setEvidenceRetentionDays(Number(next.image_retention_days));
+                  } catch (e) {
+                    setEvidenceError(getApiErrorMessage(e));
+                  } finally {
+                    setEvidenceSaving(false);
+                  }
+                }}
+              >
+                {evidenceSaving ? "Đang lưu..." : "Lưu evidence"}
+              </button>
+            }
+          >
+            {evidenceError ? <div className={styles.errorBox}>{evidenceError}</div> : null}
+            <div className={styles.simpleList}>
+              <div className={styles.simpleRow}>
+                <div>
+                  <div className={styles.simpleLabel}>Lưu ảnh bằng chứng</div>
+                  <div className={styles.simpleHint}>Bật để worker nén, upload MinIO và cấp presigned URL cho lịch sử chấm công.</div>
+                </div>
+                <Toggle checked={evidenceEnabled} onChange={setEvidenceEnabled} label="Lưu ảnh bằng chứng" />
+              </div>
+            </div>
+
+            <div className={styles.form} style={{ marginTop: 14 }}>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Định dạng ảnh</div>
+                <select
+                  className={styles.input}
+                  value={evidenceFormat}
+                  onChange={(e) => setEvidenceFormat(e.target.value as "webp" | "jpeg")}
+                  disabled={evidenceLoading || evidenceSaving}
+                >
+                  <option value="webp">WEBP</option>
+                  <option value="jpeg">JPEG</option>
+                </select>
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Chất lượng nén</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={30}
+                  max={95}
+                  value={evidenceQuality}
+                  onChange={(e) => setEvidenceQuality(Number(e.target.value))}
+                  disabled={evidenceLoading || evidenceSaving}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Chiều rộng tối đa</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={240}
+                  max={4096}
+                  step={10}
+                  value={evidenceMaxWidth}
+                  onChange={(e) => setEvidenceMaxWidth(Number(e.target.value))}
+                  disabled={evidenceLoading || evidenceSaving}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formLabel}>Giữ ảnh (ngày)</div>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={evidenceRetentionDays}
+                  onChange={(e) => setEvidenceRetentionDays(Number(e.target.value))}
+                  disabled={evidenceLoading || evidenceSaving}
+                />
+              </div>
+            </div>
+
+            <div className={styles.evidenceMetaGrid}>
+              <div className={styles.evidenceMetaCard}>
+                <div className={styles.evidenceMetaValue}>{evidenceFormat.toUpperCase()}</div>
+                <div className={styles.evidenceMetaLabel}>Định dạng hiện tại</div>
+              </div>
+              <div className={styles.evidenceMetaCard}>
+                <div className={styles.evidenceMetaValue}>{evidenceMaxWidth}px</div>
+                <div className={styles.evidenceMetaLabel}>Kích thước tối đa</div>
+              </div>
+              <div className={styles.evidenceMetaCard}>
+                <div className={styles.evidenceMetaValue}>{evidenceRetentionDays}</div>
+                <div className={styles.evidenceMetaLabel}>Ngày lưu trữ</div>
               </div>
             </div>
           </Card>

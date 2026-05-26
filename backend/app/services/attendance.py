@@ -150,6 +150,8 @@ class AttendanceService:
         return {
             "user_id": int(user.id),
             "company_id": getattr(user, "company_id", None),
+            "attendance_log_id": int(log.id),
+            "log_type": "checkin",
             "user_name": user.name,
             "confidence": confidence,
             "time": log.timestamp,
@@ -183,7 +185,15 @@ class AttendanceService:
         log = self._logs.create(db, user_id=user.id, log_type="checkout", confidence=confidence, timestamp=now, **geo)
         db.commit()
         db.refresh(log)
-        return {"user_id": int(user.id), "company_id": getattr(user, "company_id", None), "user_name": user.name, "confidence": confidence, "time": log.timestamp}
+        return {
+            "user_id": int(user.id),
+            "company_id": getattr(user, "company_id", None),
+            "attendance_log_id": int(log.id),
+            "log_type": "checkout",
+            "user_name": user.name,
+            "confidence": confidence,
+            "time": log.timestamp,
+        }
 
     def scan(
         self,
@@ -250,6 +260,8 @@ class AttendanceService:
         return {
             "user_id": int(user.id),
             "company_id": getattr(user, "company_id", None),
+            "attendance_log_id": int(log.id),
+            "log_type": action,
             "user_name": user.name,
             "confidence": confidence,
             "time": log.timestamp,
@@ -326,6 +338,8 @@ class AttendanceService:
         return {
             "user_id": int(user.id),
             "company_id": getattr(user, "company_id", None),
+            "attendance_log_id": int(log.id),
+            "log_type": action,
             "user_name": user.name,
             "confidence": confidence,
             "time": log.timestamp,

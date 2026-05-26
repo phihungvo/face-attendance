@@ -38,6 +38,7 @@ class User(Base):
     department = relationship("Department", back_populates="users")
     face_embeddings = relationship("FaceEmbedding", back_populates="user", cascade="all, delete-orphan")
     attendance_logs = relationship("AttendanceLog", back_populates="user", cascade="all, delete-orphan")
+    attendance_history = relationship("AttendanceHistory", cascade="all, delete-orphan")
 
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     permissions = relationship("Permission", secondary="user_permissions", back_populates="users")

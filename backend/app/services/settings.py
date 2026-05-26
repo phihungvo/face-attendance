@@ -4,12 +4,14 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from app.services.attendance_evidence import AttendanceEvidenceService
 from app.repositories.attendance_policy import AttendancePolicyRepository
 
 
 class SettingsService:
     def __init__(self) -> None:
         self._policy = AttendancePolicyRepository()
+        self._evidence = AttendanceEvidenceService()
 
     def get_attendance_policy(self, db: Session, *, company_id: int):
         return self._policy.get_or_create(db, company_id=company_id)
@@ -34,3 +36,9 @@ class SettingsService:
         db.commit()
         db.refresh(policy)
         return policy
+
+    def get_attendance_evidence_settings(self, db: Session, *, company_id: int):
+        return self._evidence.get_settings(db, company_id=company_id)
+
+    def update_attendance_evidence_settings(self, db: Session, *, company_id: int, data: dict[str, object]):
+        return self._evidence.update_settings(db, company_id=company_id, data=data)

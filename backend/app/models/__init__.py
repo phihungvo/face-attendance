@@ -3,6 +3,9 @@ from app.models.user import User
 from app.models.department import Department
 from app.models.face_embedding import FaceEmbedding
 from app.models.attendance_log import AttendanceLog
+from app.models.attendance_history import AttendanceHistory
+from app.models.attendance_evidence_setting import AttendanceEvidenceSetting
+from app.models.attendance_evidence_task import AttendanceEvidenceTask
 from app.models.attendance_policy import AttendancePolicy
 from app.models.company_attendance_policy import CompanyAttendancePolicy
 from app.models.leave_request import LeaveRequest
@@ -18,6 +21,9 @@ __all__ = [
     "Department",
     "FaceEmbedding",
     "AttendanceLog",
+    "AttendanceHistory",
+    "AttendanceEvidenceSetting",
+    "AttendanceEvidenceTask",
     "AttendancePolicy",
     "CompanyAttendancePolicy",
     "LeaveRequest",
