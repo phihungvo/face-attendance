@@ -11,6 +11,7 @@ import { useAutoScan } from "../../../shared/hooks/useAutoScan";
 import { useGeoPosition } from "../../../shared/hooks/useGeoPosition";
 import { useFaceTracking } from "../../../shared/hooks/useFaceTracking";
 import { useAuth } from "../../../shared/auth/auth";
+import { playAttendanceFeedback, primeAttendanceAudioPlayback } from "../../../shared/audio/attendanceAudio";
 import {
   CameraOutlined,
   CheckCircleOutlined,
@@ -29,6 +30,7 @@ export default function AttendancePage() {
   const auth = useAuth();
   const { now } = useClock(1000);
   const cameraBoxRef = useRef<HTMLDivElement | null>(null);
+  const lastFailureSoundAtRef = useRef(0);
   const [busy, setBusy] = useState(false);
   const [auto, setAuto] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +163,7 @@ export default function AttendancePage() {
     onResult: async (res) => {
       setResult({ user: res.user_name, confidence: res.confidence, time: res.time, action: res.action });
       setError(null);
+      await playAttendanceFeedback("success", scopeCompany);
       await refreshLogs();
     },
     onError: (e) => {
@@ -172,6 +175,11 @@ export default function AttendancePage() {
         setAuto(false);
       }
       setError(msg);
+      const now = Date.now();
+      if (now - lastFailureSoundAtRef.current >= 2500) {
+        lastFailureSoundAtRef.current = now;
+        void playAttendanceFeedback("failure", scopeCompany);
+      }
     }
   });
 
@@ -229,15 +237,39 @@ export default function AttendancePage() {
           </div>
           <div className={styles.cameraActions}>
             {!cam.state.ready ? (
-              <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => cam.start()} disabled={busy}>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                type="button"
+                onClick={() => {
+                  void primeAttendanceAudioPlayback();
+                  cam.start();
+                }}
+                disabled={busy}
+              >
                 <CameraOutlined /> Bật Camera
               </button>
             ) : (
-              <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => setAuto((v) => !v)} disabled={busy}>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                type="button"
+                onClick={() => {
+                  void primeAttendanceAudioPlayback();
+                  setAuto((v) => !v);
+                }}
+                disabled={busy}
+              >
                 {auto ? "⏸ Tạm dừng auto" : "▶︎ Bật auto"}
               </button>
             )}
-            <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => cam.switchCamera()} disabled={!cam.state.ready || busy}>
+            <button
+              className={`${styles.btn} ${styles.btnGhost}`}
+              type="button"
+              onClick={() => {
+                void primeAttendanceAudioPlayback();
+                cam.switchCamera();
+              }}
+              disabled={!cam.state.ready || busy}
+            >
               <RetweetOutlined /> Đổi camera
             </button>
             <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => cam.stop()} disabled={!cam.state.ready || busy}>

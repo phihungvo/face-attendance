@@ -154,6 +154,30 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
             _exec(engine, "ALTER TABLE companies ADD COLUMN logo_blob MEDIUMBLOB NULL")
         if not _column_exists(engine, table="companies", column="logo_mime_type", schema=schema):
             _exec(engine, "ALTER TABLE companies ADD COLUMN logo_mime_type VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_source", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_source VARCHAR(16) NOT NULL DEFAULT 'default'")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_sample_id", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_sample_id VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_url", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_url VARCHAR(1024) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_text", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_text VARCHAR(1000) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_blob", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_blob MEDIUMBLOB NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_mime_type", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_mime_type VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_source", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_source VARCHAR(16) NOT NULL DEFAULT 'default'")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_sample_id", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_sample_id VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_url", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_url VARCHAR(1024) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_text", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_text VARCHAR(1000) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_blob", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_blob MEDIUMBLOB NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_mime_type", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_mime_type VARCHAR(64) NULL")
     if not _column_exists(engine, table="companies", column="geo_radius_meters", schema=schema):
         _exec(engine, "ALTER TABLE companies ADD COLUMN geo_radius_meters DOUBLE NULL")
     if not _column_exists(engine, table="companies", column="require_gps_on_attendance", schema=schema):

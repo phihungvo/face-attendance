@@ -3,8 +3,9 @@
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.12), transparent 36%),
-    linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
+    radial-gradient(circle at top right, rgba(91, 79, 232, 0.14), transparent 26%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface) 64%, transparent), transparent 240px),
+    var(--paper);
   overscroll-behavior: none;
 }
 
@@ -18,10 +19,11 @@
 .backBtn {
   width: 38px;
   height: 38px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  background: color-mix(in oklab, var(--surface) 86%, transparent);
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(8, 10, 24, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -34,13 +36,13 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #6b7a90;
+  color: var(--text3);
 }
 
 .screenHeaderTitle {
   font-size: 20px;
   font-weight: 900;
-  color: #102033;
+  color: var(--text);
 }
 
 .content {
@@ -49,29 +51,16 @@
   padding: 0 16px calc(22px + var(--bottom-safe));
 }
 
-.heroCard,
 .cameraCard,
 .primaryPanel,
 .logList,
 .warnBox,
 .errBox,
 .infoBox {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  box-shadow: 0 18px 40px rgba(8, 10, 24, 0.24);
   backdrop-filter: blur(12px);
-}
-
-.heroCard {
-  padding: 18px;
-  border-radius: 26px;
-}
-
-.heroTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
 }
 
 .statusBadge {
@@ -99,75 +88,7 @@
   color: #334155;
 }
 
-.heroTitle {
-  margin: 12px 0 6px;
-  font-size: 24px;
-  line-height: 1.15;
-  font-weight: 900;
-  color: #102033;
-}
-
-.heroSubtitle {
-  margin: 0;
-  color: #66768c;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.heroProgress {
-  min-width: 84px;
-  padding: 12px 14px;
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(16, 32, 51, 0.04), rgba(16, 32, 51, 0.08));
-  text-align: right;
-}
-
-.heroProgress span {
-  display: block;
-  font-size: 11px;
-  font-weight: 800;
-  color: #6b7a90;
-}
-
-.heroProgress strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 26px;
-  font-weight: 900;
-  color: #102033;
-}
-
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.statCard {
-  padding: 12px 13px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #f8fbff 0%, #eff5fb 100%);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.statCard span {
-  display: block;
-  font-size: 11px;
-  font-weight: 800;
-  color: #73839a;
-}
-
-.statCard strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 16px;
-  font-weight: 900;
-  color: #102033;
-}
-
 .cameraCard {
-  margin-top: 14px;
   padding: 16px;
   border-radius: 26px;
 }
@@ -185,6 +106,7 @@
 }
 
 .cameraTitle {
+  margin-top: 10px;
   font-size: 17px;
   font-weight: 900;
   color: #102033;
@@ -207,11 +129,40 @@
   font-weight: 900;
 }
 
+.statusStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.statusStripItem {
+  padding: 11px 12px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eff5fb 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.statusStripItem span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #73839a;
+}
+
+.statusStripItem strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #102033;
+}
+
 .cameraStage {
   position: relative;
   overflow: hidden;
   border-radius: 24px;
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(180deg, #0f172a 0%, #162033 48%, #202a42 100%);
   aspect-ratio: 3 / 4;
   min-height: 320px;
 }
@@ -283,29 +234,76 @@
 }
 
 .toolBtn {
-  min-height: 50px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 18px;
-  background: #f6f9fc;
-  color: #102033;
-  font-size: 12px;
-  font-weight: 900;
+  position: relative;
+  min-height: 58px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface2) 96%, transparent) 0%, color-mix(in oklab, var(--surface) 88%, transparent) 100%);
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   cursor: pointer;
-  padding: 0 12px;
+  padding: 0;
+  box-shadow: 0 10px 26px rgba(8, 10, 24, 0.16);
 }
 
-.toolBtnPrimary {
+.toolBtn :global(svg) {
+  font-size: 20px;
+}
+
+.toolBtnCameraOff {
   background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
   color: #fff;
   border-color: transparent;
+  box-shadow: 0 16px 34px rgba(20, 184, 166, 0.26);
 }
 
-.toolBtnActive {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.02));
+.toolBtnCameraOn {
+  background: linear-gradient(135deg, #102033 0%, #1f3a5b 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 16px 34px rgba(16, 32, 51, 0.28);
+}
+
+.toolBtnGpsReady {
+  border-color: color-mix(in oklab, var(--success-text) 38%, var(--border));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--success-bg) 96%, transparent) 0%, color-mix(in oklab, var(--surface) 88%, var(--success-bg)) 100%);
+  color: var(--success-text);
+}
+
+.toolBtnGpsRequired {
+  border-color: color-mix(in oklab, #f59e0b 40%, var(--border));
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.18) 0%, color-mix(in oklab, var(--surface) 88%, rgba(245, 158, 11, 0.08)) 100%);
+  color: #ffd27a;
+}
+
+.toolDot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.8);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--surface) 92%, transparent);
+}
+
+.toolDotActive {
+  background: #10b981;
+}
+
+.toolDotWarn {
+  background: #f59e0b;
+}
+
+.toolDotIdle {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.toolBtn:not(.toolBtnCameraOff):not(.toolBtnCameraOn) .toolDotIdle {
+  background: rgba(148, 163, 184, 0.9);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--surface2) 95%, transparent);
 }
 
 .toolBtn:disabled {
@@ -344,11 +342,15 @@
 }
 
 .primaryPanel {
-  margin-top: 14px;
+  width: min(calc(100vw - 24px), 520px);
   padding: 14px;
   border-radius: 24px;
-  position: sticky;
+  box-sizing: border-box;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
 }
 
 .primaryAction {
@@ -391,7 +393,7 @@
   align-items: center;
   gap: 8px;
   margin-top: 10px;
-  color: #5d6d83;
+  color: var(--text3);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
@@ -405,7 +407,7 @@
   margin-bottom: 10px;
   font-size: 13px;
   font-weight: 900;
-  color: #516178;
+  color: var(--text3);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -421,7 +423,7 @@
   gap: 12px;
   align-items: center;
   padding: 14px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid var(--border);
 }
 
 .logRow:last-child {
@@ -439,13 +441,13 @@
 }
 
 .logIconIn {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
 .logIconOut {
-  background: rgba(59, 130, 246, 0.12);
-  color: #2563eb;
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 
 .logBody {
@@ -455,12 +457,12 @@
 .logType {
   font-size: 14px;
   font-weight: 900;
-  color: #102033;
+  color: var(--text);
 }
 
 .logTime {
   margin-top: 4px;
-  color: #66768c;
+  color: var(--text3);
   font-size: 12px;
   font-weight: 700;
 }
@@ -469,12 +471,12 @@
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 800;
-  color: #6b7a90;
+  color: var(--text3);
 }
 
 .empty {
   padding: 18px 14px;
-  color: #6b7a90;
+  color: var(--text3);
   font-size: 13px;
   font-weight: 700;
 }
@@ -484,7 +486,6 @@
     padding-inline: 12px;
   }
 
-  .heroCard,
   .cameraCard,
   .primaryPanel,
   .logList,
@@ -492,19 +493,6 @@
   .errBox,
   .infoBox {
     border-radius: 22px;
-  }
-
-  .heroTop {
-    flex-direction: column;
-  }
-
-  .heroProgress {
-    width: 100%;
-    text-align: left;
-  }
-
-  .statsGrid {
-    grid-template-columns: 1fr;
   }
 
   .cameraTopRow {
@@ -515,16 +503,16 @@
     align-self: flex-start;
   }
 
+  .statusStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .cameraStage {
     min-height: 360px;
   }
 
   .cameraTools {
-    grid-template-columns: 1fr;
-  }
-
-  .toolBtn {
-    justify-content: flex-start;
+    gap: 8px;
   }
 }
 
@@ -538,6 +526,7 @@
   }
 
   .primaryPanel {
+    width: min(calc(100vw - 40px), 520px);
     bottom: 18px;
   }
 }

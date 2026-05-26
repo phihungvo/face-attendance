@@ -1,13 +1,38 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Card from "../../components/Card/Card";
 import { mockSettings } from "../../../shared/mock/mockData";
+import {
+  ApiOutlined,
+  BellOutlined,
+  CameraOutlined,
+  ClockCircleOutlined,
+  FileImageOutlined,
+  GlobalOutlined,
+  KeyOutlined,
+  MailOutlined,
+  MoonOutlined,
+  RightOutlined,
+  SafetyCertificateOutlined,
+  SaveOutlined,
+  SettingOutlined,
+  SoundOutlined
+} from "@ant-design/icons";
 import {
   getAttendanceEvidenceSettings,
   getAttendancePolicy,
   updateAttendanceEvidenceSettings,
   updateAttendancePolicy
 } from "../../../shared/api/settings";
-import { getCompany, getMyCompany, updateCompany, updateMyCompany, uploadCompanyLogo, uploadMyCompanyLogo } from "../../../shared/api/companies";
+import {
+  getCompany,
+  getMyCompany,
+  updateCompany,
+  updateMyCompany,
+  uploadCompanyAttendanceSound,
+  uploadCompanyLogo,
+  uploadMyCompanyAttendanceSound,
+  uploadMyCompanyLogo
+} from "../../../shared/api/companies";
 import { getCompanyNotificationPolicies, updateCompanyNotificationPolicies } from "../../../shared/api/notifications";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { useTheme } from "../../../shared/theme/theme";
@@ -19,9 +44,19 @@ import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-lea
 import L from "leaflet";
 import { viStatusLabel } from "../../../shared/i18n/vi";
 import { emitCompanyBrandingUpdated } from "../../../shared/companyBranding/companyBranding";
+import { ATTENDANCE_SOUND_SAMPLE_OPTIONS, previewAttendanceFeedback, primeAttendanceAudioPlayback } from "../../../shared/audio/attendanceAudio";
 
 type LatLng = { lat: number; lng: number };
 type NominatimResult = { display_name: string; lat: string; lon: string };
+type AttendanceSoundSource = "default" | "sample" | "upload" | "url" | "tts";
+
+const ATTENDANCE_SOUND_SOURCE_OPTIONS: Array<{ value: AttendanceSoundSource; label: string }> = [
+  { value: "default", label: "Mặc định toàn app" },
+  { value: "sample", label: "Âm thanh mẫu" },
+  { value: "upload", label: "File công ty upload" },
+  { value: "url", label: "Nguồn URL ngoài" },
+  { value: "tts", label: "Nhập text để đọc" }
+];
 
 function isFiniteLatLng(v: LatLng | null): v is LatLng {
   return !!v && Number.isFinite(v.lat) && Number.isFinite(v.lng);
@@ -87,6 +122,15 @@ function Toggle({
   );
 }
 
+function sectionTitle(icon: ReactNode, label: string) {
+  return (
+    <span className={styles.cardTitle}>
+      <span className={styles.cardTitleIcon}>{icon}</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
 export default function SettingsPage() {
   const nav = useNavigate();
   const auth = useAuth();
@@ -100,7 +144,22 @@ export default function SettingsPage() {
   const [companySaving, setCompanySaving] = useState(false);
   const [companyLogoUploading, setCompanyLogoUploading] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
+  const [soundSaving, setSoundSaving] = useState(false);
+  const [soundUploading, setSoundUploading] = useState<"success" | "failure" | null>(null);
+  const [soundError, setSoundError] = useState<string | null>(null);
+  const [successSoundSource, setSuccessSoundSource] = useState<AttendanceSoundSource>("default");
+  const [successSoundSampleId, setSuccessSoundSampleId] = useState<string>(ATTENDANCE_SOUND_SAMPLE_OPTIONS[0].id);
+  const [successSoundUrl, setSuccessSoundUrl] = useState("");
+  const [successSoundText, setSuccessSoundText] = useState("Chấm công thành công");
+  const [successSoundDataUrl, setSuccessSoundDataUrl] = useState<string | null>(null);
+  const [failureSoundSource, setFailureSoundSource] = useState<AttendanceSoundSource>("default");
+  const [failureSoundSampleId, setFailureSoundSampleId] = useState<string>("alert-buzz");
+  const [failureSoundUrl, setFailureSoundUrl] = useState("");
+  const [failureSoundText, setFailureSoundText] = useState("Chấm công thất bại, vui lòng thử lại");
+  const [failureSoundDataUrl, setFailureSoundDataUrl] = useState<string | null>(null);
   const companyLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const successSoundInputRef = useRef<HTMLInputElement | null>(null);
+  const failureSoundInputRef = useRef<HTMLInputElement | null>(null);
   const [mapQuery, setMapQuery] = useState("");
   const [mapSearching, setMapSearching] = useState(false);
   const [mapResults, setMapResults] = useState<NominatimResult[]>([]);
@@ -217,7 +276,18 @@ export default function SettingsPage() {
         setCompanyRadius(Number((c as any).geo_radius_meters ?? 250));
         setCompanyRequireGps(Boolean((c as any).require_gps_on_attendance ?? false));
         setCompanyLogoDataUrl((c as any).logo_data_url ?? null);
+        setSuccessSoundSource(((c as any).attendance_success_sound_source ?? "default") as AttendanceSoundSource);
+        setSuccessSoundSampleId((c as any).attendance_success_sound_sample_id ?? ATTENDANCE_SOUND_SAMPLE_OPTIONS[0].id);
+        setSuccessSoundUrl((c as any).attendance_success_sound_url ?? "");
+        setSuccessSoundText((c as any).attendance_success_sound_text ?? "Chấm công thành công");
+        setSuccessSoundDataUrl((c as any).attendance_success_sound_data_url ?? null);
+        setFailureSoundSource(((c as any).attendance_failure_sound_source ?? "default") as AttendanceSoundSource);
+        setFailureSoundSampleId((c as any).attendance_failure_sound_sample_id ?? "alert-buzz");
+        setFailureSoundUrl((c as any).attendance_failure_sound_url ?? "");
+        setFailureSoundText((c as any).attendance_failure_sound_text ?? "Chấm công thất bại, vui lòng thử lại");
+        setFailureSoundDataUrl((c as any).attendance_failure_sound_data_url ?? null);
         setCompanyError(null);
+        setSoundError(null);
       } catch (e) {
         setCompanyError(getApiErrorMessage(e));
       }
@@ -313,11 +383,32 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleAttendanceSoundPicked(kind: "success" | "failure", file: File) {
+    try {
+      await primeAttendanceAudioPlayback();
+      setSoundUploading(kind);
+      setSoundError(null);
+      const cid = auth.roleKeys.includes("admin") ? (auth.selectedCompanyId ?? null) : null;
+      const updated = cid ? await uploadCompanyAttendanceSound(cid, kind, file) : await uploadMyCompanyAttendanceSound(kind, file);
+      if (kind === "success") {
+        setSuccessSoundDataUrl(updated.attendance_success_sound_data_url ?? null);
+      } else {
+        setFailureSoundDataUrl(updated.attendance_failure_sound_data_url ?? null);
+      }
+    } catch (e) {
+      setSoundError(getApiErrorMessage(e));
+    } finally {
+      setSoundUploading(null);
+      if (kind === "success" && successSoundInputRef.current) successSoundInputRef.current.value = "";
+      if (kind === "failure" && failureSoundInputRef.current) failureSoundInputRef.current.value = "";
+    }
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.grid2}>
         <div className={styles.col}>
-          <Card title="⚙️ Cài đặt chung" sub="Tuỳ chỉnh hệ thống">
+          <Card title={sectionTitle(<SettingOutlined />, "Cài đặt chung")} sub="Tuỳ chỉnh hệ thống">
             <div className={styles.form}>
               <div className={styles.formRow}>
                 <div className={styles.formLabel}>Logo công ty</div>
@@ -499,6 +590,8 @@ export default function SettingsPage() {
                       setCompanyRadius(Number(updated.geo_radius_meters ?? 250));
                       setCompanyRequireGps(Boolean(updated.require_gps_on_attendance ?? false));
                       setCompanyLogoDataUrl(updated.logo_data_url ?? null);
+                      setSuccessSoundDataUrl(updated.attendance_success_sound_data_url ?? successSoundDataUrl);
+                      setFailureSoundDataUrl(updated.attendance_failure_sound_data_url ?? failureSoundDataUrl);
                       emitCompanyBrandingUpdated({
                         companyId: updated.id ?? cid ?? auth.companyId ?? null,
                         name: updated.name ?? null,
@@ -514,7 +607,7 @@ export default function SettingsPage() {
                     }
                   }}
                 >
-                  💾 Lưu vị trí công ty
+                  <SaveOutlined /> Lưu vị trí công ty
                 </button>
                 {companyError ? <div style={{ marginLeft: 12, color: "var(--danger)", fontWeight: 800 }}>{companyError}</div> : null}
               </div>
@@ -525,7 +618,7 @@ export default function SettingsPage() {
             <div className={styles.settingsList}>
               <div className={styles.settingsItem}>
                 <div className={`${styles.settingsIcon} ${styles.iconInfo}`}>
-                  🌍
+                  <GlobalOutlined />
                 </div>
                 <div className={styles.settingsInfo}>
                   <div className={styles.settingsLabel}>Ngôn ngữ</div>
@@ -539,7 +632,7 @@ export default function SettingsPage() {
 
               <div className={styles.settingsItem}>
                 <div className={`${styles.settingsIcon} ${styles.iconPurple}`}>
-                  🌙
+                  <MoonOutlined />
                 </div>
                 <div className={styles.settingsInfo}>
                   <div className={styles.settingsLabel}>Giao diện</div>
@@ -554,7 +647,7 @@ export default function SettingsPage() {
 
               <div className={styles.settingsItem}>
                 <div className={`${styles.settingsIcon} ${styles.iconSuccess}`}>
-                  📧
+                  <MailOutlined />
                 </div>
                 <div className={styles.settingsInfo}>
                   <div className={styles.settingsLabel}>Email thông báo</div>
@@ -565,7 +658,7 @@ export default function SettingsPage() {
 
               <div className={styles.settingsItem}>
                 <div className={`${styles.settingsIcon} ${styles.iconDanger}`}>
-                  🔐
+                  <SafetyCertificateOutlined />
                 </div>
                 <div className={styles.settingsInfo}>
                   <div className={styles.settingsLabel}>Bảo mật 2 lớp</div>
@@ -575,17 +668,21 @@ export default function SettingsPage() {
               </div>
 
               <button className={`${styles.settingsItem} ${styles.settingsClickable}`} type="button" onClick={() => nav("/change-password")}>
-                <div className={`${styles.settingsIcon} ${styles.iconDanger}`}>🔒</div>
+                <div className={`${styles.settingsIcon} ${styles.iconDanger}`}>
+                  <KeyOutlined />
+                </div>
                 <div className={styles.settingsInfo}>
                   <div className={styles.settingsLabel}>Đổi mật khẩu</div>
                   <div className={styles.settingsDesc}>Thay đổi mật khẩu đăng nhập</div>
                 </div>
-                <div className={styles.settingsArrow}>›</div>
+                <div className={styles.settingsArrow}>
+                  <RightOutlined />
+                </div>
               </button>
             </div>
           </Card>
 
-          <Card title="📷 Cài đặt nhận diện khuôn mặt" sub="Ngưỡng + camera + chống giả mạo">
+          <Card title={sectionTitle(<CameraOutlined />, "Cài đặt nhận diện khuôn mặt")} sub="Ngưỡng + camera + chống giả mạo">
             <div className={styles.form}>
               <div className={styles.formGroup}>
                 <div className={styles.formLabelInline}>Ngưỡng nhận diện (%)</div>
@@ -673,7 +770,7 @@ export default function SettingsPage() {
                     }
                   }}
                 >
-                  {policySaving ? "Đang lưu..." : "💾 Lưu cài đặt"}
+                  {policySaving ? "Đang lưu..." : <><SaveOutlined /> Lưu cài đặt</>}
                 </button>
                 <button className={styles.btnGhost} type="button" disabled={!policyLoadedOnce || policyLoading || policySaving}>
                   Khôi phục
@@ -684,7 +781,7 @@ export default function SettingsPage() {
         </div>
 
         <div className={styles.col}>
-          <Card title="⏰ Quy định giờ làm">
+          <Card title={sectionTitle(<ClockCircleOutlined />, "Quy định giờ làm")}>
             {policyError ? <div className={styles.errorBox}>{policyError}</div> : null}
             <div className={styles.form}>
               <div className={styles.formRow}>
@@ -846,13 +943,13 @@ export default function SettingsPage() {
                   }
                 }}
               >
-                {policySaving ? "Đang lưu..." : "💾 Lưu cài đặt"}
+                {policySaving ? "Đang lưu..." : <><SaveOutlined /> Lưu cài đặt</>}
               </button>
             </div>
           </Card>
 
           <Card
-            title="📱 Thông báo"
+            title={sectionTitle(<BellOutlined />, "Thông báo")}
             sub={notifLoading ? "Đang tải cấu hình..." : "Bật/tắt các loại cảnh báo theo công ty"}
             right={
               <button
@@ -879,7 +976,7 @@ export default function SettingsPage() {
                   }
                 }}
               >
-                {notifSaving ? "Đang lưu..." : "Lưu thông báo"}
+                {notifSaving ? "Đang lưu..." : <><SaveOutlined /> Lưu thông báo</>}
               </button>
             }
           >
@@ -917,7 +1014,7 @@ export default function SettingsPage() {
           </Card>
 
           <Card
-            title="🖼️ Attendance Evidence"
+            title={sectionTitle(<FileImageOutlined />, "Attendance Evidence")}
             sub={evidenceLoading ? "Đang tải cấu hình lưu ảnh..." : "Điều khiển lưu ảnh, nén ảnh và thời gian giữ ảnh theo từng công ty"}
             right={
               <button
@@ -947,7 +1044,7 @@ export default function SettingsPage() {
                   }
                 }}
               >
-                {evidenceSaving ? "Đang lưu..." : "Lưu evidence"}
+                {evidenceSaving ? "Đang lưu..." : <><SaveOutlined /> Lưu evidence</>}
               </button>
             }
           >
@@ -1030,7 +1127,213 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card title="🧪 Trạng thái dịch vụ" sub="Mock status">
+          <Card
+            title={sectionTitle(<SoundOutlined />, "Âm thanh chấm công")}
+            sub="Cấu hình âm thanh thành công và thất bại theo từng công ty. Nếu để mặc định, toàn app dùng preset chung."
+            right={
+              <button
+                className={styles.btnGhost}
+                type="button"
+                disabled={soundSaving || !!soundUploading}
+                onClick={async () => {
+                  try {
+                    setSoundSaving(true);
+                    setSoundError(null);
+                    const payload = {
+                      attendance_success_sound_source: successSoundSource,
+                      attendance_success_sound_sample_id: successSoundSampleId || null,
+                      attendance_success_sound_url: successSoundUrl.trim() || null,
+                      attendance_success_sound_text: successSoundText.trim() || null,
+                      attendance_failure_sound_source: failureSoundSource,
+                      attendance_failure_sound_sample_id: failureSoundSampleId || null,
+                      attendance_failure_sound_url: failureSoundUrl.trim() || null,
+                      attendance_failure_sound_text: failureSoundText.trim() || null
+                    };
+                    const cid = auth.roleKeys.includes("admin") ? (auth.selectedCompanyId ?? null) : null;
+                    const updated = cid ? await updateCompany(cid, payload) : await updateMyCompany(payload);
+                    setSuccessSoundSource((updated.attendance_success_sound_source ?? "default") as AttendanceSoundSource);
+                    setSuccessSoundSampleId(updated.attendance_success_sound_sample_id ?? ATTENDANCE_SOUND_SAMPLE_OPTIONS[0].id);
+                    setSuccessSoundUrl(updated.attendance_success_sound_url ?? "");
+                    setSuccessSoundText(updated.attendance_success_sound_text ?? "Chấm công thành công");
+                    setSuccessSoundDataUrl(updated.attendance_success_sound_data_url ?? null);
+                    setFailureSoundSource((updated.attendance_failure_sound_source ?? "default") as AttendanceSoundSource);
+                    setFailureSoundSampleId(updated.attendance_failure_sound_sample_id ?? "alert-buzz");
+                    setFailureSoundUrl(updated.attendance_failure_sound_url ?? "");
+                    setFailureSoundText(updated.attendance_failure_sound_text ?? "Chấm công thất bại, vui lòng thử lại");
+                    setFailureSoundDataUrl(updated.attendance_failure_sound_data_url ?? null);
+                  } catch (e) {
+                    setSoundError(getApiErrorMessage(e));
+                  } finally {
+                    setSoundSaving(false);
+                  }
+                }}
+              >
+                {soundSaving ? "Đang lưu..." : <><SaveOutlined /> Lưu âm thanh</>}
+              </button>
+            }
+          >
+            {soundError ? <div className={styles.errorBox}>{soundError}</div> : null}
+
+            <div className={styles.audioSoundGrid}>
+              {([
+                {
+                  key: "success",
+                  title: "Âm thanh thành công",
+                  desc: "Phát khi chấm công vào/ra ca thành công.",
+                  source: successSoundSource,
+                  sampleId: successSoundSampleId,
+                  url: successSoundUrl,
+                  text: successSoundText,
+                  dataUrl: successSoundDataUrl,
+                  setSource: setSuccessSoundSource,
+                  setSampleId: setSuccessSoundSampleId,
+                  setUrl: setSuccessSoundUrl,
+                  setText: setSuccessSoundText,
+                  inputRef: successSoundInputRef
+                },
+                {
+                  key: "failure",
+                  title: "Âm thanh thất bại",
+                  desc: "Phát khi chấm công lỗi hoặc bị từ chối.",
+                  source: failureSoundSource,
+                  sampleId: failureSoundSampleId,
+                  url: failureSoundUrl,
+                  text: failureSoundText,
+                  dataUrl: failureSoundDataUrl,
+                  setSource: setFailureSoundSource,
+                  setSampleId: setFailureSoundSampleId,
+                  setUrl: setFailureSoundUrl,
+                  setText: setFailureSoundText,
+                  inputRef: failureSoundInputRef
+                }
+              ] as const).map((sound) => (
+                <div key={sound.key} className={styles.audioSoundCard}>
+                  <div className={styles.audioSoundHead}>
+                    <div>
+                      <div className={styles.audioSoundTitle}>{sound.title}</div>
+                      <div className={styles.audioSoundDesc}>{sound.desc}</div>
+                    </div>
+                    <button
+                      className={styles.btnGhost}
+                      type="button"
+                      onClick={() => {
+                        void previewAttendanceFeedback(
+                          {
+                            source: sound.source,
+                            sampleId: sound.sampleId,
+                            url: sound.url,
+                            text: sound.text,
+                            dataUrl: sound.dataUrl
+                          },
+                          sound.key
+                        );
+                      }}
+                    >
+                      Nghe thử
+                    </button>
+                  </div>
+
+                  <div className={styles.form}>
+                    <div className={styles.formRow}>
+                      <div className={styles.formLabel}>Nguồn âm thanh</div>
+                      <select className={styles.input} value={sound.source} onChange={(e) => sound.setSource(e.target.value as AttendanceSoundSource)}>
+                        {ATTENDANCE_SOUND_SOURCE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {sound.source === "sample" ? (
+                      <div className={styles.formRow}>
+                        <div className={styles.formLabel}>Âm thanh mẫu</div>
+                        <select className={styles.input} value={sound.sampleId} onChange={(e) => sound.setSampleId(e.target.value)}>
+                          {ATTENDANCE_SOUND_SAMPLE_OPTIONS.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
+
+                    {sound.source === "url" ? (
+                      <div className={styles.formRow}>
+                        <div className={styles.formLabel}>URL âm thanh</div>
+                        <input
+                          className={styles.input}
+                          value={sound.url}
+                          onChange={(e) => sound.setUrl(e.target.value)}
+                          placeholder="https://example.com/success.mp3"
+                        />
+                      </div>
+                    ) : null}
+
+                    {sound.source === "tts" ? (
+                      <div className={styles.formRow}>
+                        <div className={styles.formLabel}>Text để đọc</div>
+                        <textarea
+                          className={styles.input}
+                          value={sound.text}
+                          onChange={(e) => sound.setText(e.target.value)}
+                          placeholder="Ví dụ: Chấm công thành công"
+                          rows={3}
+                        />
+                      </div>
+                    ) : null}
+
+                    {sound.source === "upload" ? (
+                      <div className={styles.formRow}>
+                        <div className={styles.formLabel}>File công ty</div>
+                        <div className={styles.audioUploadRow}>
+                          <div className={styles.audioUploadStatus}>
+                            {sound.dataUrl ? "Đã có file upload" : "Chưa có file upload"}
+                          </div>
+                          <button
+                            className={styles.btnGhost}
+                            type="button"
+                            disabled={soundUploading === sound.key}
+                            onClick={() => sound.inputRef.current?.click()}
+                          >
+                            {soundUploading === sound.key ? "Đang upload..." : "Tải âm thanh lên"}
+                          </button>
+                          <input
+                            ref={sound.inputRef}
+                            className={styles.hiddenInput}
+                            type="file"
+                            accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/aac,audio/webm"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                void handleAttendanceSoundPicked(sound.key, file);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className={styles.audioSoundFooter}>
+                    <span className={styles.audioSourcePill}>
+                      {sound.source === "default"
+                        ? "Đang dùng mặc định toàn app"
+                        : sound.source === "sample"
+                          ? "Đang dùng preset mẫu"
+                          : sound.source === "upload"
+                            ? "Đang dùng file do công ty upload"
+                            : sound.source === "url"
+                              ? "Đang dùng URL ngoài"
+                              : "Đang dùng text-to-speech tiếng Việt"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card title={sectionTitle(<ApiOutlined />, "Trạng thái dịch vụ")} sub="Mock status">
             <div className={styles.statusList}>
               {mockSettings.services.map((s) => (
                 <div key={s.name} className={styles.statusItem}>

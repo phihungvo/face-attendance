@@ -61,6 +61,14 @@ class CompanyRepository:
         longitude: float | None | object = UNSET,
         geo_radius_meters: float | None | object = UNSET,
         require_gps_on_attendance: bool | None | object = UNSET,
+        attendance_success_sound_source: str | None | object = UNSET,
+        attendance_success_sound_sample_id: str | None | object = UNSET,
+        attendance_success_sound_url: str | None | object = UNSET,
+        attendance_success_sound_text: str | None | object = UNSET,
+        attendance_failure_sound_source: str | None | object = UNSET,
+        attendance_failure_sound_sample_id: str | None | object = UNSET,
+        attendance_failure_sound_url: str | None | object = UNSET,
+        attendance_failure_sound_text: str | None | object = UNSET,
     ) -> Company | None:
         c = self.get(db, company_id)
         if c is None:
@@ -81,6 +89,22 @@ class CompanyRepository:
             c.geo_radius_meters = geo_radius_meters
         if require_gps_on_attendance is not UNSET:
             c.require_gps_on_attendance = bool(require_gps_on_attendance) if require_gps_on_attendance is not None else False
+        if attendance_success_sound_source is not UNSET:
+            c.attendance_success_sound_source = attendance_success_sound_source or "default"
+        if attendance_success_sound_sample_id is not UNSET:
+            c.attendance_success_sound_sample_id = attendance_success_sound_sample_id
+        if attendance_success_sound_url is not UNSET:
+            c.attendance_success_sound_url = attendance_success_sound_url
+        if attendance_success_sound_text is not UNSET:
+            c.attendance_success_sound_text = attendance_success_sound_text
+        if attendance_failure_sound_source is not UNSET:
+            c.attendance_failure_sound_source = attendance_failure_sound_source or "default"
+        if attendance_failure_sound_sample_id is not UNSET:
+            c.attendance_failure_sound_sample_id = attendance_failure_sound_sample_id
+        if attendance_failure_sound_url is not UNSET:
+            c.attendance_failure_sound_url = attendance_failure_sound_url
+        if attendance_failure_sound_text is not UNSET:
+            c.attendance_failure_sound_text = attendance_failure_sound_text
         db.add(c)
         db.flush()
         return c
@@ -98,6 +122,28 @@ class CompanyRepository:
             return None
         c.logo_blob = logo_blob
         c.logo_mime_type = logo_mime_type
+        db.add(c)
+        db.flush()
+        return c
+
+    def update_attendance_sound_upload(
+        self,
+        db: Session,
+        *,
+        company_id: int,
+        kind: str,
+        sound_blob: bytes | None,
+        sound_mime_type: str | None,
+    ) -> Company | None:
+        c = self.get(db, company_id)
+        if c is None:
+            return None
+        if kind == "success":
+            c.attendance_success_sound_blob = sound_blob
+            c.attendance_success_sound_mime_type = sound_mime_type
+        else:
+            c.attendance_failure_sound_blob = sound_blob
+            c.attendance_failure_sound_mime_type = sound_mime_type
         db.add(c)
         db.flush()
         return c

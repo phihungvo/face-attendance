@@ -12,6 +12,7 @@ export function useCamera() {
   const streamRef = useRef<MediaStream | null>(null);
   const desiredOnRef = useRef(false);
   const restartTimerRef = useRef<number | null>(null);
+  const startRequestRef = useRef(0);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,10 +43,12 @@ export function useCamera() {
 
   const start = useCallback(
     async (opts?: { deviceId?: string }) => {
+      const requestId = startRequestRef.current + 1;
+      startRequestRef.current = requestId;
       try {
         setError(null);
-        desiredOnRef.current = true;
         stop();
+        desiredOnRef.current = true;
         if (!window.isSecureContext) {
           const proto = typeof window !== "undefined" ? window.location.protocol : "";
           const host = typeof window !== "undefined" ? window.location.host : "";
@@ -70,6 +73,10 @@ export function useCamera() {
           audio: false
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (requestId !== startRequestRef.current || !desiredOnRef.current) {
+          stream.getTracks().forEach((mediaTrack) => mediaTrack.stop());
+          return;
+        }
         streamRef.current = stream;
         const track = stream.getVideoTracks()[0];
         const settings = track?.getSettings?.();
@@ -90,13 +97,34 @@ export function useCamera() {
         }
 
         const v = videoRef.current;
-        if (!v) return;
+        if (!v) {
+          stream.getTracks().forEach((mediaTrack) => mediaTrack.stop());
+          streamRef.current = null;
+          return;
+        }
         v.srcObject = stream;
-        await v.play();
+        try {
+          await v.play();
+        } catch (e: any) {
+          const name = String(e?.name || "");
+          const message = String(e?.message || "");
+          if (name === "AbortError" || message.includes("The play() request was interrupted by a new load request.")) {
+            return;
+          }
+          if (requestId !== startRequestRef.current || !desiredOnRef.current) {
+            return;
+          }
+          throw e;
+        }
+        if (requestId !== startRequestRef.current || !desiredOnRef.current) return;
         setReady(true);
         await refreshDevices();
       } catch (e: any) {
         const name = String(e?.name || "");
+        const message = String(e?.message || "");
+        if (name === "AbortError" || message.includes("The play() request was interrupted by a new load request.")) {
+          return;
+        }
         if (name === "NotAllowedError" || name === "PermissionDeniedError") {
           setError("Permission denied: vui lòng cấp quyền camera cho website trong trình duyệt và thử lại.");
         } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {

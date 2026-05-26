@@ -11,6 +11,16 @@ export type Company = {
   geo_radius_meters?: number | null;
   require_gps_on_attendance?: boolean;
   logo_data_url?: string | null;
+  attendance_success_sound_source?: "default" | "sample" | "upload" | "url" | "tts";
+  attendance_success_sound_sample_id?: string | null;
+  attendance_success_sound_url?: string | null;
+  attendance_success_sound_text?: string | null;
+  attendance_success_sound_data_url?: string | null;
+  attendance_failure_sound_source?: "default" | "sample" | "upload" | "url" | "tts";
+  attendance_failure_sound_sample_id?: string | null;
+  attendance_failure_sound_url?: string | null;
+  attendance_failure_sound_text?: string | null;
+  attendance_failure_sound_data_url?: string | null;
   created_at: string;
 };
 
@@ -40,6 +50,14 @@ export async function updateCompany(
     longitude?: number | null;
     geo_radius_meters?: number | null;
     require_gps_on_attendance?: boolean | null;
+    attendance_success_sound_source?: "default" | "sample" | "upload" | "url" | "tts" | null;
+    attendance_success_sound_sample_id?: string | null;
+    attendance_success_sound_url?: string | null;
+    attendance_success_sound_text?: string | null;
+    attendance_failure_sound_source?: "default" | "sample" | "upload" | "url" | "tts" | null;
+    attendance_failure_sound_sample_id?: string | null;
+    attendance_failure_sound_url?: string | null;
+    attendance_failure_sound_text?: string | null;
   }
 ) {
   const res = await api.put<ApiResponse<Company>>(`/companies/${id}`, payload);
@@ -50,6 +68,13 @@ export async function uploadCompanyLogo(id: number, file: File) {
   const form = new FormData();
   form.append("logo", file);
   const res = await api.put<ApiResponse<Company>>(`/companies/${id}/logo`, form);
+  return res.data.result!;
+}
+
+export async function uploadCompanyAttendanceSound(id: number, kind: "success" | "failure", file: File) {
+  const form = new FormData();
+  form.append("sound", file);
+  const res = await api.put<ApiResponse<Company>>(`/companies/${id}/attendance-audio/${kind}`, form);
   return res.data.result!;
 }
 
@@ -72,6 +97,14 @@ export async function updateMyCompany(payload: {
   longitude?: number | null;
   geo_radius_meters?: number | null;
   require_gps_on_attendance?: boolean | null;
+  attendance_success_sound_source?: "default" | "sample" | "upload" | "url" | "tts" | null;
+  attendance_success_sound_sample_id?: string | null;
+  attendance_success_sound_url?: string | null;
+  attendance_success_sound_text?: string | null;
+  attendance_failure_sound_source?: "default" | "sample" | "upload" | "url" | "tts" | null;
+  attendance_failure_sound_sample_id?: string | null;
+  attendance_failure_sound_url?: string | null;
+  attendance_failure_sound_text?: string | null;
 }) {
   const res = await api.put<ApiResponse<Company>>("/companies/me", payload);
   return res.data.result!;
@@ -81,5 +114,12 @@ export async function uploadMyCompanyLogo(file: File) {
   const form = new FormData();
   form.append("logo", file);
   const res = await api.put<ApiResponse<Company>>("/companies/me/logo", form);
+  return res.data.result!;
+}
+
+export async function uploadMyCompanyAttendanceSound(kind: "success" | "failure", file: File) {
+  const form = new FormData();
+  form.append("sound", file);
+  const res = await api.put<ApiResponse<Company>>(`/companies/me/attendance-audio/${kind}`, form);
   return res.data.result!;
 }
