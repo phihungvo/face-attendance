@@ -105,6 +105,17 @@ function uploadStatusLabel(status?: string | null) {
   return "Chưa bật";
 }
 
+function formatEvidenceConfidence(score?: number | null) {
+  if (score == null) return "—";
+  const normalized = score <= 1 ? score * 100 : score;
+  return `${Math.round(normalized)}%`;
+}
+
+function formatEvidenceSize(sizeKb?: number | null) {
+  if (sizeKb == null) return "—";
+  return `${sizeKb} KB`;
+}
+
 // function escapeHtml(s: any): string {
 //     const str = String(s ?? "");
 //     return str
@@ -366,6 +377,7 @@ export default function TimesheetPage() {
   const [detailImageUrls, setDetailImageUrls] = useState<Record<number, string>>({});
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailPreview, setDetailPreview] = useState<{ label: string; item: AttendanceHistoryRow; url: string } | null>(null);
 
   const summary = useMemo(() => {
     const totalEmployees = new Set(rows.map((r) => r.user_id)).size;
@@ -729,6 +741,7 @@ export default function TimesheetPage() {
           setDetailHistory([]);
           setDetailImageUrls({});
           setDetailError(null);
+          setDetailPreview(null);
         }}
         modalClassName={styles.detailModal}
       >
@@ -788,7 +801,36 @@ export default function TimesheetPage() {
                   </div>
 
                   {item && detailImageUrls[item.id] ? (
-                    <img className={styles.evidenceImage} src={detailImageUrls[item.id]} alt={`${label} evidence`} />
+                    <button
+                      type="button"
+                      className={styles.evidenceImageFrame}
+                      onClick={() => setDetailPreview({ label, item, url: detailImageUrls[item.id] })}
+                      aria-label={`Xem full ảnh bằng chứng ${label.toLowerCase()}`}
+                    >
+                      <img className={styles.evidenceImage} src={detailImageUrls[item.id]} alt={`${label} evidence`} />
+                      <div className={styles.evidenceHoverHint}>Xem full ảnh</div>
+                      <div className={styles.evidenceOverlay}>
+                        <div className={styles.evidenceOverlayTitle}>Chi tiết ảnh</div>
+                        <div className={styles.evidenceOverlayGrid}>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Trạng thái</span>
+                            <span className={styles.evidenceOverlayVal}>{uploadStatusLabel(item.upload_status)}</span>
+                          </div>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Độ khớp</span>
+                            <span className={styles.evidenceOverlayVal}>{formatEvidenceConfidence(item.confidence_score)}</span>
+                          </div>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Định dạng</span>
+                            <span className={styles.evidenceOverlayVal}>{item.image_format?.toUpperCase() || "—"}</span>
+                          </div>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Kích thước</span>
+                            <span className={styles.evidenceOverlayVal}>{formatEvidenceSize(item.image_size_kb)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
                   ) : (
                     <div className={styles.evidenceEmpty}>
                       <div className={styles.evidenceEmptyIcon}>{item ? "🖼" : "📷"}</div>
@@ -798,25 +840,6 @@ export default function TimesheetPage() {
                       </div>
                     </div>
                   )}
-
-                  <div className={styles.evidenceMetaGrid}>
-                    <div className={styles.evidenceMetaItem}>
-                      <div className={styles.evidenceMetaKey}>Trạng thái</div>
-                      <div className={styles.evidenceMetaVal}>{item ? uploadStatusLabel(item.upload_status) : "Không có"}</div>
-                    </div>
-                    <div className={styles.evidenceMetaItem}>
-                      <div className={styles.evidenceMetaKey}>Độ khớp</div>
-                      <div className={styles.evidenceMetaVal}>{item ? `${Math.round((item.confidence_score <= 1 ? item.confidence_score * 100 : item.confidence_score))}%` : "—"}</div>
-                    </div>
-                    <div className={styles.evidenceMetaItem}>
-                      <div className={styles.evidenceMetaKey}>Định dạng</div>
-                      <div className={styles.evidenceMetaVal}>{item?.image_format?.toUpperCase() || "—"}</div>
-                    </div>
-                    <div className={styles.evidenceMetaItem}>
-                      <div className={styles.evidenceMetaKey}>Kích thước</div>
-                      <div className={styles.evidenceMetaVal}>{item?.image_size_kb ? `${item.image_size_kb} KB` : "—"}</div>
-                    </div>
-                  </div>
                 </div>
               ))}
             </div>
@@ -848,6 +871,40 @@ export default function TimesheetPage() {
                   {detailHistory.length > 0 ? formatDateTimeVi(new Date(detailHistory[detailHistory.length - 1].created_at)) : "Chưa có"}
                 </div>
               </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={!!detailPreview}
+        title={
+          detailPreview ? (
+            <div>
+              <div className={styles.evidencePreviewTitle}>Ảnh bằng chứng</div>
+              <div className={styles.evidencePreviewSub}>
+                {detailPreview.label}
+                {detailRow ? ` • ${detailRow.user_code || `#${detailRow.user_id}`} • ${detailRow.user_name}` : ""}
+              </div>
+            </div>
+          ) : (
+            "Ảnh bằng chứng"
+          )
+        }
+        onClose={() => setDetailPreview(null)}
+        modalClassName={styles.evidencePreviewModal}
+      >
+        {detailPreview ? (
+          <div className={styles.evidencePreviewBody}>
+            <div className={styles.evidencePreviewMeta}>
+              <div className={styles.evidencePreviewChip}>{formatDateTimeVi(new Date(detailPreview.item.check_time))}</div>
+              <div className={styles.evidencePreviewChip}>{uploadStatusLabel(detailPreview.item.upload_status)}</div>
+              <div className={styles.evidencePreviewChip}>Độ khớp {formatEvidenceConfidence(detailPreview.item.confidence_score)}</div>
+              <div className={styles.evidencePreviewChip}>{detailPreview.item.image_format?.toUpperCase() || "—"}</div>
+              <div className={styles.evidencePreviewChip}>{formatEvidenceSize(detailPreview.item.image_size_kb)}</div>
+            </div>
+            <div className={styles.evidencePreviewImageWrap}>
+              <img className={styles.evidencePreviewImage} src={detailPreview.url} alt={`${detailPreview.label} full evidence`} />
             </div>
           </div>
         ) : null}
