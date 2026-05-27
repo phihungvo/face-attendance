@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/Card/Card";
+import StatCard from "../../components/StatCard/StatCard";
 import Table from "../../components/Table/Table";
 import Modal from "../../components/Modal/Modal";
 import { createDepartment, deleteDepartment, listDepartments, updateDepartment } from "../../../shared/api/departments";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import type { Department } from "../../../shared/types/department";
-import { ApartmentOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined, MinusCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import styles from "./DepartmentsPage.module.scss";
 
@@ -43,39 +44,41 @@ export default function DepartmentsPage() {
     refresh();
   }, []);
 
-  const kpis = useMemo(() => {
+  const stats = useMemo(() => {
     const count = rows.length;
-    const locations = new Set(rows.map((r) => r.location).filter(Boolean)).size;
+    const locations = new Set(rows.map((r) => r.location?.trim()).filter(Boolean)).size;
+    const missingLocation = rows.filter((r) => !r.location?.trim()).length;
     return [
-      { label: "Phòng ban", value: count },
-      { label: "Địa điểm", value: locations },
+      {
+        icon: <ApartmentOutlined />,
+        label: "Phòng ban hiển thị",
+        value: count,
+        variant: "blue" as const,
+        foot: hasMore ? `Đang hiển thị ${count} phòng ban đầu tiên` : `Đã tải ${count} phòng ban`
+      },
+      {
+        icon: <EnvironmentOutlined />,
+        label: "Địa điểm hoạt động",
+        value: locations,
+        variant: "green" as const,
+        foot: locations > 0 ? `${rows.length - missingLocation} phòng ban đã gắn địa điểm` : "Chưa có địa điểm nào được khai báo"
+      },
+      {
+        icon: <MinusCircleOutlined />,
+        label: "Thiếu địa điểm",
+        value: missingLocation,
+        variant: "orange" as const,
+        foot: missingLocation > 0 ? "Nên bổ sung để quản trị tốt hơn" : "Tất cả phòng ban đã có địa điểm"
+      }
     ];
-  }, [rows]);
+  }, [hasMore, rows]);
 
   return (
     <div className={styles.page}>
-      <div className={styles.grid2}>
-        <Card
-          title={
-            <span className={styles.cardTitle}>
-              <ApartmentOutlined /> Tổng quan phòng ban
-            </span>
-          }
-        >
-          <div className={styles.kpis}>
-            {kpis.map((k) => (
-              <div key={k.label} className={styles.kpi}>
-                <div className={styles.kpiLabel}>{k.label}</div>
-                <div className={styles.kpiValue}>{k.value}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-        {/*<Card title="🧭 Gợi ý" sub="Quy trình quản lý nhân sự">*/}
-        {/*  <div className={styles.infoBox}>*/}
-        {/*    Tạo phòng ban → gán quản lý → phân quyền → map ca làm/địa điểm chấm công (phần ca làm đã bỏ theo yêu cầu).*/}
-        {/*  </div>*/}
-        {/*</Card>*/}
+      <div className={styles.statsGrid}>
+        {stats.map((item) => (
+          <StatCard key={item.label} icon={item.icon} label={item.label} value={item.value} foot={item.foot} variant={item.variant} />
+        ))}
       </div>
 
       <Card

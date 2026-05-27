@@ -15,12 +15,12 @@ import { useCamera } from "../../../shared/hooks/useCamera";
 import { viStatusLabel } from "../../../shared/i18n/vi";
 import {
   AppstoreOutlined,
+  ApartmentOutlined,
   CameraOutlined,
   CheckOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
-  FileTextOutlined,
   LeftOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -142,12 +142,16 @@ export default function EmployeesPage() {
   }, [departments]);
 
   const stats = useMemo(() => {
+    const activeCount = users.filter((u) => u.status === "active").length;
+    const deptCount = new Set(users.map((u) => u.department_id).filter((v): v is number => typeof v === "number")).size;
+    const pendingAuthCount = users.filter((u) => u.auth_status === "pending").length;
+    const noDeptCount = users.filter((u) => !u.department_id).length;
     return [
-      { icon: <TeamOutlined />, label: "Tổng nhân viên", value: users.length, variant: "blue" as const, delta: { label: "DB", tone: "neutral" as const } },
-      { icon: <FileTextOutlined />, label: "Bản ghi", value: users.length, variant: "green" as const, delta: { label: "users", tone: "neutral" as const } },
-      { icon: <UserAddOutlined />, label: "Mới hôm nay", value: 0, variant: "orange" as const, delta: { label: "hôm nay", tone: "neutral" as const } }
+      { icon: <TeamOutlined />, label: "Tổng nhân viên", value: users.length, variant: "blue" as const, foot: `${activeCount} đang hoạt động` },
+      { icon: <ApartmentOutlined />, label: "Phòng ban có người", value: deptCount, variant: "green" as const, foot: noDeptCount > 0 ? `${noDeptCount} chưa gắn phòng ban` : "Đã gắn phòng ban đầy đủ" },
+      { icon: <UserAddOutlined />, label: "Chờ kích hoạt", value: pendingAuthCount, variant: "orange" as const, foot: pendingAuthCount > 0 ? "Đã gửi lời mời nhưng chưa kích hoạt" : "Không có tài khoản chờ kích hoạt" }
     ];
-  }, [users.length]);
+  }, [users]);
 
   const suggestedCode = useMemo(() => nextEmployeeCode(users), [users]);
 
