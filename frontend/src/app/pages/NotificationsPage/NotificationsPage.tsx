@@ -29,7 +29,7 @@ import {
 } from "@ant-design/icons";
 import styles from "./NotificationsPage.module.scss";
 
-const pageSize = 20;
+const pageSize = 7;
 
 function getNotificationIcon(item: NotificationItem) {
     if (item.category === "leave") {
