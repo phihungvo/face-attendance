@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -11,7 +13,6 @@ from app.repositories.users import UserRepository
 from app.repositories.iam_users import IamUserRepository
 from app.services.auth import AuthService
 from zoneinfo import ZoneInfo
-from datetime import datetime
 
 
 class UserService:
@@ -97,6 +98,36 @@ class UserService:
             raise ValueError("User not found")
         return user
 
+    def update_my_profile(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        name: str,
+        email: str | None = None,
+        phone: str | None = None,
+        address: str | None = None,
+        citizen_id: str | None = None,
+        citizen_id_place: str | None = None,
+    ):
+        user = self.get_user(db, user_id=user_id)
+        return self.update_user(
+            db,
+            user_id=user_id,
+            company_id=getattr(user, "company_id", None),
+            name=name,
+            code=getattr(user, "code", None),
+            email=email,
+            phone=phone,
+            address=address,
+            citizen_id=citizen_id,
+            citizen_id_place=citizen_id_place,
+            hire_date=getattr(user, "hire_date", None),
+            role=getattr(user, "role", None),
+            status=getattr(user, "status", None),
+            department_id=getattr(user, "department_id", None),
+        )
+
     def create_user(
         self,
         db: Session,
@@ -105,6 +136,11 @@ class UserService:
         name: str,
         code: str | None = None,
         email: str | None = None,
+        phone: str | None = None,
+        address: str | None = None,
+        citizen_id: str | None = None,
+        citizen_id_place: str | None = None,
+        hire_date: date | None = None,
         role: str | None = None,
         status: str | None = None,
         department_id: int | None = None,
@@ -116,6 +152,10 @@ class UserService:
             raise ValueError("name is required")
         code = code.strip() if code else None
         email = email.strip() if email else None
+        phone = phone.strip() if phone else None
+        address = address.strip() if address else None
+        citizen_id = citizen_id.strip() if citizen_id else None
+        citizen_id_place = citizen_id_place.strip() if citizen_id_place else None
         role = role.strip() if role else None
         status = status.strip() if status else None
         if create_login and not email:
@@ -157,6 +197,11 @@ class UserService:
                 name=name,
                 code=code,
                 email=email,
+                phone=phone,
+                address=address,
+                citizen_id=citizen_id,
+                citizen_id_place=citizen_id_place,
+                hire_date=hire_date,
                 role=role,
                 status=status,
                 department_id=department_id,
@@ -197,6 +242,11 @@ class UserService:
         name: str,
         code: str | None = None,
         email: str | None = None,
+        phone: str | None = None,
+        address: str | None = None,
+        citizen_id: str | None = None,
+        citizen_id_place: str | None = None,
+        hire_date: date | None = None,
         role: str | None = None,
         status: str | None = None,
         department_id: int | None = None,
@@ -206,6 +256,10 @@ class UserService:
             raise ValueError("name is required")
         code = code.strip() if code else None
         email = email.strip() if email else None
+        phone = phone.strip() if phone else None
+        address = address.strip() if address else None
+        citizen_id = citizen_id.strip() if citizen_id else None
+        citizen_id_place = citizen_id_place.strip() if citizen_id_place else None
         role = role.strip() if role else None
         status = status.strip() if status else None
         if code:
@@ -224,6 +278,11 @@ class UserService:
                 name=name,
                 code=code,
                 email=email,
+                phone=phone,
+                address=address,
+                citizen_id=citizen_id,
+                citizen_id_place=citizen_id_place,
+                hire_date=hire_date,
                 role=role,
                 status=status,
                 department_id=department_id,

@@ -8,6 +8,7 @@ import { listDepartments } from "../../../shared/api/departments";
 import { enrollFaceForUser, resetFaceForUser } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { exportExcelHtml } from "../../../shared/lib/excelExport";
+import { formatDateVi } from "../../../shared/lib/date";
 import type { User } from "../../../shared/types/user";
 import type { Department } from "../../../shared/types/department";
 import { useCamera } from "../../../shared/hooks/useCamera";
@@ -70,6 +71,12 @@ function nextEmployeeCode(users: User[]) {
   return `NV${String(next).padStart(maxDigits, "0")}`;
 }
 
+function formatHireDateLabel(value?: string | null) {
+  if (!value) return "—";
+  const dt = new Date(`${value}T00:00:00`);
+  return Number.isNaN(dt.getTime()) ? value : formatDateVi(dt);
+}
+
 export default function EmployeesPage() {
   const [query, setQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("");
@@ -84,6 +91,11 @@ export default function EmployeesPage() {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [citizenId, setCitizenId] = useState("");
+  const [citizenIdPlace, setCitizenIdPlace] = useState("");
+  const [hireDate, setHireDate] = useState("");
   const [role, setRole] = useState("");
   const [portalRoleKey, setPortalRoleKey] = useState<"employee" | "manager">("employee");
   const [departmentId, setDepartmentId] = useState<string>("");
@@ -139,11 +151,42 @@ export default function EmployeesPage() {
 
   const suggestedCode = useMemo(() => nextEmployeeCode(users), [users]);
 
+  function openCreateModal() {
+    setEditing(null);
+    setCode(suggestedCode);
+    setName("");
+    setEmail("");
+    setPhone("");
+    setAddress("");
+    setCitizenId("");
+    setCitizenIdPlace("");
+    setHireDate("");
+    setRole("");
+    setDepartmentId("");
+    setPortalRoleKey("employee");
+    setModalOpen(true);
+  }
+
+  function openEditModal(u: User) {
+    setEditing(u);
+    setCode(u.code ?? "");
+    setName(u.name);
+    setEmail(u.email ?? "");
+    setPhone(u.phone ?? "");
+    setAddress(u.address ?? "");
+    setCitizenId(u.citizen_id ?? "");
+    setCitizenIdPlace(u.citizen_id_place ?? "");
+    setHireDate(u.hire_date ?? "");
+    setRole(u.role ?? "");
+    setDepartmentId(u.department_id ? String(u.department_id) : "");
+    setModalOpen(true);
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const byText = !q
       ? users
-      : users.filter((u) => `${u.id} ${u.code ?? ""} ${u.name} ${u.email ?? ""}`.toLowerCase().includes(q));
+      : users.filter((u) => `${u.id} ${u.code ?? ""} ${u.name} ${u.email ?? ""} ${u.phone ?? ""} ${u.address ?? ""} ${u.citizen_id ?? ""} ${u.citizen_id_place ?? ""}`.toLowerCase().includes(q));
     if (!deptFilter) return byText;
     return byText.filter((u) => String(u.department_id ?? "") === deptFilter);
   }, [deptFilter, query, users]);
@@ -209,7 +252,7 @@ export default function EmployeesPage() {
             <span className={styles.searchIcon}>
               <SearchOutlined />
             </span>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm nhân viên..." />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm tên, mã, email, SĐT, CCCD..." />
           </div>
 
           <select className={styles.select} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} aria-label="Lọc phòng ban">
@@ -238,16 +281,26 @@ export default function EmployeesPage() {
                   { key: "name", label: "Họ tên", widthPx: 220 },
                   { key: "department", label: "Phòng ban", widthPx: 180 },
                   { key: "role", label: "Chức vụ", widthPx: 150 },
+                  { key: "phone", label: "Số điện thoại", widthPx: 150 },
+                  { key: "citizen_id", label: "CCCD", widthPx: 160 },
+                  { key: "citizen_id_place", label: "Nơi cấp CCCD", widthPx: 200 },
+                  { key: "hire_date", label: "Ngày vào làm", widthPx: 150 },
                   { key: "status", label: "Trạng thái", widthPx: 110 },
-                  { key: "email", label: "Email", widthPx: 220 }
+                  { key: "email", label: "Email", widthPx: 220 },
+                  { key: "address", label: "Địa chỉ", widthPx: 260 }
                 ],
                 rows: filtered.map((u) => ({
                   code: u.code || `#${u.id}`,
                   name: u.name,
                   department: u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—",
                   role: u.role || "—",
+                  phone: u.phone || "—",
+                  citizen_id: u.citizen_id || "—",
+                  citizen_id_place: u.citizen_id_place || "—",
+                  hire_date: formatHireDateLabel(u.hire_date),
                   status: u.status || "active",
-                  email: u.email || "—"
+                  email: u.email || "—",
+                  address: u.address || "—"
                 }))
               });
             }}
@@ -258,16 +311,7 @@ export default function EmployeesPage() {
           <button
             className={styles.btnPrimary}
             type="button"
-            onClick={() => {
-              setEditing(null);
-              setCode(suggestedCode);
-              setName("");
-              setEmail("");
-              setRole("");
-              setDepartmentId("");
-              setPortalRoleKey("employee");
-              setModalOpen(true);
-            }}
+            onClick={openCreateModal}
           >
             <PlusOutlined /> Thêm nhân viên
           </button>
@@ -287,25 +331,11 @@ export default function EmployeesPage() {
                 className={styles.empCard}
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  setEditing(u);
-                  setCode(u.code ?? "");
-                  setName(u.name);
-                  setEmail(u.email ?? "");
-                  setRole(u.role ?? "");
-                  setDepartmentId(u.department_id ? String(u.department_id) : "");
-                  setModalOpen(true);
-                }}
+                onClick={() => openEditModal(u)}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter" && e.key !== " ") return;
                   e.preventDefault();
-                  setEditing(u);
-                  setCode(u.code ?? "");
-                  setName(u.name);
-                  setEmail(u.email ?? "");
-                  setRole(u.role ?? "");
-                  setDepartmentId(u.department_id ? String(u.department_id) : "");
-                  setModalOpen(true);
+                  openEditModal(u);
                 }}
               >
                 <div className={styles.empBigAvatar} style={{ background: avatarColor }}>
@@ -326,8 +356,8 @@ export default function EmployeesPage() {
                     <div className={styles.empStatLbl}>Email</div>
                   </div>
                   <div className={styles.empStatItem}>
-                    <div className={u.status === "active" ? `${styles.empStatVal} ${styles.ok}` : `${styles.empStatVal} ${styles.warn}`}>{viStatusLabel(u.status)}</div>
-                    <div className={styles.empStatLbl}>TT</div>
+                    <div className={styles.empStatValSmall}>{u.phone || "—"}</div>
+                    <div className={styles.empStatLbl}>SĐT</div>
                   </div>
                 </div>
               </div>
@@ -348,6 +378,9 @@ export default function EmployeesPage() {
                 <th>Nhân viên</th>
                 <th>Phòng ban</th>
                 <th>Chức vụ</th>
+                <th>Số điện thoại</th>
+                <th>CCCD</th>
+                <th>Ngày vào làm</th>
                 <th>Trạng thái</th>
                 <th>Email</th>
                 <th style={{ width: 120 }}>Thao tác</th>
@@ -365,6 +398,9 @@ export default function EmployeesPage() {
                   </td>
                   <td>{u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—"}</td>
                   <td className={styles.muted}>{u.role || "—"}</td>
+                  <td className={styles.muted}>{u.phone || "—"}</td>
+                  <td className={styles.muted}>{u.citizen_id || "—"}</td>
+                  <td className={styles.muted}>{formatHireDateLabel(u.hire_date)}</td>
                   <td>
                     <span className={u.status === "active" ? `${styles.tag} ${styles.good}` : `${styles.tag} ${styles.bad}`}>{viStatusLabel(u.status)}</span>
                   </td>
@@ -375,15 +411,7 @@ export default function EmployeesPage() {
                         <button
                           className={`${styles.rowBtn} ${styles.edit}`}
                           type="button"
-                          onClick={() => {
-                            setEditing(u);
-                            setCode(u.code ?? "");
-                            setName(u.name);
-                            setEmail(u.email ?? "");
-                            setRole(u.role ?? "");
-                            setDepartmentId(u.department_id ? String(u.department_id) : "");
-                            setModalOpen(true);
-                          }}
+                          onClick={() => openEditModal(u)}
                         >
                           <EditOutlined />
                         </button>
@@ -414,6 +442,11 @@ export default function EmployeesPage() {
                                 name: u.name,
                                 code: u.code ?? null,
                                 email: u.email ?? null,
+                                phone: u.phone ?? null,
+                                address: u.address ?? null,
+                                citizen_id: u.citizen_id ?? null,
+                                citizen_id_place: u.citizen_id_place ?? null,
+                                hire_date: u.hire_date ?? null,
                                 role: u.role ?? null,
                                 status: nextStatus,
                                 department_id: u.department_id ?? null
@@ -516,6 +549,11 @@ export default function EmployeesPage() {
                     name: name.trim(),
                     code: editing ? (code.trim() || null) : (code.trim() || suggestedCode),
                     email: email.trim() || null,
+                    phone: phone.trim() || null,
+                    address: address.trim() || null,
+                    citizen_id: citizenId.trim() || null,
+                    citizen_id_place: citizenIdPlace.trim() || null,
+                    hire_date: hireDate || null,
                     role: role.trim() || null,
                     status: editing ? (editing.status as any) : "active",
                     department_id: departmentId ? Number(departmentId) : null,
@@ -570,6 +608,16 @@ export default function EmployeesPage() {
           </div>
 
           <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Số điện thoại</div>
+            <input className={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="VD: 0912 345 678" />
+          </div>
+
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Căn cước công dân</div>
+            <input className={styles.input} value={citizenId} onChange={(e) => setCitizenId(e.target.value)} placeholder="VD: 079203001234" />
+          </div>
+
+          <div className={styles.formGroup}>
             <div className={styles.formLabelTop}>Phòng ban</div>
             <select className={styles.input} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
               <option value="">—</option>
@@ -588,13 +636,34 @@ export default function EmployeesPage() {
                 <option value="employee">Nhân viên</option>
                 <option value="manager">Quản lý</option>
               </select>
-              <div className={styles.fieldHint}>Quản lý có thể xem/duyệt theo phạm vi công ty (không có quyền IAM/Công ty).</div>
+              {/*<div className={styles.fieldHint}>Quản lý có thể xem/duyệt theo phạm vi công ty (không có quyền IAM/Công ty).</div>*/}
             </div>
           ) : null}
 
           <div className={styles.formGroup}>
             <div className={styles.formLabelTop}>Chức danh (tùy chọn)</div>
             <input className={styles.input} value={role} onChange={(e) => setRole(e.target.value)} placeholder="VD: Team lead" />
+          </div>
+
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Nơi cấp CCCD</div>
+            <input className={styles.input} value={citizenIdPlace} onChange={(e) => setCitizenIdPlace(e.target.value)} placeholder="VD: Cục CSQLHC về TTXH" />
+          </div>
+
+          <div className={styles.formGroup}>
+            <div className={styles.formLabelTop}>Ngày vào làm</div>
+            <input className={styles.input} type="date" value={hireDate} onChange={(e) => setHireDate(e.target.value)} />
+          </div>
+
+          <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+            <div className={styles.formLabelTop}>Địa chỉ</div>
+            <textarea
+              className={styles.input}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="VD: Quận 1, TP.HCM"
+              rows={3}
+            />
           </div>
         </div>
 

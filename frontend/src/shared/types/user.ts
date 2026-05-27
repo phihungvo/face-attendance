@@ -4,6 +4,11 @@ export type User = {
   code?: string | null;
   name: string;
   email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  citizen_id?: string | null;
+  citizen_id_place?: string | null;
+  hire_date?: string | null;
   role?: string | null;
   status: string;
   auth_status?: string | null;

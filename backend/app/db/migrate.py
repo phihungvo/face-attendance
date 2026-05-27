@@ -131,6 +131,16 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
         _exec(engine, "ALTER TABLE users ADD UNIQUE KEY uq_users_company_email (company_id, email)")
     if not _index_exists(engine, table="users", index="ix_users_email", schema=schema):
         _exec(engine, "ALTER TABLE users ADD KEY ix_users_email (email)")
+    if not _column_exists(engine, table="users", column="phone", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL")
+    if not _column_exists(engine, table="users", column="address", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN address VARCHAR(255) NULL")
+    if not _column_exists(engine, table="users", column="citizen_id", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN citizen_id VARCHAR(32) NULL")
+    if not _column_exists(engine, table="users", column="citizen_id_place", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN citizen_id_place VARCHAR(255) NULL")
+    if not _column_exists(engine, table="users", column="hire_date", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN hire_date DATE NULL")
     if not _column_exists(engine, table="users", column="role", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN role VARCHAR(64) NULL")
     if not _column_exists(engine, table="users", column="status", schema=schema):

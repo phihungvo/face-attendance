@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from datetime import date
+
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.user import User
@@ -23,6 +25,11 @@ class UserRepository:
         name: str,
         code: str | None = None,
         email: str | None = None,
+        phone: str | None = None,
+        address: str | None = None,
+        citizen_id: str | None = None,
+        citizen_id_place: str | None = None,
+        hire_date: date | None = None,
         role: str | None = None,
         status: str | None = None,
         department_id: int | None = None,
@@ -32,6 +39,11 @@ class UserRepository:
             name=name,
             code=code,
             email=email,
+            phone=phone,
+            address=address,
+            citizen_id=citizen_id,
+            citizen_id_place=citizen_id_place,
+            hire_date=hire_date,
             role=role,
             status=status or "active",
             department_id=department_id,
@@ -53,7 +65,18 @@ class UserRepository:
         if company_id is not None:
             stmt = stmt.where(User.company_id == company_id)
         if q:
-            stmt = stmt.where(User.name.ilike(f"%{q}%"))
+            needle = f"%{q}%"
+            stmt = stmt.where(
+                or_(
+                    User.name.ilike(needle),
+                    User.code.ilike(needle),
+                    User.email.ilike(needle),
+                    User.phone.ilike(needle),
+                    User.address.ilike(needle),
+                    User.citizen_id.ilike(needle),
+                    User.citizen_id_place.ilike(needle),
+                )
+            )
         stmt = stmt.order_by(User.id.desc()).limit(limit).offset(offset)
         return list(db.execute(stmt).scalars().all())
 
@@ -72,6 +95,11 @@ class UserRepository:
         name: str,
         code: str | None = None,
         email: str | None = None,
+        phone: str | None = None,
+        address: str | None = None,
+        citizen_id: str | None = None,
+        citizen_id_place: str | None = None,
+        hire_date: date | None = None,
         role: str | None = None,
         status: str | None = None,
         department_id: int | None = None,
@@ -82,6 +110,11 @@ class UserRepository:
         user.name = name
         user.code = code
         user.email = email
+        user.phone = phone
+        user.address = address
+        user.citizen_id = citizen_id
+        user.citizen_id_place = citizen_id_place
+        user.hire_date = hire_date
         user.role = role
         if status:
             user.status = status
