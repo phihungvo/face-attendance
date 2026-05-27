@@ -367,6 +367,9 @@
   color: var(--ink3);
   margin-top: 4px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .streakCard {
@@ -581,6 +584,28 @@
 }
 
 @media (max-width: 520px) {
+  .statsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .statPill {
+    padding: 12px 10px;
+  }
+
+  .statPillIcon {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .statPillVal {
+    font-size: 20px;
+  }
+
+  .statPillLbl {
+    font-size: 10px;
+    margin-top: 3px;
+  }
+
   .headerTop {
     align-items: flex-start;
   }

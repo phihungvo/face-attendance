@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.attendance_evidence_task import AttendanceEvidenceTask
 
-
+# Repository for attendance evidence processing tasks, which are used to asynchronously process attendance evidence files uploaded by employees.
 class AttendanceEvidenceTaskRepository:
     def create(
         self,

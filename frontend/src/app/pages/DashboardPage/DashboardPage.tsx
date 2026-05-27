@@ -356,14 +356,14 @@ export default function DashboardPage() {
       foot: `${data?.leave_summary.approved_count ?? 0} đã duyệt`,
       tone: "violet"
     },
-    {
-      key: "departments",
-      label: "Phòng ban",
-      value: departments.length,
-      icon: <ApartmentOutlined />,
-      foot: `${bestDepartment?.department_name ?? "--"} đang cao nhất`,
-      tone: "slate"
-    }
+    // {
+    //   key: "departments",
+    //   label: "Phòng ban",
+    //   value: departments.length,
+    //   icon: <ApartmentOutlined />,
+    //   foot: `${bestDepartment?.department_name ?? "--"} đang cao nhất`,
+    //   tone: "slate"
+    // }
   ] as const;
 
   function moveTrendFocus(direction: number) {
@@ -459,7 +459,7 @@ export default function DashboardPage() {
 
       <section className={styles.statsGrid}>
         {statCards.map((item) => (
-          <article key={item.key} className={`${styles.statCard} ${styles[`tone${item.tone[0].toUpperCase()}${item.tone.slice(1)}`]}`}>
+          <article key={item.key} className={`${styles.statCard}`}>
             <div className={styles.statTop}>
               <div className={styles.statIcon}>{item.icon}</div>
               <div className={styles.statLabel}>{item.label}</div>
