@@ -6,17 +6,22 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { enrollMyFace, getMyFaceStatus } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
 import { formatDateTimeVi } from "../../../shared/lib/date";
-import { getMyProfile } from "../../../shared/api/users";
+import { getMyProfile, updateMyProfile } from "../../../shared/api/users";
 import { listMyTimelog } from "../../../shared/api/attendance";
 import { useTheme } from "../../../shared/theme/theme";
 import { getMyCompany, type Company } from "../../../shared/api/companies";
 import {
+  CalendarOutlined,
   BankOutlined,
   CameraOutlined,
+  EditOutlined,
+  EnvironmentOutlined,
   IdcardOutlined,
   LockOutlined,
   LogoutOutlined,
+  MailOutlined,
   MoonOutlined,
+  PhoneOutlined,
   SafetyOutlined,
   StopOutlined,
   SunOutlined,
@@ -43,6 +48,16 @@ export default function EmployeeProfilePage() {
   const [busy, setBusy] = useState(false);
   const [faceError, setFaceError] = useState<string | null>(null);
   const [faceInfo, setFaceInfo] = useState<string | null>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileInfo, setProfileInfo] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileCitizenId, setProfileCitizenId] = useState("");
+  const [profileCitizenIdPlace, setProfileCitizenIdPlace] = useState("");
   const [monthDays, setMonthDays] = useState<number | null>(null);
   const [attendancePct, setAttendancePct] = useState<number | null>(null);
   const [expLabel, setExpLabel] = useState<string>("—");
@@ -76,13 +91,14 @@ export default function EmployeeProfilePage() {
     .join("");
 
   useEffect(() => {
-    if (!me?.created_at) return;
-    const created = new Date(me.created_at);
+    const expSource = me?.hire_date ? `${me.hire_date}T00:00:00` : me?.created_at;
+    if (!expSource) return;
+    const created = new Date(expSource);
     const now = new Date();
     const months = Math.max(0, (now.getFullYear() - created.getFullYear()) * 12 + (now.getMonth() - created.getMonth()));
     const years = Math.floor(months / 12);
     setExpLabel(years > 0 ? `${years} năm` : `${months} tháng`);
-  }, [me?.created_at]);
+  }, [me?.created_at, me?.hire_date]);
 
   const now = useMemo(() => new Date(), []);
   const ym = useMemo(() => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`, [now]);
@@ -112,27 +128,79 @@ export default function EmployeeProfilePage() {
   const faceReady = Boolean(lastFace);
   const faceToneClass = faceReady ? styles.good : styles.warn;
 
+  useEffect(() => {
+    if (!me || editingProfile) return;
+    setProfileName(me.name || "");
+    setProfileEmail(me.email || "");
+    setProfilePhone(me.phone || "");
+    setProfileAddress(me.address || "");
+    setProfileCitizenId(me.citizen_id || "");
+    setProfileCitizenIdPlace(me.citizen_id_place || "");
+  }, [editingProfile, me]);
+
   const details = useMemo<DetailItem[]>(
     () => [
       {
-        key: "username",
-        label: "Tài khoản",
-        value: auth.username ?? "—",
-        icon: <UserOutlined />,
+        key: "email",
+        label: "Email",
+        value: me?.email || "Chưa cập nhật",
+        icon: <MailOutlined />,
         tone: "indigo"
+      },
+      {
+        key: "phone",
+        label: "Điện thoại",
+        value: me?.phone || "Chưa cập nhật",
+        icon: <PhoneOutlined />,
+        tone: "green"
+      },
+      {
+        key: "address",
+        label: "Địa chỉ",
+        value: me?.address || "Chưa cập nhật",
+        icon: <EnvironmentOutlined />,
+        tone: "amber"
       },
       {
         key: "code",
         label: "Mã nhân viên",
         value: me?.code || "Chưa cấp mã",
         icon: <IdcardOutlined />,
-        tone: "green"
+        tone: "rose"
+      },
+      {
+        key: "citizen_id",
+        label: "CCCD",
+        value: me?.citizen_id || "Chưa cập nhật",
+        icon: <IdcardOutlined />,
+        tone: "amber"
+      },
+      {
+        key: "citizen_id_place",
+        label: "Nơi cấp CCCD",
+        value: me?.citizen_id_place || "Chưa cập nhật",
+        icon: <EnvironmentOutlined />,
+        tone: "rose"
       },
       {
         key: "department",
         label: "Phòng ban",
         value: me?.department_name || "Chưa gắn phòng ban",
         icon: <BankOutlined />,
+        tone: "indigo"
+      },
+      {
+        key: "hire_date",
+        label: "Ngày vào làm",
+        value: me?.hire_date ? formatDateTimeVi(new Date(`${me.hire_date}T00:00:00`), { dateOnly: true }) : "Chưa cập nhật",
+        icon: <CalendarOutlined />,
+        tone: "green"
+      },
+      {
+        key: "account",
+        label: "Tài khoản",
+        value: auth.username ?? "—",
+        icon: <UserOutlined />,
         tone: "amber"
       },
       {
@@ -143,7 +211,7 @@ export default function EmployeeProfilePage() {
         tone: "rose"
       }
     ],
-    [auth.permissionKeys.length, auth.username, me?.code, me?.department_name]
+    [auth.permissionKeys.length, auth.username, me?.address, me?.citizen_id, me?.citizen_id_place, me?.code, me?.department_name, me?.email, me?.hire_date, me?.phone]
   );
 
   return (
@@ -201,6 +269,18 @@ export default function EmployeeProfilePage() {
             <div>
               <div className={styles.sectionEyebrow}>Thông tin chính</div>
             </div>
+            <button
+              className={styles.secondaryBtn}
+              type="button"
+              disabled={!me || profileSaving}
+              onClick={() => {
+                setProfileError(null);
+                setProfileInfo(null);
+                setEditingProfile((v) => !v);
+              }}
+            >
+              <EditOutlined /> {editingProfile ? "Đóng chỉnh sửa" : "Cập nhật thông tin"}
+            </button>
           </div>
 
           <div className={styles.detailGrid}>
@@ -214,6 +294,99 @@ export default function EmployeeProfilePage() {
               </div>
             ))}
           </div>
+
+          {editingProfile ? (
+            <div className={styles.profileEditor}>
+              {profileError ? <div className={`${styles.notice} ${styles.danger}`}>{profileError}</div> : null}
+              {profileInfo ? <div className={`${styles.notice} ${styles.good}`}>{profileInfo}</div> : null}
+
+              <div className={styles.editorGrid}>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Họ và tên</span>
+                  <input className={styles.fieldInput} value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Nguyễn Văn A" />
+                </label>
+
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Email</span>
+                  <input className={styles.fieldInput} value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} placeholder="email@company.vn" />
+                </label>
+
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Điện thoại</span>
+                  <input className={styles.fieldInput} value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="0912 345 678" />
+                </label>
+
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>CCCD</span>
+                  <input className={styles.fieldInput} value={profileCitizenId} onChange={(e) => setProfileCitizenId(e.target.value)} placeholder="079203001234" />
+                </label>
+
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Nơi cấp CCCD</span>
+                  <input className={styles.fieldInput} value={profileCitizenIdPlace} onChange={(e) => setProfileCitizenIdPlace(e.target.value)} placeholder="Cục CSQLHC về TTXH" />
+                </label>
+
+                <label className={`${styles.field} ${styles.fieldFull}`}>
+                  <span className={styles.fieldLabel}>Địa chỉ</span>
+                  <textarea
+                    className={`${styles.fieldInput} ${styles.fieldTextarea}`}
+                    value={profileAddress}
+                    onChange={(e) => setProfileAddress(e.target.value)}
+                    placeholder="Quận 1, TP.HCM"
+                    rows={3}
+                  />
+                </label>
+              </div>
+
+              <div className={styles.editorNote}>Những thông tin như mã nhân viên, phòng ban, ngày vào làm, chức vụ do công ty quản lý.</div>
+
+              <div className={styles.editorActions}>
+                <button
+                  className={styles.secondaryBtn}
+                  type="button"
+                  disabled={profileSaving}
+                  onClick={() => {
+                    setEditingProfile(false);
+                    setProfileError(null);
+                    setProfileInfo(null);
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  className={styles.primaryBtn}
+                  type="button"
+                  disabled={profileSaving || !profileName.trim()}
+                  onClick={async () => {
+                    try {
+                      setProfileSaving(true);
+                      setProfileError(null);
+                      setProfileInfo(null);
+                      await updateMyProfile({
+                        name: profileName.trim(),
+                        email: profileEmail.trim() || null,
+                        phone: profilePhone.trim() || null,
+                        address: profileAddress.trim() || null,
+                        citizen_id: profileCitizenId.trim() || null,
+                        citizen_id_place: profileCitizenIdPlace.trim() || null
+                      });
+                      invalidateKey(empKeys.meProfile());
+                      qMe.refresh();
+                      await auth.refreshMe().catch(() => undefined);
+                      setProfileInfo("Đã cập nhật hồ sơ");
+                      setEditingProfile(false);
+                    } catch (e) {
+                      setProfileError(getApiErrorMessage(e));
+                    } finally {
+                      setProfileSaving(false);
+                    }
+                  }}
+                >
+                  {profileSaving ? "Đang lưu..." : "Lưu thông tin"}
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <div className={styles.columns}>

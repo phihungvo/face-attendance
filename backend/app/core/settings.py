@@ -54,6 +54,28 @@ class Settings(BaseSettings):
     LOGO_UPLOAD_WINDOW_SECONDS: int = 300
     LOGO_UPLOAD_BLOCK_SECONDS: int = 300
 
+    # Attendance evidence storage / queue
+    ATTENDANCE_EVIDENCE_SPOOL_DIR: str = "/tmp/attendance-evidence-spool"
+    ATTENDANCE_EVIDENCE_MAX_RETRIES: int = 3
+    ATTENDANCE_EVIDENCE_BACKOFF_BASE_SECONDS: int = 30
+    ATTENDANCE_EVIDENCE_WORKER_POLL_SECONDS: float = 2.0
+    ATTENDANCE_EVIDENCE_CLEANUP_INTERVAL_SECONDS: int = 86400
+    ATTENDANCE_EVIDENCE_PRESIGNED_EXPIRE_SECONDS: int = 600
+    ATTENDANCE_EVIDENCE_DEFAULT_ENABLED: bool = True
+    ATTENDANCE_EVIDENCE_DEFAULT_QUALITY: int = 65
+    ATTENDANCE_EVIDENCE_DEFAULT_MAX_WIDTH: int = 720
+    ATTENDANCE_EVIDENCE_DEFAULT_FORMAT: str = "webp"
+    ATTENDANCE_EVIDENCE_DEFAULT_RETENTION_DAYS: int = 30
+
+    # MinIO / S3-compatible object storage
+    MINIO_ENDPOINT: str = "http://minio:9000"
+    MINIO_PUBLIC_ENDPOINT: str = "http://localhost:9010"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_REGION: str = "us-east-1"
+    MINIO_BUCKET_ATTENDANCE: str = "attendance"
+    MINIO_SECURE: bool = False
+
     # Frontend URL (used for invite activation links)
     FRONTEND_BASE_URL: str = "http://localhost:3000"
 

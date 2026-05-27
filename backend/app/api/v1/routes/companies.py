@@ -8,7 +8,7 @@ from app.core.errors import BAD_REQUEST, AppException
 from app.core.response import ok
 from app.core.settings import settings
 from app.core.throttling import get_client_ip, request_rate_limiter
-from app.core.uploads import read_validated_image_upload
+from app.core.uploads import read_validated_audio_upload, read_validated_image_upload
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.companies import CompanyCreateRequest, CompanyListOut, CompanyOut, CompanyUpdateRequest
@@ -67,6 +67,38 @@ async def update_company_logo(
                 db,
                 company_id=company_id,
                 logo_bytes=logo_bytes,
+                content_type=normalized_type,
+            )
+        )
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.put("/{company_id:int}/attendance-audio/{kind}", response_model=ApiResponse[CompanyOut])
+async def update_company_attendance_audio(
+    company_id: int,
+    kind: str,
+    request: Request,
+    sound: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("companies.manage")),
+) -> ApiResponse[CompanyOut]:
+    try:
+        request_rate_limiter.hit(
+            scope="company-attendance-audio",
+            key=get_client_ip(request),
+            limit=int(settings.LOGO_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.LOGO_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.LOGO_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn tải âm thanh lên quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        sound_bytes, normalized_type = await read_validated_audio_upload(sound, max_bytes=2 * 1024 * 1024, field_label="Âm thanh chấm công")
+        return ok(
+            service.update_company_attendance_sound_upload(
+                db,
+                company_id=company_id,
+                kind=kind,
+                sound_bytes=sound_bytes,
                 content_type=normalized_type,
             )
         )
@@ -237,6 +269,41 @@ async def update_my_company_logo(
                 db,
                 company_id=int(cid),
                 logo_bytes=logo_bytes,
+                content_type=normalized_type,
+            )
+        )
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.put("/me/attendance-audio/{kind}", response_model=ApiResponse[CompanyOut])
+async def update_my_company_attendance_audio(
+    kind: str,
+    request: Request,
+    sound: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    _: object = Depends(require_permission("settings.manage")),
+) -> ApiResponse[CompanyOut]:
+    cid = getattr(user, "company_id", None)
+    if cid is None:
+        raise AppException(BAD_REQUEST, detail="User chưa gắn company")
+    try:
+        request_rate_limiter.hit(
+            scope="company-attendance-audio",
+            key=f"{get_client_ip(request)}:{int(user.id)}",
+            limit=int(settings.LOGO_UPLOAD_MAX_REQUESTS),
+            window_seconds=int(settings.LOGO_UPLOAD_WINDOW_SECONDS),
+            block_seconds=int(settings.LOGO_UPLOAD_BLOCK_SECONDS),
+            detail="Bạn tải âm thanh lên quá nhiều lần. Vui lòng thử lại sau.",
+        )
+        sound_bytes, normalized_type = await read_validated_audio_upload(sound, max_bytes=2 * 1024 * 1024, field_label="Âm thanh chấm công")
+        return ok(
+            service.update_company_attendance_sound_upload(
+                db,
+                company_id=int(cid),
+                kind=kind,
+                sound_bytes=sound_bytes,
                 content_type=normalized_type,
             )
         )

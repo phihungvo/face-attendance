@@ -152,6 +152,10 @@
   color: #fff;
   font-weight: 900;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btnPrimary:hover {
@@ -167,6 +171,10 @@
   color: var(--text);
   font-weight: 900;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btnGhost:hover {
@@ -196,6 +204,10 @@
   font-weight: 900;
   font-size: 13px;
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btnPrimaryFull:hover {
@@ -358,6 +370,24 @@
   color: var(--text3);
 }
 
+.cardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardTitleIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--info-bg);
+  color: var(--info-text);
+  flex-shrink: 0;
+}
+
 .rangeInputs {
   display: flex;
   align-items: center;
@@ -403,6 +433,10 @@
   font-weight: 900;
 }
 
+.settingsArrow :global(.anticon) {
+  font-size: 14px;
+}
+
 .settingsIcon {
   width: 40px;
   height: 40px;
@@ -414,20 +448,28 @@
   flex-shrink: 0;
 }
 
+.settingsIcon :global(.anticon) {
+  font-size: 18px;
+}
+
 .iconInfo {
   background: var(--info-bg);
+  color: var(--info-text);
 }
 
 .iconPurple {
   background: var(--purple-bg);
+  color: #b67cff;
 }
 
 .iconSuccess {
   background: var(--success-bg);
+  color: var(--success-text);
 }
 
 .iconDanger {
   background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .settingsInfo {
@@ -512,6 +554,117 @@
   color: var(--text2);
 }
 
+.simpleHint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text3);
+  font-weight: 700;
+  max-width: 420px;
+}
+
+.evidenceMetaGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.evidenceMetaCard {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  padding: 12px;
+}
+
+.evidenceMetaValue {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.evidenceMetaLabel {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text3);
+}
+
+.audioSoundGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.audioSoundCard {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface2);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.audioSoundHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.audioSoundTitle {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.audioSoundDesc {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text3);
+  font-weight: 700;
+}
+
+.audioUploadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.audioUploadStatus {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text3);
+}
+
+.audioSoundFooter {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.audioSourcePill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 11.5px;
+  font-weight: 900;
+  color: var(--text2);
+}
+
+@media (max-width: 599px) {
+  .audioSoundGrid,
+  .evidenceMetaGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .statusList {
   display: flex;
   flex-direction: column;
@@ -556,6 +709,9 @@
 
 @media (max-width: 900px) {
   .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .audioSoundGrid {
     grid-template-columns: 1fr;
   }
   .formRow {

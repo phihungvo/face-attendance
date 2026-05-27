@@ -367,6 +367,9 @@
   color: var(--ink3);
   margin-top: 4px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .streakCard {

@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceLog — Lịch Sử Chấm Công</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1e2330;
+    --border2: #252d3d;
+    --accent: #3b82f6;
+    --accent2: #60a5fa;
+    --green: #22d3a5;
+    --red: #f43f5e;
+    --amber: #f59e0b;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --muted2: #9ca3af;
+    --card-glow: rgba(59,130,246,0.07);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    padding: 0 0 24px;
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    padding: 28px 24px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent2); }
+
+  .nav-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    color: var(--muted); text-transform: uppercase;
+    padding: 12px 24px 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px;
+    margin: 1px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px; font-weight: 400;
+    color: var(--muted2);
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active {
+    background: rgba(59,130,246,0.12);
+    color: var(--accent2);
+    font-weight: 500;
+  }
+  .nav-item .icon { font-size: 15px; width: 18px; text-align: center; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 16px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface2);
+    cursor: pointer;
+  }
+
+  .user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: white;
+    flex-shrink: 0;
+  }
+
+  .user-name { font-size: 13px; font-weight: 500; }
+  .user-role { font-size: 11px; color: var(--muted); }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: 240px;
+    padding: 32px 40px;
+    position: relative; z-index: 1;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .page-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .page-subtitle { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+  .header-actions { display: flex; gap: 10px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px;
+    border-radius: 9px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--muted2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #2563eb; }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    filter: blur(30px);
+    opacity: 0.5;
+  }
+
+  .stat-card.blue::after { background: #3b82f6; }
+  .stat-card.green::after { background: #22d3a5; }
+  .stat-card.red::after { background: #f43f5e; }
+  .stat-card.amber::after { background: #f59e0b; }
+
+  .stat-icon {
+    font-size: 18px; margin-bottom: 10px;
+    display: inline-block;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px; font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+  /* ── FILTERS ── */
+  .filters-bar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .search-wrap {
+    position: relative; flex: 1; min-width: 200px;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 9px 14px 9px 36px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap input::placeholder { color: var(--muted); }
+
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 14px; pointer-events: none;
+  }
+
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 9px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .filter-select:focus { border-color: var(--accent); }
+
+  .filter-tabs {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .filter-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    color: var(--muted2);
+    transition: all 0.15s;
+    border: none; background: transparent;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .filter-tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .table-head {
+    display: grid;
+    grid-template-columns: 48px 200px 1fr 110px 110px 100px 130px 80px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    color: var(--muted);
+    gap: 12px;
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 48px 200px 1fr 110px 110px 100px 130px 80px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    align-items: center;
+    transition: background 0.12s;
+    cursor: pointer;
+    animation: rowIn 0.3s ease both;
+  }
+
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .table-row:last-child { border-bottom: none; }
+  .table-row:hover { background: rgba(255,255,255,0.025); }
+
+  .row-num {
+    font-size: 12px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .employee-cell { display: flex; align-items: center; gap: 10px; }
+
+  .emp-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    flex-shrink: 0;
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    position: relative;
+  }
+
+  .emp-avatar .conf-ring {
+    position: absolute; inset: -2px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+  }
+
+  .emp-avatar.conf-high .conf-ring { border-color: var(--green); }
+  .emp-avatar.conf-med .conf-ring { border-color: var(--amber); }
+  .emp-avatar.conf-low .conf-ring { border-color: var(--red); }
+
+  .emp-name { font-size: 13px; font-weight: 500; }
+  .emp-id { font-size: 11px; color: var(--muted); }
+
+  .date-cell {
+    font-size: 13px;
+    color: var(--muted2);
+  }
+
+  .time-cell {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .time-cell.checkin { color: var(--green); }
+  .time-cell.checkout { color: var(--accent2); }
+  .time-cell.missing { color: var(--muted); font-style: italic; font-family: 'DM Sans'; font-size: 12px; font-weight: 400; }
+
+  .duration-cell {
+    font-size: 13px; color: var(--muted2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* STATUS BADGE */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .badge::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .badge-green { background: rgba(34,211,165,0.1); color: var(--green); }
+  .badge-green::before { background: var(--green); }
+  .badge-red { background: rgba(244,63,94,0.1); color: var(--red); }
+  .badge-red::before { background: var(--red); }
+  .badge-amber { background: rgba(245,158,11,0.1); color: var(--amber); }
+  .badge-amber::before { background: var(--amber); }
+  .badge-blue { background: rgba(59,130,246,0.1); color: var(--accent2); }
+  .badge-blue::before { background: var(--accent2); }
+
+  .actions-cell { display: flex; gap: 6px; }
+
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted2);
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    width: 780px; max-width: 94vw;
+    max-height: 88vh;
+    overflow-y: auto;
+    transform: translateY(16px) scale(0.97);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative;
+  }
+
+  .modal-overlay.open .modal { transform: none; }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--surface);
+    z-index: 10;
+  }
+
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .modal-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .close-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--muted);
+    transition: all 0.15s;
+  }
+  .close-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  .modal-body { padding: 24px 28px; }
+
+  /* Employee info strip */
+  .emp-strip {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+  }
+
+  .emp-strip-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    font-size: 18px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    color: white; flex-shrink: 0;
+  }
+
+  .emp-strip-info { flex: 1; }
+  .esp-name { font-weight: 600; font-size: 15px; }
+  .esp-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .esp-date {
+    text-align: right;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 600;
+    color: var(--muted2);
+  }
+
+  /* Evidence panels */
+  .evidence-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 20px;
+  }
+
+  .evidence-panel {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .ev-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ev-panel-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.8px;
+  }
+
+  .ev-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+  }
+
+  .ev-dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .ev-dot-blue { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+
+  .ev-time {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 700;
+  }
+
+  .ev-time.green { color: var(--green); }
+  .ev-time.blue { color: var(--accent2); }
+
+  /* Face capture frame */
+  .face-frame {
+    position: relative;
+    aspect-ratio: 4/3;
+    background: #0d1117;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+
+  .face-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 10px;
+    color: var(--muted);
+  }
+
+  /* Simulated face capture image */
+  .face-capture-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    position: relative;
+  }
+
+  .face-canvas {
+    width: 100%; height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Scan line overlay */
+  .scan-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+
+  .scan-overlay svg {
+    width: 100%; height: 100%;
+  }
+
+  /* Confidence bar */
+  .conf-bar-wrap { padding: 12px 16px; }
+
+  .conf-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; margin-bottom: 6px;
+  }
+
+  .conf-label span:first-child { color: var(--muted); }
+  .conf-label span:last-child { font-weight: 600; }
+
+  .conf-track {
+    height: 4px; background: var(--surface2);
+    border-radius: 2px; overflow: hidden;
+  }
+
+  .conf-fill {
+    height: 100%; border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .conf-fill.high { background: var(--green); }
+  .conf-fill.med { background: var(--amber); }
+  .conf-fill.low { background: var(--red); }
+
+  /* Meta info grid */
+  .meta-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .meta-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .meta-key { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .meta-val { font-size: 13px; font-weight: 500; }
+
+  /* Timeline strip */
+  .timeline-strip {
+    display: flex; gap: 0;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .timeline-strip::before {
+    content: '';
+    position: absolute;
+    top: 20px; left: 20px; right: 20px;
+    height: 2px;
+    background: var(--border2);
+    z-index: 0;
+  }
+
+  .tl-item {
+    flex: 1; text-align: center;
+    position: relative; z-index: 1;
+  }
+
+  .tl-dot {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    margin: 0 auto 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    border: 2px solid transparent;
+  }
+
+  .tl-dot.done {
+    background: rgba(34,211,165,0.1);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .tl-dot.pending {
+    background: var(--surface2);
+    border-color: var(--border2);
+    color: var(--muted);
+  }
+
+  .tl-label { font-size: 11px; color: var(--muted); }
+  .tl-time { font-size: 13px; font-weight: 600; margin-top: 2px; }
+
+  /* hash/fingerprint */
+  .hash-row {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .hash-label { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .hash-val {
+    font-family: 'Courier New', monospace;
+    font-size: 11px; color: var(--accent2);
+    word-break: break-all;
+    flex: 1;
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .page-info { font-size: 13px; color: var(--muted); }
+
+  .page-btns { display: flex; gap: 4px; }
+
+  .page-btn {
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    background: transparent;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .page-btn:hover { background: var(--surface2); color: var(--text); }
+  .page-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* Evidence missing state */
+  .no-evidence {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px; gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    aspect-ratio: 4/3;
+    background: #0d1117;
+  }
+
+  .no-evidence-icon { font-size: 28px; opacity: 0.4; }
+
+  /* Tooltip */
+  [data-tip] { position: relative; cursor: help; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%);
+    background: #1e2330; color: var(--text);
+    font-size: 11px; white-space: nowrap;
+    padding: 4px 8px; border-radius: 6px;
+    border: 1px solid var(--border2);
+    z-index: 99;
+    pointer-events: none;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* Face sim canvas - drawn via JS */
+  .sim-face {
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  .ev-no-checkout {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px; padding: 30px;
+    background: #0d1117; aspect-ratio: 4/3;
+    color: var(--muted); font-size: 13px;
+  }
+
+  .conf-value-green { color: var(--green); }
+  .conf-value-amber { color: var(--amber); }
+  .conf-value-red { color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">👁</div>
+    <div class="logo-text">Face<span>Log</span></div>
+  </div>
+
+  <div class="nav-label">Tổng Quan</div>
+  <a class="nav-item" href="#"><span class="icon">📊</span> Dashboard</a>
+  <a class="nav-item" href="#"><span class="icon">👥</span> Nhân Viên</a>
+
+  <div class="nav-label">Chấm Công</div>
+  <a class="nav-item active" href="#"><span class="icon">🕐</span> Lịch Sử</a>
+  <a class="nav-item" href="#"><span class="icon">📅</span> Bảng Công</a>
+  <a class="nav-item" href="#"><span class="icon">⚠️</span> Vi Phạm</a>
+  <a class="nav-item" href="#"><span class="icon">📍</span> Thiết Bị</a>
+
+  <div class="nav-label">Hệ Thống</div>
+  <a class="nav-item" href="#"><span class="icon">🔔</span> Thông Báo</a>
+  <a class="nav-item" href="#"><span class="icon">⚙️</span> Cài Đặt</a>
+
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="user-avatar">AD</div>
+      <div>
+        <div class="user-name">Admin</div>
+        <div class="user-role">Quản trị viên</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Lịch Sử Chấm Công</div>
+      <div class="page-subtitle">Xem bằng chứng nhận diện khuôn mặt · Tháng 5 / 2025</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost">⬇ Xuất Excel</button>
+      <button class="btn btn-primary">+ Thêm Thủ Công</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card blue">
+      <div class="stat-icon">📋</div>
+      <div class="stat-value">1,248</div>
+      <div class="stat-label">Tổng lượt chấm công</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value">1,104</div>
+      <div class="stat-label">Đúng giờ</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-icon">⏰</div>
+      <div class="stat-value">89</div>
+      <div class="stat-label">Đi trễ</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-icon">❓</div>
+      <div class="stat-value">55</div>
+      <div class="stat-label">Thiếu checkout</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Tìm tên, mã nhân viên...">
+    </div>
+    <input type="date" class="filter-select" value="2025-05-26">
+    <select class="filter-select">
+      <option>Tất cả phòng ban</option>
+      <option>Kỹ thuật</option>
+      <option>Kinh doanh</option>
+      <option>Hành chính</option>
+      <option>Marketing</option>
+    </select>
+    <div class="filter-tabs">
+      <button class="filter-tab active">Tất Cả</button>
+      <button class="filter-tab">Đúng Giờ</button>
+      <button class="filter-tab">Đi Trễ</button>
+      <button class="filter-tab">Thiếu CO</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-head">
+      <div>#</div>
+      <div>Nhân Viên</div>
+      <div>Ngày</div>
+      <div>Check-in</div>
+      <div>Check-out</div>
+      <div>Tổng Giờ</div>
+      <div>Trạng Thái</div>
+      <div>Bằng Chứng</div>
+    </div>
+
+    <!-- Row 1 -->
+    <div class="table-row" onclick="openModal(0)">
+      <div class="row-num">1</div>
+      <div class="employee-cell">
+        <div class="emp-avatar conf-high" style="background: linear-gradient(135deg,#3b82f6,#6366f1);">
+          <div class="conf-ring"></div>
+          TH
+        </div>
+        <div>
+          <div class="emp-name">Trần Hải Nam</div>
+          <div class="emp-id">NV-0042 · Kỹ thuật</div>
+        </div>
+      </div>
+      <div class="date-cell">Thứ Hai, 26/05</div>
+      <div class="time-cell checkin">08:03</div>
+      <div class="time-cell checkout">17:31</div>
+      <div class="duration-cell">9h 28m</div>
+      <div><span class="badge badge-green">Đúng giờ</span></div>
+      <div class="actions-cell">
+        <div class="icon-btn" data-tip="Xem bằng chứng">🖼</div>
+        <div class="icon-btn" data-tip="Xuất PDF">📄</div>
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="table-row" onclick="openModal(1)">
+      <div class="row-num">2</div>
+      <div class="employee-cell">
+        <div class="emp-avatar conf-high" style="background: linear-gradient(135deg,#10b981,#059669);">
+          <div class="conf-ring"></div>
+          LM
+        </div>
+        <div>
+          <div class="emp-name">Lê Minh Châu</div>
+          <div class="emp-id">NV-0017 · Marketing</div>
+        </div>
+      </div>
+      <div class="date-cell">Thứ Hai, 26/05</div>
+      <div class="time-cell checkin">07:58</div>
+      <div class="time-cell checkout">17:15</div>
+      <div class="duration-cell">9h 17m</div>
+      <div><span class="badge badge-green">Đúng giờ</span></div>
+      <div class="actions-cell">
+        <div class="icon-btn" data-tip="Xem bằng chứng">🖼</div>
+        <div class="icon-btn" data-tip="Xuất PDF">📄</div>
+      </div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="table-row" onclick="openModal(2)">
+      <div class="row-num">3</div>
+      <div class="employee-cell">
+        <div class="emp-avatar conf-med" style="background: linear-gradient(135deg,#f59e0b,#d97706);">
+          <div class="conf-ring"></div>
+          NQ
+        </div>
+        <div>
+          <div class="emp-name">Nguyễn Quốc Tuấn</div>
+          <div class="emp-id">NV-0088 · Kinh doanh</div>
+        </div>
+      </div>
+      <div class="date-cell">Thứ Hai, 26/05</div>
+      <div class="time-cell checkin" style="color: var(--red);">08:47</div>
+      <div class="time-cell checkout">18:02</div>
+      <div class="duration-cell">9h 15m</div>
+      <div><span class="badge badge-red">Đi trễ 47p</span></div>
+      <div class="actions-cell">
+        <div class="icon-btn" data-tip="Xem bằng chứng">🖼</div>
+        <div class="icon-btn" data-tip="Xuất PDF">📄</div>
+      </div>
+    </div>
+
+    <!-- Row 4 -->
+    <div class="table-row" onclick="openModal(3)">
+      <div class="row-num">4</div>
+      <div class="employee-cell">
+        <div class="emp-avatar conf-high" style="background: linear-gradient(135deg,#8b5cf6,#7c3aed);">
+          <div class="conf-ring"></div>
+          PL
+        </div>
+        <div>
+          <div class="emp-name">Phạm Lan Anh</div>
+          <div class="emp-id">NV-0031 · Hành chính</div>
+        </div>
+      </div>
+      <div class="date-cell">Thứ Hai, 26/05</div>
+      <div class="time-cell checkin">08:00</div>
+      <div class="time-cell missing">— Chưa checkout</div>
+      <div class="duration-cell" style="color: var(--muted)">—</div>
+      <div><span class="badge badge-amber">Thiếu CO</span></div>
+      <div class="actions-cell">
+        <div class="icon-btn" data-tip="Xem bằng chứng">🖼</div>
+        <div class="icon-btn" data-tip="Xuất PDF">📄</div>
+      </div>
+    </div>
+
+    <!-- Row 5 -->
+    <div class="table-row" onclick="openModal(4)">
+      <div class="row-num">5</div>
+      <div class="employee-cell">
+        <div class="emp-avatar conf-high" style="background: linear-gradient(135deg,#ec4899,#db2777);">
+          <div class="conf-ring"></div>
+          VT
+        </div>
+        <div>
+          <div class="emp-name">Võ Thanh Bình</div>
+          <div class="emp-id">NV-0056 · Kỹ thuật</div>
+        </div>
+      </div>
+      <div class="date-cell">Thứ Hai, 26/05</div>
+      <div class="time-cell checkin">08:02</div>
+      <div class="time-cell checkout">17:00</div>
+      <div class="duration-cell">8h 58m</div>
+      <div><span class="badge badge-green">Đúng giờ</span></div>
+      <div class="actions-cell">
+        <div class="icon-btn" data-tip="Xem bằng chứng">🖼</div>
+        <div class="icon-btn" data-tip="Xuất PDF">📄</div>
+      </div>
+    </div>
+
+    <!-- Row 6 -->
+    <div class="table-row" onclick="openModal(5)">
+      <div class="row-num">6</div>
+      <div class="employee-cell">
+        <div class="emp-avatar conf-low" style="background: linear-gradient(135deg,#06b6d4,#0891b2);">
+          <div class="conf-ring"></div>
+          DK
+        </div>
+        <div>
+          <div class="emp-name">Đặng Kim Loan</div>
+          <div class="emp-id">NV-0073 · Kinh doanh</div>
+        </div>
+      </div>
+      <div class="date-cell">Thứ Hai, 26/05</div>
+      <div class="time-cell checkin" style="color:var(--red)">09:15</div>
+      <div class="time-cell checkout">17:45</div>
+      <div class="duration-cell">8h 30m</div>
+      <div><span class="badge badge-red">Đi trễ 1h15p</span></div>
+      <div class="actions-cell">
+        <div class="icon-btn" data-tip="Xem bằng chứng">🖼</div>
+        <div class="icon-btn" data-tip="Xuất PDF">📄</div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination">
+      <div class="page-info">Hiển thị 1–6 / 248 bản ghi</div>
+      <div class="page-btns">
+        <button class="page-btn">‹</button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">···</button>
+        <button class="page-btn">42</button>
+        <button class="page-btn">›</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="m-title">Bằng Chứng Chấm Công</div>
+        <div class="modal-subtitle" id="m-sub">ID Phiên: #FC-2025052600042</div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Employee strip -->
+      <div class="emp-strip">
+        <div class="emp-strip-avatar" id="m-avatar">TH</div>
+        <div class="emp-strip-info">
+          <div class="esp-name" id="m-name">Trần Hải Nam</div>
+          <div class="esp-meta" id="m-meta">NV-0042 · Phòng Kỹ thuật · Tầng 3</div>
+        </div>
+        <div class="esp-date" id="m-date">Thứ Hai<br>26/05/2025</div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="timeline-strip" id="m-timeline">
+        <div class="tl-item">
+          <div class="tl-dot done">👁</div>
+          <div class="tl-label">Check-in</div>
+          <div class="tl-time" id="tl-ci">08:03</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot done">✅</div>
+          <div class="tl-label">Xác thực</div>
+          <div class="tl-time">99.2%</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot done">💾</div>
+          <div class="tl-label">Lưu bằng chứng</div>
+          <div class="tl-time">08:03</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot done" id="tl-co-dot">👁</div>
+          <div class="tl-label">Check-out</div>
+          <div class="tl-time" id="tl-co">17:31</div>
+        </div>
+      </div>
+
+      <!-- Evidence grid -->
+      <div class="evidence-grid">
+        <!-- Check-in -->
+        <div class="evidence-panel">
+          <div class="ev-panel-header">
+            <div class="ev-panel-title">
+              <div class="ev-dot ev-dot-green"></div>
+              CHECK-IN
+            </div>
+            <div class="ev-time green" id="m-ci-time">08:03</div>
+          </div>
+          <div class="face-frame">
+            <canvas class="sim-face" id="canvas-ci" width="400" height="300"></canvas>
+            <div class="scan-overlay">
+              <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" id="scan-ci">
+                <!-- corner brackets -->
+                <rect x="20" y="20" width="30" height="4" fill="#22d3a5" rx="2"/>
+                <rect x="20" y="20" width="4" height="30" fill="#22d3a5" rx="2"/>
+                <rect x="350" y="20" width="30" height="4" fill="#22d3a5" rx="2"/>
+                <rect x="376" y="20" width="4" height="30" fill="#22d3a5" rx="2"/>
+                <rect x="20" y="276" width="30" height="4" fill="#22d3a5" rx="2"/>
+                <rect x="20" y="250" width="4" height="30" fill="#22d3a5" rx="2"/>
+                <rect x="350" y="276" width="30" height="4" fill="#22d3a5" rx="2"/>
+                <rect x="376" y="250" width="4" height="30" fill="#22d3a5" rx="2"/>
+                <!-- face box -->
+                <rect x="120" y="40" width="160" height="180" stroke="#22d3a5" stroke-width="1.5" stroke-dasharray="6 3" rx="4" opacity="0.8"/>
+                <!-- landmark dots -->
+                <circle cx="165" cy="115" r="3" fill="#22d3a5" opacity="0.9"/>
+                <circle cx="235" cy="115" r="3" fill="#22d3a5" opacity="0.9"/>
+                <circle cx="200" cy="148" r="3" fill="#22d3a5" opacity="0.9"/>
+                <circle cx="175" cy="175" r="3" fill="#22d3a5" opacity="0.7"/>
+                <circle cx="200" cy="180" r="3" fill="#22d3a5" opacity="0.7"/>
+                <circle cx="225" cy="175" r="3" fill="#22d3a5" opacity="0.7"/>
+                <!-- landmark lines -->
+                <line x1="165" y1="115" x2="200" y2="148" stroke="#22d3a5" stroke-width="0.7" opacity="0.4"/>
+                <line x1="235" y1="115" x2="200" y2="148" stroke="#22d3a5" stroke-width="0.7" opacity="0.4"/>
+                <line x1="200" y1="148" x2="200" y2="175" stroke="#22d3a5" stroke-width="0.7" opacity="0.4"/>
+                <!-- scan line animation -->
+                <line x1="120" y1="80" x2="280" y2="80" stroke="#22d3a5" stroke-width="1.5" opacity="0.6">
+                  <animateTransform attributeName="transform" type="translate" from="0,0" to="0,130" dur="2s" repeatCount="indefinite" additive="sum"/>
+                  <animate attributeName="opacity" values="0;0.8;0" dur="2s" repeatCount="indefinite"/>
+                </line>
+                <!-- Confidence label -->
+                <rect x="120" y="228" width="160" height="22" fill="#22d3a5" opacity="0.15" rx="3"/>
+                <text x="200" y="243" text-anchor="middle" fill="#22d3a5" font-size="11" font-family="monospace" font-weight="bold">KHỚP · 99.2%</text>
+              </svg>
+            </div>
+          </div>
+          <div class="conf-bar-wrap">
+            <div class="conf-label">
+              <span>Độ chính xác nhận diện</span>
+              <span class="conf-value-green" id="m-ci-conf">99.2%</span>
+            </div>
+            <div class="conf-track">
+              <div class="conf-fill high" id="m-ci-bar" style="width: 99.2%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Check-out -->
+        <div class="evidence-panel" id="m-co-panel">
+          <div class="ev-panel-header">
+            <div class="ev-panel-title">
+              <div class="ev-dot ev-dot-blue"></div>
+              CHECK-OUT
+            </div>
+            <div class="ev-time blue" id="m-co-time">17:31</div>
+          </div>
+          <div class="face-frame">
+            <canvas class="sim-face" id="canvas-co" width="400" height="300"></canvas>
+            <div class="scan-overlay" id="scan-co-overlay">
+              <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="20" y="20" width="30" height="4" fill="#60a5fa" rx="2"/>
+                <rect x="20" y="20" width="4" height="30" fill="#60a5fa" rx="2"/>
+                <rect x="350" y="20" width="30" height="4" fill="#60a5fa" rx="2"/>
+                <rect x="376" y="20" width="4" height="30" fill="#60a5fa" rx="2"/>
+                <rect x="20" y="276" width="30" height="4" fill="#60a5fa" rx="2"/>
+                <rect x="20" y="250" width="4" height="30" fill="#60a5fa" rx="2"/>
+                <rect x="350" y="276" width="30" height="4" fill="#60a5fa" rx="2"/>
+                <rect x="376" y="250" width="4" height="30" fill="#60a5fa" rx="2"/>
+                <rect x="120" y="40" width="160" height="180" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="6 3" rx="4" opacity="0.8"/>
+                <circle cx="165" cy="115" r="3" fill="#60a5fa" opacity="0.9"/>
+                <circle cx="235" cy="115" r="3" fill="#60a5fa" opacity="0.9"/>
+                <circle cx="200" cy="148" r="3" fill="#60a5fa" opacity="0.9"/>
+                <circle cx="175" cy="175" r="3" fill="#60a5fa" opacity="0.7"/>
+                <circle cx="200" cy="180" r="3" fill="#60a5fa" opacity="0.7"/>
+                <circle cx="225" cy="175" r="3" fill="#60a5fa" opacity="0.7"/>
+                <line x1="165" y1="115" x2="200" y2="148" stroke="#60a5fa" stroke-width="0.7" opacity="0.4"/>
+                <line x1="235" y1="115" x2="200" y2="148" stroke="#60a5fa" stroke-width="0.7" opacity="0.4"/>
+                <line x1="200" y1="148" x2="200" y2="175" stroke="#60a5fa" stroke-width="0.7" opacity="0.4"/>
+                <line x1="120" y1="80" x2="280" y2="80" stroke="#60a5fa" stroke-width="1.5" opacity="0.6">
+                  <animateTransform attributeName="transform" type="translate" from="0,0" to="0,130" dur="2.4s" repeatCount="indefinite" additive="sum"/>
+                  <animate attributeName="opacity" values="0;0.7;0" dur="2.4s" repeatCount="indefinite"/>
+                </line>
+                <rect x="120" y="228" width="160" height="22" fill="#60a5fa" opacity="0.12" rx="3"/>
+                <text x="200" y="243" text-anchor="middle" fill="#60a5fa" font-size="11" font-family="monospace" font-weight="bold">KHỚP · 98.7%</text>
+              </svg>
+            </div>
+          </div>
+          <div class="conf-bar-wrap">
+            <div class="conf-label">
+              <span>Độ chính xác nhận diện</span>
+              <span class="conf-value-green" id="m-co-conf">98.7%</span>
+            </div>
+            <div class="conf-track">
+              <div class="conf-fill high" id="m-co-bar" style="width: 98.7%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hash / integrity -->
+      <div class="hash-row">
+        <span class="hash-label">🔐 SHA-256</span>
+        <span class="hash-val" id="m-hash">a3f4b2c1d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0</span>
+        <button class="icon-btn" title="Copy">📋</button>
+      </div>
+
+      <!-- Meta info -->
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-key">📍 Thiết Bị</div>
+          <div class="meta-val" id="m-device">Cổng chính · TB-001</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">🌐 IP</div>
+          <div class="meta-val">192.168.1.42</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">⏱ Tổng Giờ</div>
+          <div class="meta-val" id="m-total">9h 28m</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">📸 Camera</div>
+          <div class="meta-val">Logitech C920 · 1080p</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">🤖 Model AI</div>
+          <div class="meta-val">FaceNet v3.1</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">📌 Trạng Thái</div>
+          <div class="meta-val" id="m-status-val">✅ Hợp lệ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── DRAW SIMULATED FACE FRAMES ───────────────────────────
+  const colors = [
+    ['#3b82f6','#6366f1'], ['#10b981','#059669'],
+    ['#f59e0b','#d97706'], ['#8b5cf6','#7c3aed'],
+    ['#ec4899','#db2777'], ['#06b6d4','#0891b2']
+  ];
+
+  function drawFace(canvasId, seed, time, isCheckout) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = 400, h = 300;
+    ctx.clearRect(0,0,w,h);
+
+    // Dark background
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0,0,w,h);
+
+    // Slight gradient ambient
+    const g = ctx.createRadialGradient(w/2, h/2.5, 20, w/2, h/2.5, 130);
+    g.addColorStop(0, `rgba(${seed % 80 + 20},${(seed*3)%60+20},${(seed*7)%80+30},0.35)`);
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,w,h);
+
+    // Noise grain
+    for (let i = 0; i < 600; i++) {
+      const x = (Math.sin(i * seed * 0.1) * 0.5 + 0.5) * w;
+      const y = (Math.cos(i * seed * 0.13) * 0.5 + 0.5) * h;
+      ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+
+    // Shoulders silhouette
+    ctx.fillStyle = `rgba(30,35,45,0.9)`;
+    ctx.beginPath();
+    ctx.ellipse(200, 340, 130, 90, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Neck
+    ctx.fillStyle = `hsl(${(seed*20)%30+20}, 40%, ${isCheckout ? 62:65}%)`;
+    ctx.beginPath();
+    ctx.ellipse(200, 245, 22, 35, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Head shape
+    const skinH = (seed*20)%30+15;
+    ctx.fillStyle = `hsl(${skinH}, 45%, ${isCheckout ? 60:65}%)`;
+    ctx.beginPath();
+    ctx.ellipse(200, 140, 70, 88, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Hair
+    const hairG = ctx.createLinearGradient(200, 52, 200, 110);
+    hairG.addColorStop(0, '#1a1206');
+    hairG.addColorStop(1, '#2d1f0a');
+    ctx.fillStyle = hairG;
+    ctx.beginPath();
+    ctx.ellipse(200, 75, 72, 45, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(145, 100, 16, 30, -0.3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(255, 100, 16, 30, 0.3, 0, Math.PI*2);
+    ctx.fill();
+
+    // Eyes
+    [[163, 122], [237, 122]].forEach(([ex, ey]) => {
+      // socket
+      ctx.fillStyle = `hsl(${skinH-5}, 30%, 50%)`;
+      ctx.beginPath(); ctx.ellipse(ex, ey, 18, 12, 0, 0, Math.PI*2); ctx.fill();
+      // white
+      ctx.fillStyle = '#e8e4df';
+      ctx.beginPath(); ctx.ellipse(ex, ey, 14, 9, 0, 0, Math.PI*2); ctx.fill();
+      // iris
+      ctx.fillStyle = '#4a3728';
+      ctx.beginPath(); ctx.arc(ex, ey, 6, 0, Math.PI*2); ctx.fill();
+      // pupil
+      ctx.fillStyle = '#0a0805';
+      ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI*2); ctx.fill();
+      // catch light
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath(); ctx.arc(ex+2, ey-2, 1.5, 0, Math.PI*2); ctx.fill();
+    });
+
+    // Eyebrows
+    ctx.strokeStyle = '#2d1f0a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(148,111); ctx.quadraticCurveTo(163,107,178,111); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(222,111); ctx.quadraticCurveTo(237,107,252,111); ctx.stroke();
+
+    // Nose
+    ctx.strokeStyle = `hsl(${skinH-10}, 35%, 50%)`;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(200,130); ctx.quadraticCurveTo(208,155,205,165); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(205,165); ctx.quadraticCurveTo(200,170,195,165); ctx.stroke();
+
+    // Mouth
+    ctx.strokeStyle = `hsl(${skinH-15}, 50%, 45%)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(182, 185);
+    ctx.quadraticCurveTo(200, 194, 218, 185);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(182, 185);
+    ctx.quadraticCurveTo(200, 181, 218, 185);
+    ctx.stroke();
+
+    // Subtle cheek
+    ctx.fillStyle = `rgba(200,100,80,0.08)`;
+    ctx.beginPath(); ctx.ellipse(155, 158, 20, 14, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(245, 158, 20, 14, 0, 0, Math.PI*2); ctx.fill();
+
+    // Timestamp watermark
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '9px monospace';
+    ctx.fillText(`${time}  |  26/05/2025  |  TB-001`, 14, h-12);
+
+    // Top-right logo watermark
+    ctx.fillStyle = 'rgba(59,130,246,0.5)';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('FaceLog™', w-12, 20);
+    ctx.textAlign = 'left';
+  }
+
+  // ─── MODAL DATA ───────────────────────────────────────────
+  const employees = [
+    { name:'Trần Hải Nam', id:'NV-0042', dept:'Kỹ thuật · Tầng 3', av:'TH',
+      grad:['#3b82f6','#6366f1'], ci:'08:03', co:'17:31', total:'9h 28m',
+      ciConf:99.2, coConf:98.7, ciClass:'high', coClass:'high',
+      device:'Cổng chính · TB-001', status:'✅ Hợp lệ', session:'FC-2025052600042',
+      missing:false },
+    { name:'Lê Minh Châu', id:'NV-0017', dept:'Marketing · Tầng 5', av:'LM',
+      grad:['#10b981','#059669'], ci:'07:58', co:'17:15', total:'9h 17m',
+      ciConf:97.4, coConf:96.1, ciClass:'high', coClass:'high',
+      device:'Cổng chính · TB-001', status:'✅ Hợp lệ', session:'FC-2025052600017',
+      missing:false },
+    { name:'Nguyễn Quốc Tuấn', id:'NV-0088', dept:'Kinh doanh · Tầng 2', av:'NQ',
+      grad:['#f59e0b','#d97706'], ci:'08:47', co:'18:02', total:'9h 15m',
+      ciConf:85.3, coConf:91.2, ciClass:'med', coClass:'high',
+      device:'Cổng phụ · TB-003', status:'⚠️ Đi trễ 47p', session:'FC-2025052600088',
+      missing:false },
+    { name:'Phạm Lan Anh', id:'NV-0031', dept:'Hành chính · Tầng 1', av:'PL',
+      grad:['#8b5cf6','#7c3aed'], ci:'08:00', co:null, total:'—',
+      ciConf:98.8, coConf:null, ciClass:'high', coClass:null,
+      device:'Cổng chính · TB-001', status:'⚠️ Thiếu checkout', session:'FC-2025052600031',
+      missing:true },
+    { name:'Võ Thanh Bình', id:'NV-0056', dept:'Kỹ thuật · Tầng 3', av:'VT',
+      grad:['#ec4899','#db2777'], ci:'08:02', co:'17:00', total:'8h 58m',
+      ciConf:99.5, coConf:99.1, ciClass:'high', coClass:'high',
+      device:'Cổng chính · TB-001', status:'✅ Hợp lệ', session:'FC-2025052600056',
+      missing:false },
+    { name:'Đặng Kim Loan', id:'NV-0073', dept:'Kinh doanh · Tầng 2', av:'DK',
+      grad:['#06b6d4','#0891b2'], ci:'09:15', co:'17:45', total:'8h 30m',
+      ciConf:72.6, coConf:88.4, ciClass:'low', coClass:'med',
+      device:'Cổng phụ · TB-003', status:'⚠️ Đi trễ 1h15p', session:'FC-2025052600073',
+      missing:false },
+  ];
+
+  function openModal(idx) {
+    const e = employees[idx];
+    document.getElementById('m-title').textContent = 'Bằng Chứng · ' + e.name;
+    document.getElementById('m-sub').textContent = 'ID Phiên: #' + e.session;
+    document.getElementById('m-name').textContent = e.name;
+    document.getElementById('m-meta').textContent = e.id + ' · Phòng ' + e.dept;
+    const av = document.getElementById('m-avatar');
+    av.textContent = e.av;
+    av.style.background = `linear-gradient(135deg, ${e.grad[0]}, ${e.grad[1]})`;
+
+    document.getElementById('m-ci-time').textContent = e.ci;
+    document.getElementById('tl-ci').textContent = e.ci;
+
+    const ciConf = e.ciConf;
+    document.getElementById('m-ci-conf').textContent = ciConf + '%';
+    document.getElementById('m-ci-conf').className = 'conf-value-' + e.ciClass;
+    document.getElementById('m-ci-bar').style.width = ciConf + '%';
+    document.getElementById('m-ci-bar').className = 'conf-fill ' + e.ciClass;
+
+    document.getElementById('m-device').textContent = e.device;
+    document.getElementById('m-total').textContent = e.total;
+    document.getElementById('m-status-val').textContent = e.status;
+    document.getElementById('m-hash').textContent = Array.from({length:64}, (_,i) =>
+      '0123456789abcdef'[(i * idx * 7 + i * 3 + idx * 13 + 5) % 16]).join('');
+
+    // Co panel
+    const coPanel = document.getElementById('m-co-panel');
+    const tCoTime = document.getElementById('m-co-time');
+    const tlCo = document.getElementById('tl-co');
+    const tlCoDot = document.getElementById('tl-co-dot');
+    const coBar = document.getElementById('m-co-bar');
+    const coConf = document.getElementById('m-co-conf');
+
+    if (e.missing) {
+      tCoTime.textContent = '—';
+      tlCo.textContent = '—';
+      tlCoDot.className = 'tl-dot pending';
+      tlCoDot.textContent = '⏳';
+      const coFaceFrame = document.querySelector('#m-co-panel .face-frame');
+      coFaceFrame.innerHTML = `
+        <div class="ev-no-checkout">
+          <div style="font-size:36px;opacity:0.3">📷</div>
+          <div>Chưa có dữ liệu checkout</div>
+          <div style="font-size:11px;color:var(--muted)">Nhân viên chưa thực hiện check-out</div>
+        </div>`;
+      document.getElementById('scan-co-overlay').style.display = 'none';
+      coConf.textContent = '—';
+      coBar.style.width = '0%';
+    } else {
+      tCoTime.textContent = e.co;
+      tlCo.textContent = e.co;
+      tlCoDot.className = 'tl-dot done';
+      tlCoDot.textContent = '👁';
+
+      // Restore canvas if was replaced
+      const oldDiv = document.querySelector('#m-co-panel .face-frame');
+      oldDiv.innerHTML = `<canvas class="sim-face" id="canvas-co" width="400" height="300"></canvas>
+        <div class="scan-overlay" id="scan-co-overlay">
+          <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="20" width="30" height="4" fill="#60a5fa" rx="2"/>
+            <rect x="20" y="20" width="4" height="30" fill="#60a5fa" rx="2"/>
+            <rect x="350" y="20" width="30" height="4" fill="#60a5fa" rx="2"/>
+            <rect x="376" y="20" width="4" height="30" fill="#60a5fa" rx="2"/>
+            <rect x="20" y="276" width="30" height="4" fill="#60a5fa" rx="2"/>
+            <rect x="20" y="250" width="4" height="30" fill="#60a5fa" rx="2"/>
+            <rect x="350" y="276" width="30" height="4" fill="#60a5fa" rx="2"/>
+            <rect x="376" y="250" width="4" height="30" fill="#60a5fa" rx="2"/>
+            <rect x="120" y="40" width="160" height="180" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="6 3" rx="4" opacity="0.8"/>
+            <circle cx="165" cy="115" r="3" fill="#60a5fa" opacity="0.9"/>
+            <circle cx="235" cy="115" r="3" fill="#60a5fa" opacity="0.9"/>
+            <circle cx="200" cy="148" r="3" fill="#60a5fa" opacity="0.9"/>
+            <circle cx="175" cy="175" r="3" fill="#60a5fa" opacity="0.7"/>
+            <circle cx="200" cy="180" r="3" fill="#60a5fa" opacity="0.7"/>
+            <circle cx="225" cy="175" r="3" fill="#60a5fa" opacity="0.7"/>
+            <line x1="165" y1="115" x2="200" y2="148" stroke="#60a5fa" stroke-width="0.7" opacity="0.4"/>
+            <line x1="235" y1="115" x2="200" y2="148" stroke="#60a5fa" stroke-width="0.7" opacity="0.4"/>
+            <line x1="200" y1="148" x2="200" y2="175" stroke="#60a5fa" stroke-width="0.7" opacity="0.4"/>
+            <line x1="120" y1="80" x2="280" y2="80" stroke="#60a5fa" stroke-width="1.5" opacity="0.6">
+              <animateTransform attributeName="transform" type="translate" from="0,0" to="0,130" dur="2.4s" repeatCount="indefinite" additive="sum"/>
+              <animate attributeName="opacity" values="0;0.7;0" dur="2.4s" repeatCount="indefinite"/>
+            </line>
+            <rect x="120" y="228" width="160" height="22" fill="#60a5fa" opacity="0.12" rx="3"/>
+            <text x="200" y="243" text-anchor="middle" fill="#60a5fa" font-size="11" font-family="monospace" font-weight="bold">KHỚP · ${e.coConf}%</text>
+          </svg>
+        </div>`;
+      setTimeout(() => drawFace('canvas-co', idx + 10, e.co, true), 50);
+      document.getElementById('m-co-conf').textContent = e.coConf + '%';
+      document.getElementById('m-co-conf').className = 'conf-value-' + e.coClass;
+      document.getElementById('m-co-bar').style.width = e.coConf + '%';
+      document.getElementById('m-co-bar').className = 'conf-fill ' + e.coClass;
+    }
+
+    setTimeout(() => {
+      drawFace('canvas-ci', idx + 1, e.ci, false);
+      if (!e.missing) drawFace('canvas-co', idx + 10, e.co, true);
+    }, 50);
+
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+  }
+
+  document.getElementById('modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // Filter tabs
+  document.querySelectorAll('.filter-tab').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Stagger row animations
+  document.querySelectorAll('.table-row').forEach((row, i) => {
+    row.style.animationDelay = `${i * 60}ms`;
+  });
+</script>
+</body>
+</html>

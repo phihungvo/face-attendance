@@ -24,6 +24,18 @@ class Company(Base):
     require_gps_on_attendance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     logo_blob: Mapped[bytes | None] = mapped_column(LargeBinary().with_variant(MEDIUMBLOB(), "mysql"), nullable=True)
     logo_mime_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    attendance_success_sound_source: Mapped[str] = mapped_column(String(16), nullable=False, server_default="default")
+    attendance_success_sound_sample_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    attendance_success_sound_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    attendance_success_sound_text: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    attendance_success_sound_blob: Mapped[bytes | None] = mapped_column(LargeBinary().with_variant(MEDIUMBLOB(), "mysql"), nullable=True)
+    attendance_success_sound_mime_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    attendance_failure_sound_source: Mapped[str] = mapped_column(String(16), nullable=False, server_default="default")
+    attendance_failure_sound_sample_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    attendance_failure_sound_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    attendance_failure_sound_text: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    attendance_failure_sound_blob: Mapped[bytes | None] = mapped_column(LargeBinary().with_variant(MEDIUMBLOB(), "mysql"), nullable=True)
+    attendance_failure_sound_mime_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
     departments = relationship("Department", back_populates="company")
@@ -35,3 +47,17 @@ class Company(Base):
             return None
         encoded = base64.b64encode(self.logo_blob).decode("ascii")
         return f"data:{self.logo_mime_type};base64,{encoded}"
+
+    @property
+    def attendance_success_sound_data_url(self) -> str | None:
+        if not self.attendance_success_sound_blob or not self.attendance_success_sound_mime_type:
+            return None
+        encoded = base64.b64encode(self.attendance_success_sound_blob).decode("ascii")
+        return f"data:{self.attendance_success_sound_mime_type};base64,{encoded}"
+
+    @property
+    def attendance_failure_sound_data_url(self) -> str | None:
+        if not self.attendance_failure_sound_blob or not self.attendance_failure_sound_mime_type:
+            return None
+        encoded = base64.b64encode(self.attendance_failure_sound_blob).decode("ascii")
+        return f"data:{self.attendance_failure_sound_mime_type};base64,{encoded}"

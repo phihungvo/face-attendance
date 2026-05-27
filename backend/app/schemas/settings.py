@@ -51,3 +51,21 @@ class AttendancePolicyUpdateRequest(BaseModel):
     checkout_to: str = Field(..., pattern=r"^\d{2}:\d{2}$")
 
     min_minutes_between_same_type: int = Field(..., ge=0, le=120)
+
+
+class AttendanceEvidenceSettingsOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    enable_evidence_image: bool
+    image_quality: int = Field(..., ge=30, le=95)
+    image_max_width: int = Field(..., ge=240, le=4096)
+    image_format: str = Field(..., pattern=r"^(webp|jpeg)$")
+    image_retention_days: int = Field(..., ge=1, le=3650)
+
+
+class AttendanceEvidenceSettingsUpdateRequest(BaseModel):
+    enable_evidence_image: bool
+    image_quality: int = Field(..., ge=30, le=95)
+    image_max_width: int = Field(..., ge=240, le=4096)
+    image_format: str = Field(..., pattern=r"^(webp|jpeg)$")
+    image_retention_days: int = Field(..., ge=1, le=3650)

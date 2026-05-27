@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -28,6 +28,11 @@ class User(Base):
     code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    citizen_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    citizen_id_place: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    hire_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     role: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="active")
     department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True, index=True)
@@ -38,6 +43,7 @@ class User(Base):
     department = relationship("Department", back_populates="users")
     face_embeddings = relationship("FaceEmbedding", back_populates="user", cascade="all, delete-orphan")
     attendance_logs = relationship("AttendanceLog", back_populates="user", cascade="all, delete-orphan")
+    attendance_history = relationship("AttendanceHistory", cascade="all, delete-orphan")
 
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     permissions = relationship("Permission", secondary="user_permissions", back_populates="users")

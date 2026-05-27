@@ -6,13 +6,15 @@ export default function StatCard({
   label,
   value,
   delta,
+  foot,
   variant
 }: {
   icon: ReactNode;
   label: string;
   value: string | number;
   delta?: { label: string; tone?: "green" | "red" | "neutral" };
-  variant?: "blue" | "green" | "orange" | "red";
+  foot?: string;
+  variant?: "blue" | "green" | "orange" | "red" | "violet" | "slate";
 }) {
   const variantClass =
     variant === "blue"
@@ -23,21 +25,29 @@ export default function StatCard({
           ? styles.orange
           : variant === "red"
             ? styles.red
-            : undefined;
+            : variant === "violet"
+              ? styles.violet
+              : variant === "slate"
+                ? styles.slate
+                : undefined;
 
-  const deltaClass =
+  const footClass =
     delta?.tone === "green"
-      ? `${styles.change} ${styles.up}`
+      ? `${styles.foot} ${styles.up}`
       : delta?.tone === "red"
-        ? `${styles.change} ${styles.down}`
-        : styles.change;
+        ? `${styles.foot} ${styles.down}`
+        : styles.foot;
+
+  const footText = foot ?? delta?.label;
 
   return (
-    <div className={variantClass ? `${styles.card} ${variantClass}` : styles.card}>
-      <div className={variantClass ? `${styles.icon} ${variantClass}` : styles.icon}>{icon}</div>
+    <article className={variantClass ? `${styles.card} ${variantClass}` : styles.card}>
+      <div className={styles.top}>
+        <div className={styles.label}>{label}</div>
+        <div className={styles.icon}>{icon}</div>
+      </div>
       <div className={styles.value}>{value}</div>
-      <div className={styles.label}>{label}</div>
-      {delta ? <div className={deltaClass}>{delta.label}</div> : null}
-    </div>
+      {footText ? <div className={footClass}>{footText}</div> : null}
+    </article>
   );
 }

@@ -294,6 +294,62 @@
   gap: 10px;
 }
 
+.profileEditor {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.editorGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--ink3);
+}
+
+.fieldInput {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 76%, transparent);
+  color: var(--ink);
+  font: inherit;
+  padding: 12px 14px;
+}
+
+.fieldTextarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.editorNote {
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 800;
+  color: var(--ink3);
+}
+
+.editorActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .detailCard,
 .actionRow {
   display: flex;
@@ -487,6 +543,10 @@
   }
 
   .detailGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .editorGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

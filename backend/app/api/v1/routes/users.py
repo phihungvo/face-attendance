@@ -10,7 +10,7 @@ from app.core.settings import settings
 from app.core.throttling import get_client_ip, request_rate_limiter
 from app.core.uploads import read_validated_image_upload
 from app.db.session import get_db
-from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateRequest, UserMeOut, UserOut, UserUpdateRequest
+from app.schemas.users import EnrollResponse, FaceEnrollStatusOut, UserCreateRequest, UserMeOut, UserOut, UserSelfUpdateRequest, UserUpdateRequest
 from app.schemas.common import ApiResponse
 from app.services.users import UserService
 from app.services.auth import AuthService
@@ -20,6 +20,15 @@ router = APIRouter()
 service = UserService()
 auth_service = AuthService()
 notification_service = NotificationService()
+
+
+def _build_user_me_out(u) -> UserMeOut:
+    dept_name = None
+    dept = getattr(u, "department", None)
+    if dept is not None:
+        dept_name = getattr(dept, "name", None)
+    base = UserOut.model_validate(u).model_dump()
+    return UserMeOut(**{**base, "department_name": dept_name})
 
 
 @router.post("/enroll", response_model=ApiResponse[EnrollResponse])
@@ -147,17 +156,34 @@ def my_profile(
     user=Depends(get_current_user),
 ) -> ApiResponse[UserMeOut]:
     u = service.get_user(db, user_id=int(user.id))
-    dept_name = None
-    dept = getattr(u, "department", None)
-    if dept is not None:
-        dept_name = getattr(dept, "name", None)
-    base = UserOut.model_validate(u).model_dump()
-    return ok(UserMeOut(**{**base, "department_name": dept_name}))
+    return ok(_build_user_me_out(u))
+
+
+@router.put("/me", response_model=ApiResponse[UserMeOut])
+def update_my_profile(
+    payload: UserSelfUpdateRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[UserMeOut]:
+    try:
+        updated = service.update_my_profile(
+            db,
+            user_id=int(user.id),
+            name=payload.name,
+            email=payload.email,
+            phone=payload.phone,
+            address=payload.address,
+            citizen_id=payload.citizen_id,
+            citizen_id_place=payload.citizen_id_place,
+        )
+        return ok(_build_user_me_out(updated))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
 
 
 @router.get("", response_model=ApiResponse[list[UserOut]])
 def list_users(
-    q: str | None = Query(default=None, description="Search by name"),
+    q: str | None = Query(default=None, description="Search by name/code/email/phone/address/CCCD"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -195,6 +221,11 @@ def create_user(
             name=payload.name,
             code=payload.code,
             email=payload.email,
+            phone=payload.phone,
+            address=payload.address,
+            citizen_id=payload.citizen_id,
+            citizen_id_place=payload.citizen_id_place,
+            hire_date=payload.hire_date,
             role=payload.role,
             status=payload.status,
             department_id=payload.department_id,
@@ -240,6 +271,11 @@ def update_user(
             name=payload.name,
             code=payload.code,
             email=payload.email,
+            phone=payload.phone,
+            address=payload.address,
+            citizen_id=payload.citizen_id,
+            citizen_id_place=payload.citizen_id_place,
+            hire_date=payload.hire_date,
             role=payload.role,
             status=payload.status,
             department_id=payload.department_id,

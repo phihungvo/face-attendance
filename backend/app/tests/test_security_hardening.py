@@ -15,7 +15,7 @@ from app.core.errors import AUTH_ACCOUNT_DISABLED, AppException
 from app.core.security import create_access_token, hash_password, validate_password_strength, validate_runtime_security
 from app.core.settings import settings
 from app.core.throttling import FailedAttemptLimiter
-from app.core.uploads import read_validated_image_upload
+from app.core.uploads import read_validated_audio_upload, read_validated_image_upload
 from app.models.base import Base
 from app.models.company import Company
 from app.models.user import User
@@ -122,3 +122,14 @@ class TestUploadValidation(unittest.IsolatedAsyncioTestCase):
         payload, content_type = await read_validated_image_upload(upload, max_bytes=1024 * 1024, field_label="Ảnh")
         self.assertGreater(len(payload), 0)
         self.assertEqual(content_type, "image/png")
+
+    async def test_read_validated_audio_upload_rejects_invalid_mime(self) -> None:
+        upload = UploadFile(filename="x.txt", file=io.BytesIO(b"not-audio"), headers={"content-type": "text/plain"})
+        with self.assertRaises(ValueError):
+            await read_validated_audio_upload(upload, max_bytes=1024, field_label="Âm thanh")
+
+    async def test_read_validated_audio_upload_accepts_small_mp3(self) -> None:
+        upload = UploadFile(filename="ok.mp3", file=io.BytesIO(b"ID3test-audio"), headers={"content-type": "audio/mpeg"})
+        payload, content_type = await read_validated_audio_upload(upload, max_bytes=1024 * 1024, field_label="Âm thanh")
+        self.assertEqual(payload, b"ID3test-audio")
+        self.assertEqual(content_type, "audio/mpeg")

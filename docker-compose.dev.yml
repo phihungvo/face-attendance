@@ -5,6 +5,19 @@ services:
       - ./backend/app:/app/app
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app"]
 
+  attendance_worker:
+    volumes:
+      - ./backend/app:/app/app
+    command: ["python", "-m", "app.workers.attendance_evidence_worker"]
+
+  attendance_cleanup:
+    volumes:
+      - ./backend/app:/app/app
+    command:
+      - sh
+      - -lc
+      - while true; do python -m app.jobs.attendance_evidence_cleanup; sleep 86400; done
+
   frontend_dev:
     # Dev: Vite HMR (no nginx, no static build)
     image: node:20-alpine

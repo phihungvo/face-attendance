@@ -131,6 +131,16 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
         _exec(engine, "ALTER TABLE users ADD UNIQUE KEY uq_users_company_email (company_id, email)")
     if not _index_exists(engine, table="users", index="ix_users_email", schema=schema):
         _exec(engine, "ALTER TABLE users ADD KEY ix_users_email (email)")
+    if not _column_exists(engine, table="users", column="phone", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL")
+    if not _column_exists(engine, table="users", column="address", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN address VARCHAR(255) NULL")
+    if not _column_exists(engine, table="users", column="citizen_id", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN citizen_id VARCHAR(32) NULL")
+    if not _column_exists(engine, table="users", column="citizen_id_place", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN citizen_id_place VARCHAR(255) NULL")
+    if not _column_exists(engine, table="users", column="hire_date", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN hire_date DATE NULL")
     if not _column_exists(engine, table="users", column="role", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN role VARCHAR(64) NULL")
     if not _column_exists(engine, table="users", column="status", schema=schema):
@@ -154,6 +164,30 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
             _exec(engine, "ALTER TABLE companies ADD COLUMN logo_blob MEDIUMBLOB NULL")
         if not _column_exists(engine, table="companies", column="logo_mime_type", schema=schema):
             _exec(engine, "ALTER TABLE companies ADD COLUMN logo_mime_type VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_source", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_source VARCHAR(16) NOT NULL DEFAULT 'default'")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_sample_id", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_sample_id VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_url", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_url VARCHAR(1024) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_text", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_text VARCHAR(1000) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_blob", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_blob MEDIUMBLOB NULL")
+        if not _column_exists(engine, table="companies", column="attendance_success_sound_mime_type", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_success_sound_mime_type VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_source", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_source VARCHAR(16) NOT NULL DEFAULT 'default'")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_sample_id", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_sample_id VARCHAR(64) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_url", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_url VARCHAR(1024) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_text", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_text VARCHAR(1000) NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_blob", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_blob MEDIUMBLOB NULL")
+        if not _column_exists(engine, table="companies", column="attendance_failure_sound_mime_type", schema=schema):
+            _exec(engine, "ALTER TABLE companies ADD COLUMN attendance_failure_sound_mime_type VARCHAR(64) NULL")
     if not _column_exists(engine, table="companies", column="geo_radius_meters", schema=schema):
         _exec(engine, "ALTER TABLE companies ADD COLUMN geo_radius_meters DOUBLE NULL")
     if not _column_exists(engine, table="companies", column="require_gps_on_attendance", schema=schema):
@@ -323,6 +357,168 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
         _exec(engine, "ALTER TABLE attendance_logs ADD COLUMN distance_meters DOUBLE NULL")
     if not _column_exists(engine, table="attendance_logs", column="geo_ok", schema=schema):
         _exec(engine, "ALTER TABLE attendance_logs ADD COLUMN geo_ok TINYINT(1) NOT NULL DEFAULT 1")
+
+    # attendance evidence settings / history / queue
+    try:
+        if not _table_exists(engine, table="attendance_evidence_settings", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE attendance_evidence_settings (
+                    company_id INT NOT NULL,
+                    enable_evidence_image TINYINT(1) NOT NULL DEFAULT 1,
+                    image_quality INT NOT NULL DEFAULT 65,
+                    image_max_width INT NOT NULL DEFAULT 720,
+                    image_format VARCHAR(16) NOT NULL DEFAULT 'webp',
+                    image_retention_days INT NOT NULL DEFAULT 30,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (company_id),
+                    CONSTRAINT fk_attendance_evidence_settings_company
+                        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+        if not _table_exists(engine, table="attendance_history", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE attendance_history (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    company_id INT NULL,
+                    employee_id INT NOT NULL,
+                    attendance_log_id INT NULL,
+                    type VARCHAR(16) NOT NULL,
+                    check_time DATETIME NOT NULL,
+                    confidence_score DOUBLE NOT NULL,
+                    image_url VARCHAR(512) NULL,
+                    image_size_kb INT NULL,
+                    image_format VARCHAR(16) NULL,
+                    upload_status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_attendance_history_log_id (attendance_log_id),
+                    KEY ix_attendance_history_company_id (company_id),
+                    KEY ix_attendance_history_employee_id (employee_id),
+                    KEY ix_attendance_history_type (type),
+                    KEY ix_attendance_history_check_time (check_time),
+                    KEY ix_attendance_history_upload_status (upload_status),
+                    CONSTRAINT fk_attendance_history_company
+                        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_attendance_history_employee
+                        FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_attendance_history_log
+                        FOREIGN KEY (attendance_log_id) REFERENCES attendance_logs(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+        if not _table_exists(engine, table="attendance_evidence_tasks", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE attendance_evidence_tasks (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    history_id INT NOT NULL,
+                    company_id INT NULL,
+                    employee_id INT NOT NULL,
+                    spool_path VARCHAR(512) NOT NULL,
+                    source_mime VARCHAR(64) NULL,
+                    status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                    attempts INT NOT NULL DEFAULT 0,
+                    max_attempts INT NOT NULL DEFAULT 3,
+                    next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_error TEXT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    completed_at DATETIME NULL,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_attendance_evidence_tasks_history_id (history_id),
+                    KEY ix_attendance_evidence_tasks_company_id (company_id),
+                    KEY ix_attendance_evidence_tasks_employee_id (employee_id),
+                    KEY ix_attendance_evidence_tasks_status (status),
+                    KEY ix_attendance_evidence_tasks_next_attempt_at (next_attempt_at),
+                    CONSTRAINT fk_attendance_evidence_tasks_history
+                        FOREIGN KEY (history_id) REFERENCES attendance_history(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_attendance_evidence_tasks_company
+                        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_attendance_evidence_tasks_employee
+                        FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+
+        if _table_exists(engine, table="attendance_history", schema=schema):
+            if not _column_exists(engine, table="attendance_history", column="company_id", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN company_id INT NULL, ADD KEY ix_attendance_history_company_id (company_id)")
+            if not _column_exists(engine, table="attendance_history", column="employee_id", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN employee_id INT NOT NULL, ADD KEY ix_attendance_history_employee_id (employee_id)")
+            if not _column_exists(engine, table="attendance_history", column="attendance_log_id", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN attendance_log_id INT NULL, ADD UNIQUE KEY uq_attendance_history_log_id (attendance_log_id)")
+            if not _column_exists(engine, table="attendance_history", column="type", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN type VARCHAR(16) NOT NULL DEFAULT 'checkin', ADD KEY ix_attendance_history_type (type)")
+            if not _column_exists(engine, table="attendance_history", column="check_time", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN check_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD KEY ix_attendance_history_check_time (check_time)")
+            if not _column_exists(engine, table="attendance_history", column="confidence_score", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN confidence_score DOUBLE NOT NULL DEFAULT 0.0")
+            if not _column_exists(engine, table="attendance_history", column="image_url", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN image_url VARCHAR(512) NULL")
+            if not _column_exists(engine, table="attendance_history", column="image_size_kb", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN image_size_kb INT NULL")
+            if not _column_exists(engine, table="attendance_history", column="image_format", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN image_format VARCHAR(16) NULL")
+            if not _column_exists(engine, table="attendance_history", column="upload_status", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN upload_status VARCHAR(16) NOT NULL DEFAULT 'pending', ADD KEY ix_attendance_history_upload_status (upload_status)")
+            if not _column_exists(engine, table="attendance_history", column="created_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+            if not _column_exists(engine, table="attendance_history", column="updated_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_history ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+
+        if _table_exists(engine, table="attendance_evidence_settings", schema=schema):
+            if not _column_exists(engine, table="attendance_evidence_settings", column="enable_evidence_image", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_settings ADD COLUMN enable_evidence_image TINYINT(1) NOT NULL DEFAULT 1")
+            if not _column_exists(engine, table="attendance_evidence_settings", column="image_quality", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_settings ADD COLUMN image_quality INT NOT NULL DEFAULT 65")
+            if not _column_exists(engine, table="attendance_evidence_settings", column="image_max_width", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_settings ADD COLUMN image_max_width INT NOT NULL DEFAULT 720")
+            if not _column_exists(engine, table="attendance_evidence_settings", column="image_format", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_settings ADD COLUMN image_format VARCHAR(16) NOT NULL DEFAULT 'webp'")
+            if not _column_exists(engine, table="attendance_evidence_settings", column="image_retention_days", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_settings ADD COLUMN image_retention_days INT NOT NULL DEFAULT 30")
+            if not _column_exists(engine, table="attendance_evidence_settings", column="created_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_settings ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+            if not _column_exists(engine, table="attendance_evidence_settings", column="updated_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_settings ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+
+        if _table_exists(engine, table="attendance_evidence_tasks", schema=schema):
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="history_id", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN history_id INT NOT NULL, ADD UNIQUE KEY uq_attendance_evidence_tasks_history_id (history_id)")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="company_id", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN company_id INT NULL, ADD KEY ix_attendance_evidence_tasks_company_id (company_id)")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="employee_id", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN employee_id INT NOT NULL, ADD KEY ix_attendance_evidence_tasks_employee_id (employee_id)")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="spool_path", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN spool_path VARCHAR(512) NOT NULL")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="source_mime", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN source_mime VARCHAR(64) NULL")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="status", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'pending', ADD KEY ix_attendance_evidence_tasks_status (status)")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="attempts", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN attempts INT NOT NULL DEFAULT 0")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="max_attempts", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN max_attempts INT NOT NULL DEFAULT 3")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="next_attempt_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD KEY ix_attendance_evidence_tasks_next_attempt_at (next_attempt_at)")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="last_error", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN last_error TEXT NULL")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="created_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="updated_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+            if not _column_exists(engine, table="attendance_evidence_tasks", column="completed_at", schema=schema):
+                _exec(engine, "ALTER TABLE attendance_evidence_tasks ADD COLUMN completed_at DATETIME NULL")
+    except Exception:
+        pass
 
     # leave_requests table (added later)
     # Keep migration best-effort: if table does not exist, skip.

@@ -22,6 +22,16 @@ class CompanyListOut(BaseModel):
 
 class CompanyOut(CompanyListOut):
     logo_data_url: str | None = None
+    attendance_success_sound_source: str = "default"
+    attendance_success_sound_sample_id: str | None = None
+    attendance_success_sound_url: str | None = None
+    attendance_success_sound_text: str | None = None
+    attendance_success_sound_data_url: str | None = None
+    attendance_failure_sound_source: str = "default"
+    attendance_failure_sound_sample_id: str | None = None
+    attendance_failure_sound_url: str | None = None
+    attendance_failure_sound_text: str | None = None
+    attendance_failure_sound_data_url: str | None = None
 
 
 class CompanyCreateRequest(BaseModel):
@@ -44,3 +54,11 @@ class CompanyUpdateRequest(BaseModel):
     longitude: float | None = None
     geo_radius_meters: float | None = None
     require_gps_on_attendance: bool | None = None
+    attendance_success_sound_source: str | None = Field(default=None, max_length=16)
+    attendance_success_sound_sample_id: str | None = Field(default=None, max_length=64)
+    attendance_success_sound_url: str | None = Field(default=None, max_length=1024)
+    attendance_success_sound_text: str | None = Field(default=None, max_length=1000)
+    attendance_failure_sound_source: str | None = Field(default=None, max_length=16)
+    attendance_failure_sound_sample_id: str | None = Field(default=None, max_length=64)
+    attendance_failure_sound_url: str | None = Field(default=None, max_length=1024)
+    attendance_failure_sound_text: str | None = Field(default=None, max_length=1000)

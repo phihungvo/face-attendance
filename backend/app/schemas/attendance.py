@@ -39,6 +39,29 @@ class ScanResponse(BaseModel):
     action: str  # "checkin" | "checkout"
 
 
+class AttendanceHistoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    employee_id: int
+    employee_name: str | None = None
+    employee_code: str | None = None
+    type: str
+    check_time: datetime
+    confidence_score: float
+    image_url: str | None = None
+    image_size_kb: int | None = None
+    image_format: str | None = None
+    upload_status: str
+    created_at: datetime
+
+
+class AttendanceEvidenceUrlOut(BaseModel):
+    history_id: int
+    url: str
+    expires_in_seconds: int
+
+
 class DailyAttendanceRow(BaseModel):
     user_id: int
     user_name: str

@@ -2,16 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/Card/Card";
 import Modal from "../../components/Modal/Modal";
 import Table from "../../components/Table/Table";
-import { deleteTimelogDay, listTimelog, upsertTimelogDay, type TimelogRow } from "../../../shared/api/attendance";
+import {
+  deleteTimelogDay,
+  getAttendanceEvidenceUrl,
+  listAttendanceHistory,
+  listTimelog,
+  upsertTimelogDay,
+  type AttendanceHistoryRow,
+  type TimelogRow
+} from "../../../shared/api/attendance";
 import { listDepartments } from "../../../shared/api/departments";
 import type { Department } from "../../../shared/types/department";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
+import { formatDateTimeVi } from "../../../shared/lib/date";
 // import { exportExcelHtml } from "../../../shared/lib/excelExport";
 import {
-  CheckCircleOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  EyeOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
   FileExcelOutlined,
@@ -41,6 +50,70 @@ function toHm(iso?: string | null) {
 
 function buildIso(day: string, hm: string) {
   return `${day}T${hm}:00`;
+}
+
+function initialsFromName(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(-2)
+    .map((x) => x[0])
+    .join("")
+    .toUpperCase();
+}
+
+function formatMinutes(total?: number | null) {
+  const minutes = Math.max(0, Number(total) || 0);
+  return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m`;
+}
+
+function historyRank(status?: string | null) {
+  if (status === "uploaded") return 4;
+  if (status === "pending") return 3;
+  if (status === "retry") return 2;
+  if (status === "failed") return 1;
+  return 0;
+}
+
+function historyByType(rows: AttendanceHistoryRow[], type: "checkin" | "checkout", targetIso?: string | null) {
+  const targetTs = targetIso ? new Date(targetIso).getTime() : null;
+  return (
+    rows
+      .filter((row) => row.type === type)
+      .sort((a, b) => {
+        const rankDiff = historyRank(b.upload_status) - historyRank(a.upload_status);
+        if (rankDiff !== 0) return rankDiff;
+
+        if (targetTs != null) {
+          const distA = Math.abs(new Date(a.check_time).getTime() - targetTs);
+          const distB = Math.abs(new Date(b.check_time).getTime() - targetTs);
+          if (distA !== distB) return distA - distB;
+        }
+
+        return new Date(b.check_time).getTime() - new Date(a.check_time).getTime();
+      })
+      .at(0) ?? null
+  );
+}
+
+function uploadStatusLabel(status?: string | null) {
+  if (status === "uploaded") return "Đã lưu ảnh";
+  if (status === "pending") return "Đang xử lý";
+  if (status === "retry") return "Đang thử lại";
+  if (status === "failed") return "Upload lỗi";
+  if (status === "deleted") return "Đã xóa";
+  return "Chưa bật";
+}
+
+function formatEvidenceConfidence(score?: number | null) {
+  if (score == null) return "—";
+  const normalized = score <= 1 ? score * 100 : score;
+  return `${Math.round(normalized)}%`;
+}
+
+function formatEvidenceSize(sizeKb?: number | null) {
+  if (sizeKb == null) return "—";
+  return `${sizeKb} KB`;
 }
 
 // function escapeHtml(s: any): string {
@@ -298,6 +371,13 @@ export default function TimesheetPage() {
   const [editing, setEditing] = useState<TimelogRow | null>(null);
   const [editCheckin, setEditCheckin] = useState("");
   const [editCheckout, setEditCheckout] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailRow, setDetailRow] = useState<TimelogRow | null>(null);
+  const [detailHistory, setDetailHistory] = useState<AttendanceHistoryRow[]>([]);
+  const [detailImageUrls, setDetailImageUrls] = useState<Record<number, string>>({});
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailPreview, setDetailPreview] = useState<{ label: string; item: AttendanceHistoryRow; url: string } | null>(null);
 
   const summary = useMemo(() => {
     const totalEmployees = new Set(rows.map((r) => r.user_id)).size;
@@ -345,6 +425,56 @@ export default function TimesheetPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function openDetail(row: TimelogRow) {
+    setDetailOpen(true);
+    setDetailRow(row);
+    setDetailHistory([]);
+    setDetailImageUrls({});
+    setDetailError(null);
+    try {
+      setDetailLoading(true);
+      const history = await listAttendanceHistory({
+        employee: row.user_id,
+        from_date: row.date,
+        to_date: row.date,
+        limit: 20,
+        offset: 0
+      });
+      const sorted = history.slice().sort((a, b) => new Date(a.check_time).getTime() - new Date(b.check_time).getTime());
+      setDetailHistory(sorted);
+      const uploaded = sorted.filter((item) => item.upload_status === "uploaded");
+      if (uploaded.length > 0) {
+        const urlEntries = await Promise.all(
+          uploaded.map(async (item) => {
+            try {
+              const res = await getAttendanceEvidenceUrl(item.id);
+              return [item.id, res.url] as const;
+            } catch {
+              return null;
+            }
+          })
+        );
+        setDetailImageUrls(
+          Object.fromEntries(urlEntries.filter((entry): entry is readonly [number, string] => Array.isArray(entry) && Boolean(entry[1])))
+        );
+      }
+    } catch (e) {
+      setDetailError(getApiErrorMessage(e));
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  const detailCheckin = useMemo(
+    () => historyByType(detailHistory, "checkin", detailRow?.checkin_time ?? null),
+    [detailHistory, detailRow?.checkin_time]
+  );
+  const detailCheckout = useMemo(
+    () => historyByType(detailHistory, "checkout", detailRow?.checkout_time ?? null),
+    [detailHistory, detailRow?.checkout_time]
+  );
+  const detailEvidenceCount = useMemo(() => detailHistory.filter((row) => row.upload_status === "uploaded").length, [detailHistory]);
 
   return (
     <div className={styles.page}>
@@ -495,13 +625,7 @@ export default function TimesheetPage() {
               {rows.map((r) => {
                 const statusKey = r.absent ? "absent" : r.late ? "late" : "on-time";
                 const statusLabel = r.absent ? "✗ Vắng mặt" : r.late ? "⚠ Đi muộn" : "✓ Đúng giờ";
-                const initials = r.user_name
-                  .split(" ")
-                  .filter(Boolean)
-                  .slice(-2)
-                  .map((x) => x[0])
-                  .join("")
-                  .toUpperCase();
+                const initials = initialsFromName(r.user_name);
 
                 const checkinHm = toHm(r.checkin_time);
                 const checkoutHm = toHm(r.checkout_time);
@@ -511,7 +635,7 @@ export default function TimesheetPage() {
                 const otLabel = `${Math.floor(otMin / 60)}h ${String(otMin % 60).padStart(2, "0")}m`;
 
                 return (
-                  <tr key={`${r.user_id}-${r.date}`}>
+                  <tr key={`${r.user_id}-${r.date}`} className={styles.detailRow} onClick={() => void openDetail(r)}>
                     <td className={`${styles.mono} ${styles.colCode}`}>{r.user_code || `#${r.user_id}`}</td>
                     <td className={styles.colName}>
                       <span className={styles.empCell}>
@@ -538,9 +662,21 @@ export default function TimesheetPage() {
                     <td className={styles.colActions}>
                       <div className={styles.rowActions}>
                         <button
+                          className={`${styles.rowBtn} ${styles.rowBtnView}`}
+                          type="button"
+                          title="Mở bằng chứng"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void openDetail(r);
+                          }}
+                        >
+                          <EyeOutlined />
+                        </button>
+                        <button
                         className={`${styles.rowBtn} ${styles.rowBtnEdit}`}
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                             setEditing(r);
                             setEditCheckin(toHm(r.checkin_time));
                             setEditCheckout(toHm(r.checkout_time));
@@ -552,7 +688,8 @@ export default function TimesheetPage() {
                         <button
                           className={`${styles.rowBtn} ${styles.rowBtnDel}`}
                           type="button"
-                          onClick={async () => {
+                          onClick={async (e) => {
+                            e.stopPropagation();
                             if (!window.confirm(`Xoá giờ công ngày ${r.date} của ${r.user_name}?`)) return;
                             try {
                               setBusy(true);
@@ -585,6 +722,193 @@ export default function TimesheetPage() {
           ) : null}
         </div>
       </Card>
+
+      <Modal
+        open={detailOpen && !!detailRow}
+        title={
+          detailRow ? (
+            <div>
+              <div className={styles.detailModalTitle}>Bằng chứng chấm công</div>
+              <div className={styles.detailModalSub}>{detailRow.user_code || `#${detailRow.user_id}`} • {detailRow.user_name}</div>
+            </div>
+          ) : (
+            "Bằng chứng chấm công"
+          )
+        }
+        onClose={() => {
+          setDetailOpen(false);
+          setDetailRow(null);
+          setDetailHistory([]);
+          setDetailImageUrls({});
+          setDetailError(null);
+          setDetailPreview(null);
+        }}
+        modalClassName={styles.detailModal}
+      >
+        {detailRow ? (
+          <div className={styles.detailBody}>
+            <div className={styles.empStrip}>
+              <div className={styles.empStripAvatar}>{initialsFromName(detailRow.user_name) || "??"}</div>
+              <div className={styles.empStripInfo}>
+                <div className={styles.empStripName}>{detailRow.user_name}</div>
+                <div className={styles.empStripMeta}>
+                  {(detailRow.user_code || `#${detailRow.user_id}`)} · {detailRow.department_name || "Chưa có phòng ban"} · {detailRow.method || "Face"}
+                </div>
+              </div>
+              <div className={styles.empStripDate}>
+                {new Date(`${detailRow.date}T00:00:00`).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+              </div>
+            </div>
+
+            <div className={styles.timelineStrip}>
+              <div className={styles.timelineItem}>
+                <div className={`${styles.timelineDot} ${detailRow.checkin_time ? styles.timelineDone : styles.timelinePending}`}>↘</div>
+                <div className={styles.timelineLabel}>Check-in</div>
+                <div className={styles.timelineTime}>{toHm(detailRow.checkin_time) || "—"}</div>
+              </div>
+              <div className={styles.timelineItem}>
+                <div className={`${styles.timelineDot} ${detailEvidenceCount > 0 ? styles.timelineDone : styles.timelinePending}`}>📷</div>
+                <div className={styles.timelineLabel}>Bằng chứng</div>
+                <div className={styles.timelineTime}>{detailEvidenceCount} ảnh</div>
+              </div>
+              <div className={styles.timelineItem}>
+                <div className={`${styles.timelineDot} ${detailRow.checkout_time ? styles.timelineDone : styles.timelinePending}`}>↗</div>
+                <div className={styles.timelineLabel}>Check-out</div>
+                <div className={styles.timelineTime}>{toHm(detailRow.checkout_time) || "—"}</div>
+              </div>
+              <div className={styles.timelineItem}>
+                <div className={`${styles.timelineDot} ${detailRow.absent ? styles.timelinePending : styles.timelineDone}`}>⏱</div>
+                <div className={styles.timelineLabel}>Giờ làm</div>
+                <div className={styles.timelineTime}>{formatMinutes(detailRow.working_minutes)}</div>
+              </div>
+            </div>
+
+            {detailError ? <div className={styles.errorBox}>{detailError}</div> : null}
+            {detailLoading ? <div className={styles.detailLoading}>Đang tải attendance evidence...</div> : null}
+
+            <div className={styles.evidenceGrid}>
+              {([
+                ["checkin", detailCheckin, "Vào ca", toHm(detailRow.checkin_time), styles.evidenceAccentIn],
+                ["checkout", detailCheckout, "Ra ca", toHm(detailRow.checkout_time), styles.evidenceAccentOut]
+              ] as const).map(([key, item, label, fallbackTime, accentClass]) => (
+                <div key={key} className={styles.evidenceCard}>
+                  <div className={styles.evidenceCardHead}>
+                    <div className={styles.evidenceCardTitle}>
+                      <span className={`${styles.evidenceDot} ${accentClass}`} />
+                      {label}
+                    </div>
+                    <div className={styles.evidenceCardTime}>{item ? toHm(item.check_time) : fallbackTime || "—"}</div>
+                  </div>
+
+                  {item && detailImageUrls[item.id] ? (
+                    <button
+                      type="button"
+                      className={styles.evidenceImageFrame}
+                      onClick={() => setDetailPreview({ label, item, url: detailImageUrls[item.id] })}
+                      aria-label={`Xem full ảnh bằng chứng ${label.toLowerCase()}`}
+                    >
+                      <img className={styles.evidenceImage} src={detailImageUrls[item.id]} alt={`${label} evidence`} />
+                      <div className={styles.evidenceHoverHint}>Xem full ảnh</div>
+                      <div className={styles.evidenceOverlay}>
+                        <div className={styles.evidenceOverlayTitle}>Chi tiết ảnh</div>
+                        <div className={styles.evidenceOverlayGrid}>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Trạng thái</span>
+                            <span className={styles.evidenceOverlayVal}>{uploadStatusLabel(item.upload_status)}</span>
+                          </div>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Độ khớp</span>
+                            <span className={styles.evidenceOverlayVal}>{formatEvidenceConfidence(item.confidence_score)}</span>
+                          </div>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Định dạng</span>
+                            <span className={styles.evidenceOverlayVal}>{item.image_format?.toUpperCase() || "—"}</span>
+                          </div>
+                          <div className={styles.evidenceOverlayItem}>
+                            <span className={styles.evidenceOverlayKey}>Kích thước</span>
+                            <span className={styles.evidenceOverlayVal}>{formatEvidenceSize(item.image_size_kb)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className={styles.evidenceEmpty}>
+                      <div className={styles.evidenceEmptyIcon}>{item ? "🖼" : "📷"}</div>
+                      <div>{item ? uploadStatusLabel(item.upload_status) : "Chưa có bản ghi evidence"}</div>
+                      <div className={styles.evidenceEmptySub}>
+                        {item ? "Ảnh sẽ xuất hiện ở đây khi worker upload xong." : "Ngày này chưa ghi nhận ảnh bằng chứng cho mốc này."}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.detailMetaGrid}>
+              <div className={styles.detailMetaItem}>
+                <div className={styles.detailMetaKey}>Trạng thái ngày công</div>
+                <div className={styles.detailMetaVal}>{detailRow.absent ? "Vắng mặt" : detailRow.late ? "Đi muộn" : "Đúng giờ"}</div>
+              </div>
+              <div className={styles.detailMetaItem}>
+                <div className={styles.detailMetaKey}>Tổng giờ làm</div>
+                <div className={styles.detailMetaVal}>{formatMinutes(detailRow.working_minutes)}</div>
+              </div>
+              <div className={styles.detailMetaItem}>
+                <div className={styles.detailMetaKey}>Tăng ca</div>
+                <div className={styles.detailMetaVal}>{formatMinutes(detailRow.overtime_minutes)}</div>
+              </div>
+              <div className={styles.detailMetaItem}>
+                <div className={styles.detailMetaKey}>Đi muộn</div>
+                <div className={styles.detailMetaVal}>{detailRow.late_minutes ? `${detailRow.late_minutes} phút` : "0 phút"}</div>
+              </div>
+              <div className={styles.detailMetaItem}>
+                <div className={styles.detailMetaKey}>Về sớm</div>
+                <div className={styles.detailMetaVal}>{detailRow.early_leave_minutes ? `${detailRow.early_leave_minutes} phút` : "0 phút"}</div>
+              </div>
+              <div className={styles.detailMetaItem}>
+                <div className={styles.detailMetaKey}>Cập nhật evidence</div>
+                <div className={styles.detailMetaVal}>
+                  {detailHistory.length > 0 ? formatDateTimeVi(new Date(detailHistory[detailHistory.length - 1].created_at)) : "Chưa có"}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={!!detailPreview}
+        title={
+          detailPreview ? (
+            <div>
+              <div className={styles.evidencePreviewTitle}>Ảnh bằng chứng</div>
+              <div className={styles.evidencePreviewSub}>
+                {detailPreview.label}
+                {detailRow ? ` • ${detailRow.user_code || `#${detailRow.user_id}`} • ${detailRow.user_name}` : ""}
+              </div>
+            </div>
+          ) : (
+            "Ảnh bằng chứng"
+          )
+        }
+        onClose={() => setDetailPreview(null)}
+        modalClassName={styles.evidencePreviewModal}
+      >
+        {detailPreview ? (
+          <div className={styles.evidencePreviewBody}>
+            <div className={styles.evidencePreviewMeta}>
+              <div className={styles.evidencePreviewChip}>{formatDateTimeVi(new Date(detailPreview.item.check_time))}</div>
+              <div className={styles.evidencePreviewChip}>{uploadStatusLabel(detailPreview.item.upload_status)}</div>
+              <div className={styles.evidencePreviewChip}>Độ khớp {formatEvidenceConfidence(detailPreview.item.confidence_score)}</div>
+              <div className={styles.evidencePreviewChip}>{detailPreview.item.image_format?.toUpperCase() || "—"}</div>
+              <div className={styles.evidencePreviewChip}>{formatEvidenceSize(detailPreview.item.image_size_kb)}</div>
+            </div>
+            <div className={styles.evidencePreviewImageWrap}>
+              <img className={styles.evidencePreviewImage} src={detailPreview.url} alt={`${detailPreview.label} full evidence`} />
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={editOpen && !!editing}

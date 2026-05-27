@@ -10,6 +10,11 @@ export async function createUser(payload: {
   name: string;
   code?: string | null;
   email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  citizen_id?: string | null;
+  citizen_id_place?: string | null;
+  hire_date?: string | null;
   role?: string | null;
   status?: string | null;
   department_id?: number | null;
@@ -27,6 +32,11 @@ export async function updateUser(
     name: string;
     code?: string | null;
     email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    citizen_id?: string | null;
+    citizen_id_place?: string | null;
+    hire_date?: string | null;
     role?: string | null;
     status?: string | null;
     department_id?: number | null;
@@ -44,5 +54,18 @@ export async function deleteUser(userId: number) {
 export async function getMyProfile() {
   const res = await api.get<ApiResponse<User & { department_name?: string | null }>>("/users/me");
   if (!res.data.result) throw new Error("Không lấy được thông tin nhân viên");
+  return res.data.result;
+}
+
+export async function updateMyProfile(payload: {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  citizen_id?: string | null;
+  citizen_id_place?: string | null;
+}) {
+  const res = await api.put<ApiResponse<User & { department_name?: string | null }>>("/users/me", payload);
+  if (!res.data.result) throw new Error("Không cập nhật được hồ sơ");
   return res.data.result;
 }

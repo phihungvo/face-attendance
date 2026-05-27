@@ -1,30 +1,29 @@
 .page {
-  background: var(--paper);
   min-height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.page {
-  /* Reduce scroll-jank on iOS when camera is active */
+  background:
+    radial-gradient(circle at top right, rgba(91, 79, 232, 0.14), transparent 26%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface) 64%, transparent), transparent 240px),
+    var(--paper);
   overscroll-behavior: none;
 }
 
 .screenHeader {
-  background: var(--surface);
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 18px 16px 14px;
 }
 
 .backBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 86%, transparent);
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(8, 10, 24, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,104 +31,140 @@
   cursor: pointer;
 }
 
-.screenHeaderTitle {
-  font-size: 18px;
+.screenHeaderEyebrow {
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.screenHeaderTitle {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
 }
 
 .content {
-  padding: 20px;
-  padding-bottom: var(--bottom-safe);
-  scroll-padding-bottom: var(--bottom-safe);
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 0 16px calc(22px + var(--bottom-safe));
 }
 
-@media (min-width: 900px) {
-  .screenHeader {
-    padding: 22px 24px 16px;
-  }
-
-  .content {
-    padding: 24px;
-  }
+.cameraCard,
+.primaryPanel,
+.logList,
+.warnBox,
+.errBox,
+.infoBox {
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  box-shadow: 0 18px 40px rgba(8, 10, 24, 0.24);
+  backdrop-filter: blur(12px);
 }
 
-.statusRow {
-  display: flex;
+.statusBadge {
+  display: inline-flex;
   align-items: center;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.statusReady {
+  background: rgba(13, 148, 136, 0.12);
+  color: #0f766e;
+}
+
+.statusWorking {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.statusDone {
+  background: rgba(100, 116, 139, 0.14);
+  color: #334155;
+}
+
+.cameraCard {
+  padding: 16px;
+  border-radius: 26px;
+}
+
+.cameraTopRow {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.cameraTitleWrap {
+  min-width: 0;
+}
+
+.cameraTitle {
+  margin-top: 10px;
+  font-size: 17px;
+  font-weight: 900;
+  color: #102033;
+}
+
+.cameraHint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7a90;
+}
+
+.cameraMeta {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(16, 32, 51, 0.06);
+  color: #506076;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.statusStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }
 
-.autoChip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 900;
-  background: rgba(91, 79, 232, 0.12);
-  border: 1px solid rgba(91, 79, 232, 0.18);
-  color: var(--indigo);
-  white-space: nowrap;
-}
-
-.statusChip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.statusChip::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-.in {
-  background: var(--green-light);
-  color: #1a9e5a;
-}
-.in::before {
-  background: var(--green);
-}
-
-.out {
-  background: var(--rose-light);
-  color: #c02050;
-}
-.out::before {
-  background: var(--rose);
-}
-
-.ghost {
-  border: 1.5px solid var(--border);
-  background: var(--surface2);
-  color: var(--ink);
-  border-radius: 12px;
-  padding: 10px 12px;
-  cursor: pointer;
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.camera {
+.statusStripItem {
+  padding: 11px 12px;
   border-radius: 18px;
-  border: 1.5px solid var(--border);
-  background: linear-gradient(135deg, #ffffff, #f2f1fc);
-  height: 260px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-  position: relative;
+  background: linear-gradient(180deg, #f8fbff 0%, #eff5fb 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
-.cameraInner {
-  color: var(--ink3);
+.statusStripItem span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #73839a;
+}
+
+.statusStripItem strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 15px;
   font-weight: 900;
+  color: #102033;
+}
+
+.cameraStage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #0f172a 0%, #162033 48%, #202a42 100%);
+  aspect-ratio: 3 / 4;
+  min-height: 320px;
 }
 
 .video {
@@ -137,128 +172,361 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transform: translateZ(0);
 }
 
-@media (max-width: 599px) {
-  .content {
-    padding: 16px;
-    padding-bottom: var(--bottom-safe);
-  }
-
-  .camera {
-    height: min(62dvh, 420px);
-    border-radius: 20px;
-  }
-
-  .actions {
-    position: sticky;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, rgba(247, 246, 255, 0.92), rgba(247, 246, 255, 0));
-    padding: 10px 0 0;
-    margin-top: 10px;
-    backdrop-filter: blur(8px);
-  }
+.cameraPlaceholder,
+.scanGuide {
+  position: absolute;
+  inset: 0;
 }
 
-.actions {
+.cameraPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.cameraPlaceholder :global(svg) {
+  font-size: 34px;
+}
+
+.scanGuide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.35));
+}
+
+.scanGuideFrame {
+  width: min(68vw, 246px);
+  height: min(84vw, 296px);
+  max-width: 72%;
+  max-height: 72%;
+  border-radius: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 0 0 999px rgba(15, 23, 42, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.scanGuideText {
+  margin-top: 16px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.48);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cameraTools {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 14px;
 }
 
-.primary,
-.danger {
-  border: none;
-  border-radius: 14px;
-  padding: 14px;
+.toolBtn {
+  position: relative;
+  min-height: 58px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface2) 96%, transparent) 0%, color-mix(in oklab, var(--surface) 88%, transparent) 100%);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-weight: 900;
-  font-size: 13px;
+  padding: 0;
+  box-shadow: 0 10px 26px rgba(8, 10, 24, 0.16);
 }
 
-.primary {
-  background: linear-gradient(135deg, var(--green), #22b068);
-  color: #fff;
-  box-shadow: 0 4px 18px rgba(52, 200, 119, 0.35);
+.toolBtn :global(svg) {
+  font-size: 20px;
 }
 
-.danger {
-  background: linear-gradient(135deg, var(--rose), #e03060);
+.toolBtnCameraOff {
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
   color: #fff;
-  box-shadow: 0 4px 18px rgba(242, 92, 122, 0.35);
+  border-color: transparent;
+  box-shadow: 0 16px 34px rgba(20, 184, 166, 0.26);
+}
+
+.toolBtnCameraOn {
+  background: linear-gradient(135deg, #102033 0%, #1f3a5b 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 16px 34px rgba(16, 32, 51, 0.28);
+}
+
+.toolBtnGpsReady {
+  border-color: color-mix(in oklab, var(--success-text) 38%, var(--border));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--success-bg) 96%, transparent) 0%, color-mix(in oklab, var(--surface) 88%, var(--success-bg)) 100%);
+  color: var(--success-text);
+}
+
+.toolBtnGpsRequired {
+  border-color: color-mix(in oklab, #f59e0b 40%, var(--border));
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.18) 0%, color-mix(in oklab, var(--surface) 88%, rgba(245, 158, 11, 0.08)) 100%);
+  color: #ffd27a;
+}
+
+.toolDot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.8);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--surface) 92%, transparent);
+}
+
+.toolDotActive {
+  background: #10b981;
+}
+
+.toolDotWarn {
+  background: #f59e0b;
+}
+
+.toolDotIdle {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.toolBtn:not(.toolBtnCameraOff):not(.toolBtnCameraOn) .toolDotIdle {
+  background: rgba(148, 163, 184, 0.9);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--surface2) 95%, transparent);
+}
+
+.toolBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .warnBox,
 .errBox,
 .infoBox {
   margin-top: 12px;
-  border-radius: 12px;
-  padding: 10px 12px;
+  padding: 13px 14px;
+  border-radius: 18px;
   font-size: 13px;
-  font-weight: 800;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  font-weight: 700;
+  line-height: 1.5;
+  color: #102033;
 }
 
 .warnBox {
-  border-left: 3px solid var(--warning);
+  border-left: 4px solid #f59e0b;
 }
 
 .errBox {
-  border-left: 3px solid var(--danger);
+  border-left: 4px solid #ef4444;
 }
 
 .infoBox {
-  border-left: 3px solid var(--primary);
+  border-left: 4px solid #10b981;
+}
+
+.inlineMeta {
+  margin-top: 6px;
+  color: #6b7a90;
+  font-weight: 600;
+}
+
+.primaryPanel {
+  width: min(calc(100vw - 24px), 520px);
+  padding: 14px;
+  border-radius: 24px;
+  box-sizing: border-box;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+}
+
+.primaryAction {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.primaryCheckin {
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  box-shadow: 0 18px 32px rgba(20, 184, 166, 0.28);
+}
+
+.primaryCheckout {
+  background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%);
+  box-shadow: 0 18px 32px rgba(37, 99, 235, 0.24);
+}
+
+.primaryDone {
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+  box-shadow: none;
+}
+
+.primaryAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.primaryHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.logSection {
+  margin-top: 16px;
 }
 
 .sectionTitle {
-  margin-top: 16px;
+  margin-bottom: 10px;
   font-size: 13px;
   font-weight: 900;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .logList {
-  margin-top: 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
   overflow: hidden;
+  border-radius: 24px;
 }
 
 .logRow {
   display: grid;
-  grid-template-columns: 90px 1fr 70px;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
 }
 
 .logRow:last-child {
   border-bottom: none;
 }
 
+.logIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.logIconIn {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.logIconOut {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+.logBody {
+  min-width: 0;
+}
+
 .logType {
+  font-size: 14px;
   font-weight: 900;
+  color: var(--text);
 }
 
 .logTime {
-  color: var(--ink2);
+  margin-top: 4px;
+  color: var(--text3);
+  font-size: 12px;
   font-weight: 700;
 }
 
 .logConf {
-  text-align: right;
   font-family: var(--mono);
   font-size: 12px;
-  color: var(--ink3);
+  font-weight: 800;
+  color: var(--text3);
 }
 
 .empty {
-  padding: 14px;
-  color: var(--ink3);
-  font-weight: 800;
+  padding: 18px 14px;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 599px) {
+  .content {
+    padding-inline: 12px;
+  }
+
+  .cameraCard,
+  .primaryPanel,
+  .logList,
+  .warnBox,
+  .errBox,
+  .infoBox {
+    border-radius: 22px;
+  }
+
+  .cameraTopRow {
+    flex-direction: column;
+  }
+
+  .cameraMeta {
+    align-self: flex-start;
+  }
+
+  .statusStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cameraStage {
+    min-height: 360px;
+  }
+
+  .cameraTools {
+    gap: 8px;
+  }
+}
+
+@media (min-width: 600px) {
+  .screenHeader {
+    padding-inline: 24px;
+  }
+
+  .content {
+    padding-inline: 20px;
+  }
+
+  .primaryPanel {
+    width: min(calc(100vw - 40px), 520px);
+    bottom: 18px;
+  }
 }

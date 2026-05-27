@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,21 @@ from app.repositories.companies import CompanyRepository
 
 ALLOWED_COMPANY_LOGO_TYPES = {"image/png", "image/jpeg", "image/webp"}
 MAX_COMPANY_LOGO_BYTES = 2 * 1024 * 1024
+ALLOWED_ATTENDANCE_SOUND_TYPES = {
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/ogg",
+    "audio/mp4",
+    "audio/aac",
+    "audio/webm",
+}
+MAX_COMPANY_SOUND_BYTES = 2 * 1024 * 1024
+MAX_ATTENDANCE_SOUND_TEXT_CHARS = 1000
+ATTENDANCE_SOUND_SOURCES = {"default", "sample", "upload", "url", "tts"}
+ATTENDANCE_SOUND_SAMPLE_IDS = {"soft-chime", "double-ding", "digital-pop", "warm-bell", "alert-buzz"}
 
 
 class CompanyService:
@@ -82,6 +99,14 @@ class CompanyService:
         longitude: float | None | object = UNSET,
         geo_radius_meters: float | None | object = UNSET,
         require_gps_on_attendance: bool | None | object = UNSET,
+        attendance_success_sound_source: str | None | object = UNSET,
+        attendance_success_sound_sample_id: str | None | object = UNSET,
+        attendance_success_sound_url: str | None | object = UNSET,
+        attendance_success_sound_text: str | None | object = UNSET,
+        attendance_failure_sound_source: str | None | object = UNSET,
+        attendance_failure_sound_sample_id: str | None | object = UNSET,
+        attendance_failure_sound_url: str | None | object = UNSET,
+        attendance_failure_sound_text: str | None | object = UNSET,
     ):
         lat_provided = latitude is not UNSET
         lng_provided = longitude is not UNSET
@@ -102,6 +127,20 @@ class CompanyService:
         lng_arg = None if longitude is UNSET else longitude
         if (lat_arg is None) ^ (lng_arg is None):
             raise ValueError("latitude/longitude phải đi cùng nhau")
+        self._validate_attendance_sound_settings(
+            label="thành công",
+            source=attendance_success_sound_source,
+            sample_id=attendance_success_sound_sample_id,
+            source_url=attendance_success_sound_url,
+            text=attendance_success_sound_text,
+        )
+        self._validate_attendance_sound_settings(
+            label="thất bại",
+            source=attendance_failure_sound_source,
+            sample_id=attendance_failure_sound_sample_id,
+            source_url=attendance_failure_sound_url,
+            text=attendance_failure_sound_text,
+        )
         try:
             c = self._companies.update(
                 db,
@@ -114,6 +153,14 @@ class CompanyService:
                 longitude=longitude,
                 geo_radius_meters=geo_radius_meters,
                 require_gps_on_attendance=require_gps_on_attendance,
+                attendance_success_sound_source=self._normalize_optional_trimmed(attendance_success_sound_source),
+                attendance_success_sound_sample_id=self._normalize_optional_trimmed(attendance_success_sound_sample_id),
+                attendance_success_sound_url=self._normalize_optional_trimmed(attendance_success_sound_url),
+                attendance_success_sound_text=self._normalize_optional_trimmed(attendance_success_sound_text),
+                attendance_failure_sound_source=self._normalize_optional_trimmed(attendance_failure_sound_source),
+                attendance_failure_sound_sample_id=self._normalize_optional_trimmed(attendance_failure_sound_sample_id),
+                attendance_failure_sound_url=self._normalize_optional_trimmed(attendance_failure_sound_url),
+                attendance_failure_sound_text=self._normalize_optional_trimmed(attendance_failure_sound_text),
             )
             if c is None:
                 raise ValueError("Company not found")
@@ -162,3 +209,80 @@ class CompanyService:
         db.commit()
         db.refresh(company)
         return company
+
+    def update_company_attendance_sound_upload(
+        self,
+        db: Session,
+        *,
+        company_id: int,
+        kind: str,
+        sound_bytes: bytes,
+        content_type: str | None,
+    ):
+        normalized_kind = (kind or "").strip().lower()
+        if normalized_kind not in {"success", "failure"}:
+            raise ValueError("Loại âm thanh không hợp lệ")
+        normalized_type = (content_type or "").split(";", 1)[0].strip().lower()
+        if normalized_type not in ALLOWED_ATTENDANCE_SOUND_TYPES:
+            raise ValueError("Âm thanh chỉ hỗ trợ MP3, WAV, OGG, AAC, M4A hoặc WEBM")
+        if not sound_bytes:
+            raise ValueError("Âm thanh không được để trống")
+        if len(sound_bytes) > MAX_COMPANY_SOUND_BYTES:
+            raise ValueError("Âm thanh tối đa 2MB")
+        company = self._companies.update_attendance_sound_upload(
+            db,
+            company_id=company_id,
+            kind=normalized_kind,
+            sound_blob=sound_bytes,
+            sound_mime_type=normalized_type,
+        )
+        if company is None:
+            raise ValueError("Company not found")
+        db.commit()
+        db.refresh(company)
+        return company
+
+    def _normalize_optional_trimmed(self, value: str | None | object) -> str | None | object:
+        if value is UNSET:
+            return value
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+        return value
+
+    def _validate_attendance_sound_settings(
+        self,
+        *,
+        label: str,
+        source: str | None | object,
+        sample_id: str | None | object,
+        source_url: str | None | object,
+        text: str | None | object,
+    ) -> None:
+        normalized_source = self._normalize_optional_trimmed(source)
+        normalized_sample = self._normalize_optional_trimmed(sample_id)
+        normalized_url = self._normalize_optional_trimmed(source_url)
+        normalized_text = self._normalize_optional_trimmed(text)
+
+        if normalized_source is UNSET:
+            return
+        if normalized_source is None:
+            raise ValueError(f"Nguồn âm thanh {label} không hợp lệ")
+        if normalized_source not in ATTENDANCE_SOUND_SOURCES:
+            raise ValueError(f"Nguồn âm thanh {label} không hợp lệ")
+        if normalized_source == "sample":
+            if not isinstance(normalized_sample, str) or normalized_sample not in ATTENDANCE_SOUND_SAMPLE_IDS:
+                raise ValueError(f"Mẫu âm thanh {label} không hợp lệ")
+        if normalized_source == "url":
+            if not isinstance(normalized_url, str):
+                raise ValueError(f"URL âm thanh {label} không hợp lệ")
+            parsed = urlparse(normalized_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError(f"URL âm thanh {label} phải là http hoặc https hợp lệ")
+        if normalized_source == "tts":
+            if not isinstance(normalized_text, str):
+                raise ValueError(f"Nội dung đọc cho âm thanh {label} không hợp lệ")
+            if len(normalized_text) > MAX_ATTENDANCE_SOUND_TEXT_CHARS:
+                raise ValueError(f"Nội dung đọc cho âm thanh {label} tối đa {MAX_ATTENDANCE_SOUND_TEXT_CHARS} ký tự")

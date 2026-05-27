@@ -19,6 +19,14 @@ export type AttendancePolicy = {
   min_minutes_between_same_type: number;
 };
 
+export type AttendanceEvidenceSettings = {
+  enable_evidence_image: boolean;
+  image_quality: number;
+  image_max_width: number;
+  image_format: "webp" | "jpeg";
+  image_retention_days: number;
+};
+
 export async function getAttendancePolicy() {
   const res = await api.get<ApiResponse<AttendancePolicy>>("/settings/attendance");
   if (!res.data.result) throw new Error("Không lấy được attendance policy");
@@ -28,5 +36,17 @@ export async function getAttendancePolicy() {
 export async function updateAttendancePolicy(payload: AttendancePolicy) {
   const res = await api.put<ApiResponse<AttendancePolicy>>("/settings/attendance", payload);
   if (!res.data.result) throw new Error("Không cập nhật được attendance policy");
+  return res.data.result;
+}
+
+export async function getAttendanceEvidenceSettings() {
+  const res = await api.get<ApiResponse<AttendanceEvidenceSettings>>("/settings/attendance-evidence");
+  if (!res.data.result) throw new Error("Không lấy được attendance evidence settings");
+  return res.data.result;
+}
+
+export async function updateAttendanceEvidenceSettings(payload: AttendanceEvidenceSettings) {
+  const res = await api.put<ApiResponse<AttendanceEvidenceSettings>>("/settings/attendance-evidence", payload);
+  if (!res.data.result) throw new Error("Không cập nhật được attendance evidence settings");
   return res.data.result;
 }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,6 +13,11 @@ class UserOut(BaseModel):
     code: str | None = None
     name: str
     email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    citizen_id: str | None = None
+    citizen_id_place: str | None = None
+    hire_date: date | None = None
     role: str | None = None
     status: str
     auth_status: str | None = None
@@ -26,10 +31,24 @@ class UserMeOut(UserOut):
     department_name: str | None = None
 
 
+class UserSelfUpdateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    email: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=255)
+    citizen_id: str | None = Field(default=None, max_length=32)
+    citizen_id_place: str | None = Field(default=None, max_length=255)
+
+
 class UserUpdateRequest(BaseModel):
     code: str | None = Field(default=None, max_length=32)
     name: str = Field(..., min_length=1, max_length=255)
     email: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=255)
+    citizen_id: str | None = Field(default=None, max_length=32)
+    citizen_id_place: str | None = Field(default=None, max_length=255)
+    hire_date: date | None = None
     role: str | None = Field(default=None, max_length=64)
     status: str | None = Field(default=None, max_length=16)
     department_id: int | None = None
@@ -39,6 +58,11 @@ class UserCreateRequest(BaseModel):
     code: str | None = Field(default=None, max_length=32)
     name: str = Field(..., min_length=1, max_length=255)
     email: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=255)
+    citizen_id: str | None = Field(default=None, max_length=32)
+    citizen_id_place: str | None = Field(default=None, max_length=255)
+    hire_date: date | None = None
     role: str | None = Field(default=None, max_length=64)
     status: str | None = Field(default=None, max_length=16)
     department_id: int | None = None
