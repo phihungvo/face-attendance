@@ -8,7 +8,7 @@
 .pageAnimated {
   opacity: 0;
   transform: translate3d(0, 24px, 0);
-  animation: dashboardPageEnter 0.82s cubic-bezier(0.16, 1, 0.3, 1) 940ms both;
+  animation: dashboardPageEnter 0.46s cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
   backface-visibility: hidden;
   will-change: transform, opacity;
 }
@@ -354,29 +354,29 @@
 .pageAnimated .statCard {
   opacity: 0;
   transform: translate3d(0, 28px, 0) scale(0.985);
-  animation: dashboardBlockEnter 0.76s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: dashboardBlockEnter 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
   backface-visibility: hidden;
   will-change: transform, opacity;
 }
 
 .statCard:nth-child(1) {
-  animation-delay: 1120ms;
+  animation-delay: 140ms;
 }
 
 .statCard:nth-child(2) {
-  animation-delay: 1200ms;
+  animation-delay: 190ms;
 }
 
 .statCard:nth-child(3) {
-  animation-delay: 1280ms;
+  animation-delay: 240ms;
 }
 
 .statCard:nth-child(4) {
-  animation-delay: 1360ms;
+  animation-delay: 290ms;
 }
 
 .statCard:nth-child(5) {
-  animation-delay: 1440ms;
+  animation-delay: 340ms;
 }
 
 .statCard::after {
@@ -477,25 +477,25 @@
 .pageAnimated .analyticsGrid > * {
   opacity: 0;
   transform: translate3d(0, 30px, 0) scale(0.988);
-  animation: dashboardBlockEnter 0.82s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: dashboardBlockEnter 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
   backface-visibility: hidden;
   will-change: transform, opacity;
 }
 
 .analyticsGrid > *:nth-child(1) {
-  animation-delay: 1560ms;
+  animation-delay: 390ms;
 }
 
 .analyticsGrid > *:nth-child(2) {
-  animation-delay: 1700ms;
+  animation-delay: 470ms;
 }
 
 .analyticsGrid > *:nth-child(3) {
-  animation-delay: 1840ms;
+  animation-delay: 550ms;
 }
 
 .analyticsGrid > *:nth-child(4) {
-  animation-delay: 1980ms;
+  animation-delay: 630ms;
 }
 
 .spanFull {
@@ -675,7 +675,7 @@
 .pageAnimated .chartArea {
   opacity: 0;
   transform-origin: center bottom;
-  animation: dashboardChartAreaEnter 0.72s cubic-bezier(0.16, 1, 0.3, 1) 1960ms both;
+  animation: dashboardChartAreaEnter 0.46s cubic-bezier(0.16, 1, 0.3, 1) 520ms both;
 }
 
 .chartFocusLine {
@@ -696,7 +696,7 @@
 .pageAnimated .chartLine {
   stroke-dasharray: 1200;
   stroke-dashoffset: 1200;
-  animation: dashboardChartDraw 1.18s cubic-bezier(0.16, 1, 0.3, 1) 2040ms both;
+  animation: dashboardChartDraw 0.72s cubic-bezier(0.16, 1, 0.3, 1) 560ms both;
 }
 
 .chartPointOuter {
@@ -808,21 +808,21 @@
 
 .pageAnimated .factCard {
   opacity: 0;
-  animation: dashboardSoftRise 0.64s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: dashboardSoftRise 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
   backface-visibility: hidden;
   will-change: transform, opacity;
 }
 
 .factCard:nth-child(1) {
-  animation-delay: 2140ms;
+  animation-delay: 620ms;
 }
 
 .factCard:nth-child(2) {
-  animation-delay: 2240ms;
+  animation-delay: 680ms;
 }
 
 .factCard:nth-child(3) {
-  animation-delay: 2340ms;
+  animation-delay: 740ms;
 }
 
 .factIcon {
@@ -1003,7 +1003,7 @@
 }
 
 .pageAnimated .progressFill {
-  animation: dashboardProgressEnter 0.92s cubic-bezier(0.16, 1, 0.3, 1) 2020ms both;
+  animation: dashboardProgressEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) 560ms both;
 }
 
 .leaveSummaryStrip {

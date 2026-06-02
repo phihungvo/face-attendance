@@ -24,6 +24,34 @@
   }
 }
 
+@keyframes topNavItemEnter {
+  0% {
+    transform: translateY(-24px) scale(0.96);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (min-width: 900px) {
+  .dateChip,
+  .companyBox,
+  .searchBox,
+  .notifWrap,
+  .actions > .iconBtn,
+  .profileWrap,
+  .actions > .btn {
+    opacity: 0;
+    animation: topNavItemEnter 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--topnav-enter-delay, 180ms);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+  }
+}
+
 .menuBtn {
   width: 42px;
   height: 42px;
@@ -331,7 +359,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .topbar {
+  .topbar,
+  .dateChip,
+  .companyBox,
+  .searchBox,
+  .notifWrap,
+  .actions > .iconBtn,
+  .profileWrap,
+  .actions > .btn {
     animation: none;
     opacity: 1;
     transform: none;

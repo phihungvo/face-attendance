@@ -158,10 +158,6 @@ export default function Sidebar({
               ) : null}
             </div>
           </div>
-          {/*<div className={styles.brandMeta}>*/}
-          {/*  <span className={styles.rolePill}>{roleLabel}</span>*/}
-          {/*  <span className={styles.statusPill}>Online</span>*/}
-          {/*</div>*/}
         </div>
 
         <div className={styles.navScroll}>

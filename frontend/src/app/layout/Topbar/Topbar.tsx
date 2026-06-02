@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BellOutlined,
@@ -65,6 +65,8 @@ export default function Topbar({
   const canOpenSettings = auth.permissionKeys.includes("settings.read");
   const avatarText = (auth.username || "U").slice(0, 2).toUpperCase();
   const profileName = myProfile?.name || auth.username || "User";
+  let topNavEnterIndex = 0;
+  const topNavDelay = () => ({ "--topnav-enter-delay": `${180 + topNavEnterIndex++ * 64}ms` } as CSSProperties);
 
   useEffect(() => {
     if (!showCompanySwitcher) return;
@@ -174,13 +176,13 @@ export default function Topbar({
       </div>
 
       <div className={styles.actions}>
-        <div className={styles.dateChip}>
+        <div className={styles.dateChip} style={topNavDelay()}>
           <CalendarOutlined />
           {todayLabel}
         </div>
 
         {showCompanySwitcher ? (
-          <div className={styles.companyBox} title="Chọn công ty để thao tác">
+          <div className={styles.companyBox} title="Chọn công ty để thao tác" style={topNavDelay()}>
             <span className={styles.companyIcon}>
               <SafetyCertificateOutlined />
             </span>
@@ -197,14 +199,14 @@ export default function Topbar({
           </div>
         ) : null}
 
-        <div className={styles.searchBox}>
+        <div className={styles.searchBox} style={topNavDelay()}>
           <span className={styles.searchIcon}>
             <SearchOutlined />
           </span>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm kiếm..." />
         </div>
 
-        <div className={styles.notifWrap} ref={dropdownRef}>
+        <div className={styles.notifWrap} ref={dropdownRef} style={topNavDelay()}>
           <button className={styles.iconBtn} type="button" title="Thông báo" onClick={() => setDropdownOpen((prev) => !prev)}>
             <BellOutlined />
             {unreadCount > 0 ? <span className={styles.notifCount}>{unreadCount > 99 ? "99+" : String(unreadCount)}</span> : null}
@@ -254,10 +256,10 @@ export default function Topbar({
             </div>
           ) : null}
         </div>
-        <button className={styles.iconBtn} type="button" title="Đổi giao diện" aria-label="Đổi giao diện" onClick={toggle}>
+        <button className={styles.iconBtn} type="button" title="Đổi giao diện" aria-label="Đổi giao diện" onClick={toggle} style={topNavDelay()}>
           <BgColorsOutlined />
         </button>
-        <div className={styles.profileWrap} ref={profileRef}>
+        <div className={styles.profileWrap} ref={profileRef} style={topNavDelay()}>
           <button className={styles.profileTrigger} type="button" onClick={() => setProfileOpen((prev) => !prev)} aria-label="Mở menu tài khoản">
             <span className={styles.profileAvatar}>{avatarText}</span>
             <span className={styles.profileTriggerBody}>
@@ -322,7 +324,7 @@ export default function Topbar({
         </div>
 
         {meta.actionLabel ? (
-          <Link className={`${styles.btn} ${styles.btnPrimary}`} to={meta.actionTo ?? pathname}>
+          <Link className={`${styles.btn} ${styles.btnPrimary}`} to={meta.actionTo ?? pathname} style={topNavDelay()}>
             {meta.actionLabel}
           </Link>
         ) : null}
