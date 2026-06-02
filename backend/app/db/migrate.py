@@ -574,6 +574,68 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
     except Exception:
         pass
 
+    # company membership invitations / join requests
+    try:
+        if not _table_exists(engine, table="company_invitations", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE company_invitations (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    company_id INT NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+                    invited_by_user_id INT NULL,
+                    responded_by_user_id INT NULL,
+                    responded_at DATETIME NULL,
+                    expires_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY ix_company_invitations_company_id (company_id),
+                    KEY ix_company_invitations_email (email),
+                    KEY ix_company_invitations_status (status),
+                    KEY ix_company_invitations_invited_by_user_id (invited_by_user_id),
+                    KEY ix_company_invitations_responded_by_user_id (responded_by_user_id),
+                    CONSTRAINT fk_company_invitations_company
+                        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_company_invitations_invited_by
+                        FOREIGN KEY (invited_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                    CONSTRAINT fk_company_invitations_responded_by
+                        FOREIGN KEY (responded_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+        if not _table_exists(engine, table="company_join_requests", schema=schema):
+            _exec(
+                engine,
+                """
+                CREATE TABLE company_join_requests (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    company_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+                    reviewed_by_user_id INT NULL,
+                    reviewed_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY ix_company_join_requests_company_id (company_id),
+                    KEY ix_company_join_requests_user_id (user_id),
+                    KEY ix_company_join_requests_status (status),
+                    KEY ix_company_join_requests_reviewed_by_user_id (reviewed_by_user_id),
+                    CONSTRAINT fk_company_join_requests_company
+                        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_company_join_requests_user
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_company_join_requests_reviewed_by
+                        FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """,
+            )
+    except Exception:
+        pass
+
     # work_schedules extensions (index4: dept/max/days/range/note)
     try:
         if _table_exists(engine, table="work_schedules", schema=schema):

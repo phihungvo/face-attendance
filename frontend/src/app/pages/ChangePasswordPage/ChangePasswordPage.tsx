@@ -25,7 +25,6 @@ export default function ChangePasswordPage() {
     <div className={styles.wrap}>
       <div className={styles.card}>
         <div className={styles.h1}>🔒 Đổi mật khẩu</div>
-        <div className={styles.muted}>Áp dụng cho tài khoản đang đăng nhập (Admin/Quản lý).</div>
 
         <label className={styles.label}>Mật khẩu hiện tại</label>
         <input className={styles.input} type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />

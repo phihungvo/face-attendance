@@ -4,6 +4,15 @@ import StatCard from "../../components/StatCard/StatCard";
 import Table from "../../components/Table/Table";
 import Modal from "../../components/Modal/Modal";
 import { createUser, deleteUser, listUsers, updateUser } from "../../../shared/api/users";
+import {
+  approveCompanyJoinRequest,
+  createCompanyInvitation,
+  listCompanyInvitations,
+  listCompanyJoinRequests,
+  rejectCompanyJoinRequest,
+  type CompanyInvitation,
+  type CompanyJoinRequest
+} from "../../../shared/api/companyMembership";
 import { listDepartments } from "../../../shared/api/departments";
 import { enrollFaceForUser, resetFaceForUser } from "../../../shared/api/enrollFace";
 import { getApiErrorMessage } from "../../../shared/lib/apiClient";
@@ -22,6 +31,7 @@ import {
   DownloadOutlined,
   EditOutlined,
   LeftOutlined,
+  MailOutlined,
   PlusOutlined,
   ReloadOutlined,
   RetweetOutlined,
@@ -78,6 +88,7 @@ function formatHireDateLabel(value?: string | null) {
 }
 
 export default function EmployeesPage() {
+  const [workflowTab, setWorkflowTab] = useState<"employees" | "requests" | "invitations">("employees");
   const [query, setQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -85,6 +96,9 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [joinRequests, setJoinRequests] = useState<CompanyJoinRequest[]>([]);
+  const [invitations, setInvitations] = useState<CompanyInvitation[]>([]);
+  const [inviteEmail, setInviteEmail] = useState("");
   const [departments, setDepartments] = useState<Department[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
@@ -109,6 +123,12 @@ export default function EmployeesPage() {
       setError(null);
       const data = await listUsers({ q: q?.trim() || undefined, limit: 500, offset: 0 });
       setUsers(data);
+      const [requestsResult, invitesResult] = await Promise.allSettled([
+        listCompanyJoinRequests({ status: "PENDING" }),
+        listCompanyInvitations()
+      ]);
+      setJoinRequests(requestsResult.status === "fulfilled" ? requestsResult.value : []);
+      setInvitations(invitesResult.status === "fulfilled" ? invitesResult.value : []);
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -144,14 +164,14 @@ export default function EmployeesPage() {
   const stats = useMemo(() => {
     const activeCount = users.filter((u) => u.status === "active").length;
     const deptCount = new Set(users.map((u) => u.department_id).filter((v): v is number => typeof v === "number")).size;
-    const pendingAuthCount = users.filter((u) => u.auth_status === "pending").length;
+    const pendingAuthCount = invitations.filter((x) => x.status === "PENDING").length;
     const noDeptCount = users.filter((u) => !u.department_id).length;
     return [
       { icon: <TeamOutlined />, label: "Tổng nhân viên", value: users.length, variant: "blue" as const, foot: `${activeCount} đang hoạt động` },
       { icon: <ApartmentOutlined />, label: "Phòng ban có người", value: deptCount, variant: "green" as const, foot: noDeptCount > 0 ? `${noDeptCount} chưa gắn phòng ban` : "Đã gắn phòng ban đầy đủ" },
-      { icon: <UserAddOutlined />, label: "Chờ kích hoạt", value: pendingAuthCount, variant: "orange" as const, foot: pendingAuthCount > 0 ? "Đã gửi lời mời nhưng chưa kích hoạt" : "Không có tài khoản chờ kích hoạt" }
+      { icon: <UserAddOutlined />, label: "Chờ xử lý", value: joinRequests.length + pendingAuthCount, variant: "orange" as const, foot: `${joinRequests.length} yêu cầu • ${pendingAuthCount} lời mời` }
     ];
-  }, [users]);
+  }, [invitations, joinRequests.length, users]);
 
   const suggestedCode = useMemo(() => nextEmployeeCode(users), [users]);
 
@@ -233,6 +253,37 @@ export default function EmployeesPage() {
         <div className={styles.toolbar}>
           <div className={styles.tabGroup} role="tablist" aria-label="Chế độ hiển thị nhân viên">
             <button
+              className={workflowTab === "employees" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              type="button"
+              role="tab"
+              aria-selected={workflowTab === "employees"}
+              onClick={() => setWorkflowTab("employees")}
+            >
+              <TeamOutlined /> Nhân viên
+            </button>
+            <button
+              className={workflowTab === "requests" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              type="button"
+              role="tab"
+              aria-selected={workflowTab === "requests"}
+              onClick={() => setWorkflowTab("requests")}
+            >
+              <UserAddOutlined /> Yêu cầu
+            </button>
+            <button
+              className={workflowTab === "invitations" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              type="button"
+              role="tab"
+              aria-selected={workflowTab === "invitations"}
+              onClick={() => setWorkflowTab("invitations")}
+            >
+              <MailOutlined /> Lời mời
+            </button>
+          </div>
+
+          {workflowTab === "employees" ? (
+            <div className={styles.tabGroup} role="tablist" aria-label="Kiểu hiển thị nhân viên">
+            <button
               className={view === "grid" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
               type="button"
               role="tab"
@@ -251,7 +302,10 @@ export default function EmployeesPage() {
               <UnorderedListOutlined /> Danh sách
             </button>
           </div>
+          ) : null}
 
+          {workflowTab === "employees" ? (
+            <>
           <div className={styles.searchBoxCompact}>
             <span className={styles.searchIcon}>
               <SearchOutlined />
@@ -319,10 +373,125 @@ export default function EmployeesPage() {
           >
             <PlusOutlined /> Thêm nhân viên
           </button>
+            </>
+          ) : (
+            <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh(query)}>
+              {loading ? "Đang tải..." : "Làm mới"}
+            </button>
+          )}
         </div>
       </Card>
 
-      {view === "grid" ? (
+      {workflowTab === "requests" ? (
+        <Card
+          title={
+            <span className={styles.cardTitle}>
+              <UserAddOutlined /> Yêu cầu tham gia
+            </span>
+          }
+        >
+          <div className={styles.workflowList}>
+            {joinRequests.map((request) => (
+              <div key={request.id} className={styles.workflowItem}>
+                <div>
+                  <div className={styles.workflowTitle}>{request.user?.name ?? `User #${request.user_id}`}</div>
+                  <div className={styles.workflowSub}>{request.user?.email ?? "Chưa có email"} • {request.company?.name ?? `Công ty #${request.company_id}`}</div>
+                </div>
+                <div className={styles.workflowActions}>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    disabled={loading}
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        setError(null);
+                        await approveCompanyJoinRequest(request.id);
+                        await refresh(query);
+                      } catch (e) {
+                        setError(getApiErrorMessage(e));
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    Duyệt
+                  </button>
+                  <button
+                    className={styles.btnGhost}
+                    type="button"
+                    disabled={loading}
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        setError(null);
+                        await rejectCompanyJoinRequest(request.id);
+                        await refresh(query);
+                      } catch (e) {
+                        setError(getApiErrorMessage(e));
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    Từ chối
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {joinRequests.length === 0 ? <div className={styles.empty}>Chưa có yêu cầu tham gia đang chờ.</div> : null}
+        </Card>
+      ) : workflowTab === "invitations" ? (
+        <Card
+          title={
+            <span className={styles.cardTitle}>
+              <MailOutlined /> Lời mời nhân viên
+            </span>
+          }
+        >
+          <div className={styles.inviteBox}>
+            <div className={styles.searchBox}>
+              <span className={styles.searchIcon}>
+                <MailOutlined />
+              </span>
+              <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email nhân viên" />
+            </div>
+            <button
+              className={styles.btnPrimary}
+              type="button"
+              disabled={loading || !inviteEmail.trim()}
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  setError(null);
+                  await createCompanyInvitation(inviteEmail.trim());
+                  setInviteEmail("");
+                  await refresh(query);
+                } catch (e) {
+                  setError(getApiErrorMessage(e));
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              <MailOutlined /> Mời nhân viên
+            </button>
+          </div>
+          <div className={styles.workflowList}>
+            {invitations.map((invitation) => (
+              <div key={invitation.id} className={styles.workflowItem}>
+                <div>
+                  <div className={styles.workflowTitle}>{invitation.email}</div>
+                  <div className={styles.workflowSub}>{invitation.company?.name ?? `Công ty #${invitation.company_id}`}</div>
+                </div>
+                <span className={invitation.status === "PENDING" ? `${styles.tag} ${styles.good}` : styles.tag}>{invitation.status}</span>
+              </div>
+            ))}
+          </div>
+          {invitations.length === 0 ? <div className={styles.empty}>Chưa có lời mời nào.</div> : null}
+        </Card>
+      ) : view === "grid" ? (
         <div className={styles.empGrid}>
           {pageItems.map((u) => {
             const deptLabel = u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—";
@@ -498,7 +667,7 @@ export default function EmployeesPage() {
         </Card>
       )}
 
-      <div className={styles.pagination}>
+      {workflowTab === "employees" ? <div className={styles.pagination}>
         <div className={styles.pageHint}>
           {filtered.length === 0 ? "0 kết quả" : `Trang ${pageSafe}/${totalPages} • ${filtered.length} nhân viên`}
         </div>
@@ -525,7 +694,7 @@ export default function EmployeesPage() {
             <RightOutlined />
           </button>
         </div>
-      </div>
+      </div> : null}
 
       <Modal
         open={modalOpen}

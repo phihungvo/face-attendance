@@ -12,6 +12,7 @@ type ScheduleRegsCacheVariant = "today" | "all";
 export const empKeys = {
   meProfile: () => makeKey([EMP_CACHE_PREFIX, empScope(), "meProfile"]),
   myCompany: () => makeKey([EMP_CACHE_PREFIX, empScope(), "myCompany"]),
+  companyMembership: () => makeKey([EMP_CACHE_PREFIX, empScope(), "companyMembership"]),
   myFaceStatus: () => makeKey([EMP_CACHE_PREFIX, empScope(), "myFaceStatus"]),
   myLeaveBalance: (year: number | null) => makeKey([EMP_CACHE_PREFIX, empScope(), "myLeaveBalance", year ?? "current"]),
   myTimelogMonth: (ym: string) => makeKey([EMP_CACHE_PREFIX, empScope(), "myTimelogMonth", ym]),

@@ -22,6 +22,51 @@
   flex-wrap: wrap;
 }
 
+.inviteBox {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.workflowList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workflowItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+.workflowTitle {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.workflowSub {
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.workflowActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 @media (max-width: 899px) {
   .actions {
     flex-wrap: wrap;
@@ -43,6 +88,23 @@
   }
 
   .searchBoxCompact {
+    width: 100%;
+  }
+
+  .inviteBox,
+  .workflowItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workflowActions {
+    justify-content: stretch;
+  }
+
+  .workflowActions .btnPrimary,
+  .workflowActions .btnGhost,
+  .inviteBox .btnPrimary {
+    justify-content: center;
     width: 100%;
   }
 }
