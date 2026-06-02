@@ -5,6 +5,82 @@
   margin-top: -20px;
 }
 
+.pageAnimated {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  animation: dashboardPageEnter 0.82s cubic-bezier(0.16, 1, 0.3, 1) 940ms both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+@keyframes dashboardPageEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes dashboardBlockEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes dashboardSoftRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes dashboardChartDraw {
+  from {
+    stroke-dashoffset: 1200;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dashboardChartAreaEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes dashboardProgressEnter {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
 .errorBox {
   padding: 12px 14px;
   border-radius: 16px;
@@ -275,6 +351,34 @@
   min-width: 0;
 }
 
+.pageAnimated .statCard {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0) scale(0.985);
+  animation: dashboardBlockEnter 0.76s cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.statCard:nth-child(1) {
+  animation-delay: 1120ms;
+}
+
+.statCard:nth-child(2) {
+  animation-delay: 1200ms;
+}
+
+.statCard:nth-child(3) {
+  animation-delay: 1280ms;
+}
+
+.statCard:nth-child(4) {
+  animation-delay: 1360ms;
+}
+
+.statCard:nth-child(5) {
+  animation-delay: 1440ms;
+}
+
 .statCard::after {
   content: '';
   position: absolute;
@@ -364,6 +468,34 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   min-width: 0;
+}
+
+.analyticsGrid > * {
+  min-width: 0;
+}
+
+.pageAnimated .analyticsGrid > * {
+  opacity: 0;
+  transform: translate3d(0, 30px, 0) scale(0.988);
+  animation: dashboardBlockEnter 0.82s cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.analyticsGrid > *:nth-child(1) {
+  animation-delay: 1560ms;
+}
+
+.analyticsGrid > *:nth-child(2) {
+  animation-delay: 1700ms;
+}
+
+.analyticsGrid > *:nth-child(3) {
+  animation-delay: 1840ms;
+}
+
+.analyticsGrid > *:nth-child(4) {
+  animation-delay: 1980ms;
 }
 
 .spanFull {
@@ -537,6 +669,13 @@
 
 .chartArea {
   fill: url(#dashboardTrendArea);
+  opacity: 1;
+}
+
+.pageAnimated .chartArea {
+  opacity: 0;
+  transform-origin: center bottom;
+  animation: dashboardChartAreaEnter 0.72s cubic-bezier(0.16, 1, 0.3, 1) 1960ms both;
 }
 
 .chartFocusLine {
@@ -552,6 +691,12 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 8px 14px rgba(14, 165, 233, 0.14));
+}
+
+.pageAnimated .chartLine {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: dashboardChartDraw 1.18s cubic-bezier(0.16, 1, 0.3, 1) 2040ms both;
 }
 
 .chartPointOuter {
@@ -659,6 +804,25 @@
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+}
+
+.pageAnimated .factCard {
+  opacity: 0;
+  animation: dashboardSoftRise 0.64s cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.factCard:nth-child(1) {
+  animation-delay: 2140ms;
+}
+
+.factCard:nth-child(2) {
+  animation-delay: 2240ms;
+}
+
+.factCard:nth-child(3) {
+  animation-delay: 2340ms;
 }
 
 .factIcon {
@@ -835,6 +999,11 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #0ea5e9, #22c55e);
+  transform-origin: left center;
+}
+
+.pageAnimated .progressFill {
+  animation: dashboardProgressEnter 0.92s cubic-bezier(0.16, 1, 0.3, 1) 2020ms both;
 }
 
 .leaveSummaryStrip {
@@ -929,6 +1098,162 @@
   font-size: 13px;
   font-weight: 700;
   text-align: center;
+}
+
+.sectionError {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in oklab, var(--danger) 24%, var(--border));
+  background: color-mix(in oklab, var(--danger) 9%, var(--surface2));
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.skeletonLine {
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--surface2) 84%, var(--border)),
+    color-mix(in oklab, var(--surface2) 60%, var(--surface)),
+    color-mix(in oklab, var(--surface2) 84%, var(--border))
+  );
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+}
+
+.statValueSkeleton {
+  width: 68px;
+  height: 34px;
+}
+
+.statFootSkeleton {
+  width: 112px;
+  height: 13px;
+}
+
+.badgeSkeleton {
+  width: 92px;
+  height: 28px;
+}
+
+.chartValueSkeleton {
+  width: 108px;
+  height: 46px;
+  border-radius: 14px;
+}
+
+.textSkeletonSm {
+  width: 78px;
+  height: 11px;
+}
+
+.textSkeletonMd {
+  width: 128px;
+  height: 13px;
+}
+
+.textSkeletonLg {
+  width: 168px;
+  height: 18px;
+}
+
+.pillSkeleton {
+  width: 96px;
+  height: 32px;
+}
+
+.axisSkeleton {
+  min-width: 0;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.chartCanvasSkeleton {
+  display: grid;
+  align-content: center;
+  gap: 34px;
+}
+
+.chartSkeletonLine {
+  height: 3px;
+  border-radius: 999px;
+}
+
+.chartSkeletonLineOne {
+  width: 82%;
+  margin-left: 8%;
+}
+
+.chartSkeletonLineTwo {
+  width: 66%;
+  margin-left: 22%;
+}
+
+.chartSkeletonLineThree {
+  width: 74%;
+  margin-left: 12%;
+}
+
+.factIconSkeleton {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+}
+
+.avatarSkeleton {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.skeletonGrow {
+  min-width: 0;
+  width: 100%;
+}
+
+.rateSkeleton {
+  width: 62px;
+  height: 30px;
+}
+
+.progressSkeleton {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.summaryNumberSkeleton {
+  width: 42px;
+  height: 24px;
+}
+
+.timeSkeleton {
+  width: 88px;
+  height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .pageAnimated,
+  .statCard,
+  .analyticsGrid > *,
+  .chartArea,
+  .chartLine,
+  .factCard,
+  .progressFill {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .chartLine {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
 }
 
 @media (max-width: 1279px) {

@@ -244,6 +244,38 @@ export async function getManagerDashboardSummary() {
   return res.data.result;
 }
 
+export async function getManagerDashboardToday() {
+  const res = await api.get<ApiResponse<ManagerDashboardTodaySummary>>("/attendance/dashboard/today");
+  if (!res.data.result) throw new Error("Không lấy được dữ liệu hôm nay");
+  return res.data.result;
+}
+
+export async function getManagerDashboardTrend(params?: { days?: number }) {
+  const res = await api.get<ApiResponse<ManagerDashboardTrendPoint[]>>("/attendance/dashboard/trend", { params });
+  return res.data.result ?? [];
+}
+
+export async function getManagerDashboardDepartments() {
+  const res = await api.get<ApiResponse<ManagerDashboardDepartmentRow[]>>("/attendance/dashboard/departments");
+  return res.data.result ?? [];
+}
+
+export async function getManagerDashboardLeaveSummary() {
+  const res = await api.get<ApiResponse<ManagerDashboardLeaveSummary>>("/attendance/dashboard/leaves/summary");
+  if (!res.data.result) throw new Error("Không lấy được tổng quan nghỉ phép");
+  return res.data.result;
+}
+
+export async function getManagerDashboardPendingLeaves(params?: { limit?: number }) {
+  const res = await api.get<ApiResponse<ManagerDashboardPendingLeaveItem[]>>("/attendance/dashboard/leaves/pending", { params });
+  return res.data.result ?? [];
+}
+
+export async function getManagerDashboardRecentLogs(params?: { limit?: number }) {
+  const res = await api.get<ApiResponse<ManagerDashboardRecentLogItem[]>>("/attendance/dashboard/recent-logs", { params });
+  return res.data.result ?? [];
+}
+
 export type DailyAttendanceRow = {
   user_id: number;
   user_name: string;

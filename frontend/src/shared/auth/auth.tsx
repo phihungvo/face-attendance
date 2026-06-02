@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [selectedCompanyId, setSelectedCompanyIdState] = useState<number | null>(() => getCompanyId());
   const [roleKeys, setRoleKeys] = useState<string[]>([]);
   const [permissionKeys, setPermissionKeys] = useState<string[]>([]);
-  const [meLoading, setMeLoading] = useState(false);
+  const [meLoading, setMeLoading] = useState(() => Boolean(getToken()));
 
   function clearSessionState() {
     clearQueryCache();

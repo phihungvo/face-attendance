@@ -88,6 +88,7 @@ export default function LoginPage() {
               setError(null);
               if (mode === "login") await auth.login(identifier, password);
               else await auth.register(identifier, password);
+              sessionStorage.setItem("dashboard:intro", "login");
               nav("/", { replace: true });
             } catch (e) {
               setError(formatAuthError(e));

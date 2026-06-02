@@ -21,11 +21,20 @@ import {
 } from "@ant-design/icons";
 import Card from "../../components/Card/Card";
 import {
-    getManagerDashboardSummary,
+    getManagerDashboardDepartments,
+    getManagerDashboardLeaveSummary,
+    getManagerDashboardPendingLeaves,
+    getManagerDashboardRecentLogs,
+    getManagerDashboardToday,
+    getManagerDashboardTrend,
     type ManagerDashboardDepartmentRow,
-    type ManagerDashboardSummary,
+    type ManagerDashboardLeaveSummary,
+    type ManagerDashboardPendingLeaveItem,
+    type ManagerDashboardRecentLogItem,
+    type ManagerDashboardTodaySummary,
     type ManagerDashboardTrendPoint
 } from "../../../shared/api/attendance";
+import {useAuth} from "../../../shared/auth/auth";
 import {getApiErrorMessage} from "../../../shared/lib/apiClient";
 import styles from "./DashboardPage.module.scss";
 
@@ -45,6 +54,39 @@ type DashboardAlert = {
     tone: DashboardAlertTone;
     icon: React.ReactNode;
 };
+
+type ApiStatus = "pending" | "loading" | "success" | "error";
+
+type DashboardSectionState<T> = {
+    status: ApiStatus;
+    data: T | null;
+    error: string | null;
+};
+
+function createSectionState<T>(): DashboardSectionState<T> {
+    return {
+        status: "pending",
+        data: null,
+        error: null
+    };
+}
+
+function isWaiting<T>(state: DashboardSectionState<T>) {
+    return state.status === "pending" || state.status === "loading";
+}
+
+function isDashboardReload() {
+    if (typeof performance === "undefined") return false;
+    const [navigation] = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+    return navigation?.type === "reload";
+}
+
+function consumeDashboardIntroFlag() {
+    if (typeof sessionStorage === "undefined") return false;
+    const shouldAnimate = sessionStorage.getItem("dashboard:intro") === "login";
+    if (shouldAnimate) sessionStorage.removeItem("dashboard:intro");
+    return shouldAnimate;
+}
 
 function formatDate(day: string) {
     return new Date(`${day}T12:00:00`).toLocaleDateString("vi-VN", {day: "2-digit", month: "2-digit"});
@@ -114,40 +156,205 @@ function departmentRiskScore(row: ManagerDashboardDepartmentRow) {
     return row.absent_count * 3 + row.late_count * 2 + (100 - row.attendance_rate);
 }
 
+function SectionError({message}: {message: string}) {
+    return <div className={styles.sectionError}>{message}</div>;
+}
+
+function LoadingBadge() {
+    return <span className={`${styles.skeletonLine} ${styles.badgeSkeleton}`}/>;
+}
+
+function ChartSkeleton() {
+    return (
+        <div className={styles.chartLayout}>
+            <div className={styles.chartPanel}>
+                <div className={styles.chartSummary}>
+                    <div className={styles.chartHeadline}>
+                        <span className={`${styles.skeletonLine} ${styles.chartValueSkeleton}`}/>
+                        <div className={styles.chartHeadlineMeta}>
+                            <span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/>
+                            <strong><span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/></strong>
+                        </div>
+                    </div>
+                    <div className={styles.chartPills}>
+                        {Array.from({length: 4}).map((_, index) => (
+                            <span key={index} className={`${styles.skeletonLine} ${styles.pillSkeleton}`}/>
+                        ))}
+                    </div>
+                </div>
+                <div className={`${styles.chartCanvas} ${styles.chartCanvasSkeleton}`}>
+                    <span className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineOne}`}/>
+                    <span className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineTwo}`}/>
+                    <span className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineThree}`}/>
+                </div>
+                <div className={styles.chartAxisRow}>
+                    {Array.from({length: 7}).map((_, index) => (
+                        <span key={index} className={`${styles.skeletonLine} ${styles.axisSkeleton}`}/>
+                    ))}
+                </div>
+                <div className={styles.chartDetailGrid}>
+                    {Array.from({length: 3}).map((_, index) => (
+                        <article key={index} className={styles.chartDetailCard}>
+                            <span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/>
+                            <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>
+                            <span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/>
+                        </article>
+                    ))}
+                </div>
+            </div>
+            <div className={styles.trendFacts}>
+                {Array.from({length: 3}).map((_, index) => (
+                    <div key={index} className={styles.factCard}>
+                        <span className={`${styles.skeletonLine} ${styles.factIconSkeleton}`}/>
+                        <div>
+                            <div className={styles.factLabel}><span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/></div>
+                            <strong className={styles.factValue}><span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/></strong>
+                            <div className={styles.factSub}><span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function DepartmentSkeleton() {
+    return (
+        <div className={styles.departmentOverview}>
+            <div className={styles.calloutGrid}>
+                {Array.from({length: 2}).map((_, index) => (
+                    <div key={index} className={styles.calloutCard}>
+                        <span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/>
+                        <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>
+                        <span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/>
+                    </div>
+                ))}
+            </div>
+            <div className={styles.departmentList}>
+                {Array.from({length: 4}).map((_, index) => (
+                    <article key={index} className={styles.departmentRow}>
+                        <div className={styles.departmentHead}>
+                            <div className={styles.skeletonGrow}>
+                                <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>
+                                <div className={styles.departmentMeta}>
+                                    {Array.from({length: 4}).map((__, pillIndex) => (
+                                        <span key={pillIndex} className={`${styles.skeletonLine} ${styles.pillSkeleton}`}/>
+                                    ))}
+                                </div>
+                            </div>
+                            <span className={`${styles.skeletonLine} ${styles.rateSkeleton}`}/>
+                        </div>
+                        <div className={styles.progressTrack}>
+                            <span className={`${styles.skeletonLine} ${styles.progressSkeleton}`}/>
+                        </div>
+                    </article>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function LeaveSummarySkeleton() {
+    return (
+        <div className={styles.leaveSummaryStrip}>
+            {Array.from({length: 3}).map((_, index) => (
+                <div key={index} className={styles.summaryMini}>
+                    <span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/>
+                    <strong><span className={`${styles.skeletonLine} ${styles.summaryNumberSkeleton}`}/></strong>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function QueueSkeleton({rows = 3}: {rows?: number}) {
+    return (
+        <div className={styles.queueList}>
+            {Array.from({length: rows}).map((_, index) => (
+                <article key={index} className={styles.queueRow}>
+                    <span className={`${styles.skeletonLine} ${styles.avatarSkeleton}`}/>
+                    <div className={styles.queueMain}>
+                        <div className={styles.queueTop}>
+                            <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>
+                            <span className={`${styles.skeletonLine} ${styles.timeSkeleton}`}/>
+                        </div>
+                        <div className={styles.queueSub}><span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/></div>
+                        <div className={styles.queueMeta}>
+                            {Array.from({length: 3}).map((__, pillIndex) => (
+                                <span key={pillIndex} className={`${styles.skeletonLine} ${styles.pillSkeleton}`}/>
+                            ))}
+                        </div>
+                    </div>
+                </article>
+            ))}
+        </div>
+    );
+}
+
 export default function DashboardPage() {
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [data, setData] = useState<ManagerDashboardSummary | null>(null);
+    const auth = useAuth();
+    const [todayState, setTodayState] = useState<DashboardSectionState<ManagerDashboardTodaySummary>>(() => createSectionState());
+    const [leaveSummaryState, setLeaveSummaryState] = useState<DashboardSectionState<ManagerDashboardLeaveSummary>>(() => createSectionState());
+    const [trendState, setTrendState] = useState<DashboardSectionState<ManagerDashboardTrendPoint[]>>(() => createSectionState());
+    const [departmentsState, setDepartmentsState] = useState<DashboardSectionState<ManagerDashboardDepartmentRow[]>>(() => createSectionState());
+    const [pendingLeavesState, setPendingLeavesState] = useState<DashboardSectionState<ManagerDashboardPendingLeaveItem[]>>(() => createSectionState());
+    const [recentLogsState, setRecentLogsState] = useState<DashboardSectionState<ManagerDashboardRecentLogItem[]>>(() => createSectionState());
     const [activeTrendIndex, setActiveTrendIndex] = useState(0);
+    const [shouldAnimatePage] = useState(() => consumeDashboardIntroFlag() || isDashboardReload());
+    const dashboardScopeKey = `${auth.selectedCompanyId ?? auth.companyId ?? "default"}`;
 
     useEffect(() => {
-        let mounted = true;
+        let cancelled = false;
+
+        const runSection = async <T,>(
+            setState: (state: DashboardSectionState<T>) => void,
+            request: () => Promise<T>
+        ) => {
+            if (cancelled) return;
+            setState({status: "loading", data: null, error: null});
+            try {
+                const result = await request();
+                if (cancelled) return;
+                setState({status: "success", data: result, error: null});
+            } catch (e) {
+                if (cancelled) return;
+                setState({status: "error", data: null, error: getApiErrorMessage(e)});
+            }
+        };
 
         (async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const summary = await getManagerDashboardSummary();
-                if (!mounted) return;
-                setData(summary);
-            } catch (e) {
-                if (!mounted) return;
-                setError(getApiErrorMessage(e));
-            } finally {
-                if (mounted) setLoading(false);
-            }
+            setTodayState(createSectionState());
+            setLeaveSummaryState(createSectionState());
+            setTrendState(createSectionState());
+            setDepartmentsState(createSectionState());
+            setPendingLeavesState(createSectionState());
+            setRecentLogsState(createSectionState());
+
+            await runSection(setTodayState, getManagerDashboardToday);
+            await runSection(setLeaveSummaryState, getManagerDashboardLeaveSummary);
+            await runSection(setTrendState, () => getManagerDashboardTrend({days: 7}));
+            await runSection(setDepartmentsState, getManagerDashboardDepartments);
+            await runSection(setPendingLeavesState, () => getManagerDashboardPendingLeaves({limit: 5}));
+            await runSection(setRecentLogsState, () => getManagerDashboardRecentLogs({limit: 8}));
         })();
 
         return () => {
-            mounted = false;
+            cancelled = true;
         };
-    }, []);
+    }, [dashboardScopeKey]);
 
-    const today = data?.today ?? null;
-    const trend = data?.trend ?? [];
-    const departments = data?.departments ?? [];
-    const pendingLeaves = data?.pending_leaves ?? [];
-    const recentLogs = data?.recent_logs ?? [];
+    const today = todayState.data;
+    const leaveSummary = leaveSummaryState.data;
+    const trend = trendState.data ?? [];
+    const departments = departmentsState.data ?? [];
+    const pendingLeaves = pendingLeavesState.data ?? [];
+    const recentLogs = recentLogsState.data ?? [];
+    const todayWaiting = isWaiting(todayState);
+    const leaveSummaryWaiting = isWaiting(leaveSummaryState);
+    const trendWaiting = isWaiting(trendState);
+    const departmentsWaiting = isWaiting(departmentsState);
+    const pendingLeavesWaiting = isWaiting(pendingLeavesState);
+    const recentLogsWaiting = isWaiting(recentLogsState);
 
     const averageAttendance = useMemo(() => averageRate(trend), [trend]);
     const presentRate = today?.attendance_rate ?? 0;
@@ -214,7 +421,7 @@ export default function DashboardPage() {
             setActiveTrendIndex(0);
             return;
         }
-        setActiveTrendIndex((current) => (current >= 0 && current < trend.length ? current : trend.length - 1));
+        setActiveTrendIndex(trend.length - 1);
     }, [trend.length]);
 
     const bestTrendDay = useMemo(() => {
@@ -272,11 +479,11 @@ export default function DashboardPage() {
             }
         }
 
-        if ((data?.leave_summary.pending_count ?? 0) > 0) {
+        if ((leaveSummary?.pending_count ?? 0) > 0) {
             items.push({
                 key: "leave-pending",
                 title: "Đơn nghỉ cần duyệt",
-                sub: `${data?.leave_summary.pending_count ?? 0} đơn đang chờ xử lý`,
+                sub: `${leaveSummary?.pending_count ?? 0} đơn đang chờ xử lý`,
                 tone: "info",
                 icon: <AuditOutlined/>
             });
@@ -313,7 +520,7 @@ export default function DashboardPage() {
         }
 
         return items.slice(0, 4);
-    }, [data?.leave_summary.pending_count, lateRate, previousTrend?.label, riskDepartment, today, trendDelta]);
+    }, [lateRate, leaveSummary?.pending_count, previousTrend?.label, riskDepartment, today, trendDelta]);
 
     const statCards = [
         {
@@ -322,7 +529,9 @@ export default function DashboardPage() {
             value: today?.present_count ?? 0,
             icon: <CheckCircleOutlined/>,
             foot: `${presentRate}% tổng nhân sự`,
-            tone: "green"
+            tone: "green",
+            waiting: todayWaiting,
+            error: todayState.error
         },
         {
             key: "absent",
@@ -330,7 +539,9 @@ export default function DashboardPage() {
             value: today?.absent_count ?? 0,
             icon: <ExclamationCircleOutlined/>,
             foot: `${absentRate}% tổng nhân sự`,
-            tone: "rose"
+            tone: "rose",
+            waiting: todayWaiting,
+            error: todayState.error
         },
         {
             key: "late",
@@ -338,7 +549,9 @@ export default function DashboardPage() {
             value: today?.late_count ?? 0,
             icon: <ClockCircleOutlined/>,
             foot: `${lateRate}% nhân sự hôm nay`,
-            tone: "amber"
+            tone: "amber",
+            waiting: todayWaiting,
+            error: todayState.error
         },
         {
             key: "working",
@@ -346,15 +559,19 @@ export default function DashboardPage() {
             value: today?.working_count ?? 0,
             icon: <FieldTimeOutlined/>,
             foot: `${today?.checked_out_count ?? 0} đã ra ca`,
-            tone: "blue"
+            tone: "blue",
+            waiting: todayWaiting,
+            error: todayState.error
         },
         {
             key: "pending",
             label: "Chờ duyệt phép",
-            value: data?.leave_summary.pending_count ?? 0,
+            value: leaveSummary?.pending_count ?? 0,
             icon: <AuditOutlined/>,
-            foot: `${data?.leave_summary.approved_count ?? 0} đã duyệt`,
-            tone: "violet"
+            foot: `${leaveSummary?.approved_count ?? 0} đã duyệt`,
+            tone: "violet",
+            waiting: leaveSummaryWaiting,
+            error: leaveSummaryState.error
         },
         // {
         //   key: "departments",
@@ -371,9 +588,10 @@ export default function DashboardPage() {
         setActiveTrendIndex((current) => clamp(current + direction, 0, trend.length - 1));
     }
 
+    const pageClassName = shouldAnimatePage ? `${styles.page} ${styles.pageAnimated}` : styles.page;
+
     return (
-        <div className={styles.page}>
-            {error ? <div className={styles.errorBox}>{error}</div> : null}
+        <div className={pageClassName}>
 
             <section className={styles.heroGrid}>
                 {/*<article className={styles.commandCard}>*/}
@@ -464,8 +682,22 @@ export default function DashboardPage() {
                             <div className={styles.statLabel}>{item.label}</div>
                             <div className={styles.statIcon}>{item.icon}</div>
                         </div>
-                        <div className={styles.statValue}>{loading && !data ? "..." : item.value}</div>
-                        <div className={styles.statFoot}>{item.foot}</div>
+                        {item.waiting ? (
+                            <>
+                                <div className={styles.statValue}><span className={`${styles.skeletonLine} ${styles.statValueSkeleton}`}/></div>
+                                <div className={styles.statFoot}><span className={`${styles.skeletonLine} ${styles.statFootSkeleton}`}/></div>
+                            </>
+                        ) : item.error ? (
+                            <>
+                                <div className={styles.statValue}>!</div>
+                                <div className={styles.statFoot}>{item.error}</div>
+                            </>
+                        ) : (
+                            <>
+                                <div className={styles.statValue}>{item.value}</div>
+                                <div className={styles.statFoot}>{item.foot}</div>
+                            </>
+                        )}
                     </article>
                 ))}
             </section>
@@ -479,8 +711,9 @@ export default function DashboardPage() {
                 <span>Xu hướng hiện diện 7 ngày</span>
               </span>
                         }
-                        right={<span className={styles.softBadge}>{averageAttendance}% trung bình</span>}
+                        right={trendWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{averageAttendance}% trung bình</span>}
                     >
+                        {trendWaiting ? <ChartSkeleton/> : trendState.error ? <SectionError message={trendState.error}/> : (
                         <div className={styles.chartLayout}>
                             <div className={styles.chartPanel}>
                                 {chartGeometry ? (
@@ -691,6 +924,7 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         </div>
+                        )}
                     </Card>
                 </div>
 
@@ -702,8 +936,9 @@ export default function DashboardPage() {
                 <span>Tình hình theo phòng ban</span>
               </span>
                         }
-                        right={<span className={styles.softBadge}>{departments.length} phòng ban</span>}
+                        right={departmentsWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{departments.length} phòng ban</span>}
                     >
+                        {departmentsWaiting ? <DepartmentSkeleton/> : departmentsState.error ? <SectionError message={departmentsState.error}/> : (
                         <div className={styles.departmentOverview}>
                             <div className={styles.calloutGrid}>
                                 <div className={styles.calloutCard}>
@@ -765,11 +1000,12 @@ export default function DashboardPage() {
                                     </article>
                                 ))}
 
-                                {!loading && !departmentRanking.length ?
+                                {!departmentRanking.length ?
                                     <div className={styles.emptyState}>Chưa có dữ liệu phòng ban để hiển
                                         thị.</div> : null}
                             </div>
                         </div>
+                        )}
                     </Card>
                 </div>
 
@@ -780,23 +1016,34 @@ export default function DashboardPage() {
               <span>Hàng đợi nghỉ phép</span>
             </span>
                     }
-                    right={<span className={styles.softBadge}>{data?.leave_summary.pending_count ?? 0} chờ duyệt</span>}
+                    right={leaveSummaryWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{leaveSummary?.pending_count ?? 0} chờ duyệt</span>}
                 >
-                    <div className={styles.leaveSummaryStrip}>
-                        <div className={styles.summaryMini}>
-                            <span>Chờ duyệt</span>
-                            <strong>{data?.leave_summary.pending_count ?? 0}</strong>
+                    {leaveSummaryWaiting ? (
+                        <LeaveSummarySkeleton/>
+                    ) : leaveSummaryState.error ? (
+                        <SectionError message={leaveSummaryState.error}/>
+                    ) : (
+                        <div className={styles.leaveSummaryStrip}>
+                            <div className={styles.summaryMini}>
+                                <span>Chờ duyệt</span>
+                                <strong>{leaveSummary?.pending_count ?? 0}</strong>
+                            </div>
+                            <div className={styles.summaryMini}>
+                                <span>Đã duyệt</span>
+                                <strong>{leaveSummary?.approved_count ?? 0}</strong>
+                            </div>
+                            <div className={styles.summaryMini}>
+                                <span>Từ chối</span>
+                                <strong>{leaveSummary?.rejected_count ?? 0}</strong>
+                            </div>
                         </div>
-                        <div className={styles.summaryMini}>
-                            <span>Đã duyệt</span>
-                            <strong>{data?.leave_summary.approved_count ?? 0}</strong>
-                        </div>
-                        <div className={styles.summaryMini}>
-                            <span>Từ chối</span>
-                            <strong>{data?.leave_summary.rejected_count ?? 0}</strong>
-                        </div>
-                    </div>
+                    )}
 
+                    {pendingLeavesWaiting ? (
+                        <QueueSkeleton rows={3}/>
+                    ) : pendingLeavesState.error ? (
+                        <SectionError message={pendingLeavesState.error}/>
+                    ) : (
                     <div className={styles.queueList}>
                         {pendingLeaves.map((item) => (
                             <article key={item.id} className={styles.queueRow}>
@@ -825,9 +1072,10 @@ export default function DashboardPage() {
                             </article>
                         ))}
 
-                        {!loading && !pendingLeaves.length ?
+                        {!pendingLeaves.length ?
                             <div className={styles.emptyState}>Không có đơn nghỉ phép đang chờ duyệt.</div> : null}
                     </div>
+                    )}
                 </Card>
 
                 <Card
@@ -837,8 +1085,13 @@ export default function DashboardPage() {
               <span>Chấm công gần nhất</span>
             </span>
                     }
-                    right={<span className={styles.softBadge}>{recentLogs.length} bản ghi</span>}
+                    right={recentLogsWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{recentLogs.length} bản ghi</span>}
                 >
+                    {recentLogsWaiting ? (
+                        <QueueSkeleton rows={4}/>
+                    ) : recentLogsState.error ? (
+                        <SectionError message={recentLogsState.error}/>
+                    ) : (
                     <div className={styles.queueList}>
                         {recentLogs.map((item) => (
                             <article key={item.id} className={styles.queueRow}>
@@ -867,9 +1120,10 @@ export default function DashboardPage() {
                             </article>
                         ))}
 
-                        {!loading && !recentLogs.length ?
+                        {!recentLogs.length ?
                             <div className={styles.emptyState}>Chưa có log chấm công gần đây.</div> : null}
                     </div>
+                    )}
                 </Card>
             </section>
         </div>

@@ -104,6 +104,18 @@ export default function Sidebar({
     return can(needed);
   };
 
+  let navEnterIndex = 0;
+  const visibleSections = navSections
+    .map((sec) => ({ ...sec, items: sec.items.filter((it) => itemAllowed(it.to)) }))
+    .filter((sec) => sec.items.length > 0)
+    .map((sec) => ({
+      ...sec,
+      items: sec.items.map((item) => ({
+        ...item,
+        enterDelay: `${260 + navEnterIndex++ * 68}ms`
+      }))
+    }));
+
   const cls = [
     styles.sidebar,
     variant === "drawer" ? styles.drawer : "",
@@ -153,9 +165,7 @@ export default function Sidebar({
         </div>
 
         <div className={styles.navScroll}>
-          {navSections
-            .map((sec) => ({ ...sec, items: sec.items.filter((it) => itemAllowed(it.to)) }))
-            .filter((sec) => sec.items.length > 0)
+          {visibleSections
             .map((sec) => (
               <div className={styles.navSection} key={sec.label}>
                 <div className={styles.navSectionLabel}>{sec.label}</div>
@@ -168,6 +178,7 @@ export default function Sidebar({
                       onClick={closeIfDrawer}
                       title={collapsed ? item.label : undefined}
                       aria-label={item.label}
+                      style={{ "--nav-enter-delay": item.enterDelay } as CSSProperties}
                       className={({ isActive }) => (isActive ? `${styles.navItem} ${styles.active}` : styles.navItem)}
                     >
                       <span className={styles.navIcon} style={{ "--nav-icon-color": item.iconColor } as CSSProperties}>

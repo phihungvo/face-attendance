@@ -9,6 +9,78 @@
   z-index: 100;
 }
 
+@keyframes sidebarEnter {
+  from {
+    transform: translate3d(-42px, 0, 0);
+    opacity: 0.58;
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes sidebarChromeEnter {
+  from {
+    transform: translate3d(-24px, 0, 0);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes navItemEnter {
+  from {
+    transform: translate3d(-30px, 0, 0);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@media (min-width: 900px) {
+  .sidebar {
+    animation: sidebarEnter 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+  }
+
+  .brandCard,
+  .sidebarFooter,
+  .edgeToggle {
+    animation: sidebarChromeEnter 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+  }
+
+  .brandCard {
+    animation-delay: 120ms;
+  }
+
+  .sidebarFooter {
+    animation-delay: 560ms;
+  }
+
+  .edgeToggle {
+    animation-delay: 700ms;
+  }
+
+  .navItem {
+    opacity: 0;
+    animation: navItemEnter 0.64s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--nav-enter-delay, 180ms);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+  }
+}
+
 .sidebarInner {
   height: 100%;
   display: flex;
@@ -407,5 +479,17 @@
 
   .mobileToggle {
     display: inline-flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .brandCard,
+  .sidebarFooter,
+  .edgeToggle,
+  .navItem {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }

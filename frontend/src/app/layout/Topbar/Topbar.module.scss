@@ -7,6 +7,21 @@
   gap: 16px;
   padding: 0 24px;
   flex-shrink: 0;
+  animation: topbarEnter 0.68s cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+@keyframes topbarEnter {
+  from {
+    transform: translate3d(0, -34px, 0);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
 }
 
 .menuBtn {
@@ -312,6 +327,14 @@
   span {
     font-size: 13px;
     font-weight: 700;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 
