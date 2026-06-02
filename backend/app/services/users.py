@@ -89,8 +89,19 @@ class UserService:
         last = getattr(user, "face_enrolled_at", None)
         return {"last_enrolled_at": last, "next_allowed_at": None}
 
-    def list_users(self, db: Session, *, company_id: int | None = None, limit: int = 100, offset: int = 0, q: str | None = None):
-        return self._users.list(db, company_id=company_id, limit=limit, offset=offset, q=q)
+    def list_users(
+        self,
+        db: Session,
+        *,
+        company_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        q: str | None = None,
+        deleted: str = "active",
+    ):
+        if deleted not in {"active", "deleted", "all"}:
+            raise ValueError("deleted chỉ hỗ trợ active, deleted hoặc all")
+        return self._users.list(db, company_id=company_id, limit=limit, offset=offset, q=q, deleted=deleted)
 
     def get_user(self, db: Session, *, user_id: int, company_id: int | None = None):
         user = self._users.get(db, user_id=user_id, company_id=company_id)
@@ -305,7 +316,19 @@ class UserService:
             raise ValueError("Trùng mã nhân viên hoặc email")
 
     def delete_user(self, db: Session, *, user_id: int, company_id: int | None = None) -> None:
-        ok = self._users.delete(db, user_id=user_id, company_id=company_id)
+        ok = self._users.soft_delete(db, user_id=user_id, company_id=company_id)
+        if not ok:
+            raise ValueError("User not found")
+        db.commit()
+
+    def restore_user(self, db: Session, *, user_id: int, company_id: int | None = None) -> None:
+        ok = self._users.restore(db, user_id=user_id, company_id=company_id)
+        if not ok:
+            raise ValueError("User not found")
+        db.commit()
+
+    def hard_delete_user(self, db: Session, *, user_id: int, company_id: int | None = None) -> None:
+        ok = self._users.hard_delete(db, user_id=user_id, company_id=company_id)
         if not ok:
             raise ValueError("User not found")
         db.commit()

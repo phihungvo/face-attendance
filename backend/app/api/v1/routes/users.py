@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, Request
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_company_scope_id, get_current_user, get_permission_keys, require_permission
+from app.api.deps import get_company_scope_id, get_current_user, get_permission_keys, is_admin, require_permission
 from app.core.errors import BAD_REQUEST, FORBIDDEN, AppException
 from app.core.response import ok
 from app.core.settings import settings
@@ -186,11 +186,16 @@ def list_users(
     q: str | None = Query(default=None, description="Search by name/code/email/phone/address/CCCD"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    deleted: str = Query(default="active", description="active, deleted hoặc all. Chỉ admin được xem deleted/all."),
     db: Session = Depends(get_db),
     company_id: int | None = Depends(get_company_scope_id),
-    _: object = Depends(require_permission("employees.read")),
+    current_user=Depends(require_permission("employees.read")),
 ) -> ApiResponse[list[UserOut]]:
-    return ok(service.list_users(db, company_id=company_id, limit=limit, offset=offset, q=q.strip() if q else None))
+    try:
+        deleted_filter = deleted if is_admin(current_user) else "active"
+        return ok(service.list_users(db, company_id=company_id, limit=limit, offset=offset, q=q.strip() if q else None, deleted=deleted_filter))
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
 
 
 @router.get("/{user_id:int}", response_model=ApiResponse[UserOut])
@@ -295,6 +300,38 @@ def delete_user(
     try:
         service.delete_user(db, user_id=user_id, company_id=company_id)
         return ok({"deleted": True})
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.post("/{user_id:int}/restore", response_model=ApiResponse[dict[str, object]])
+def restore_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    current_user=Depends(require_permission("employees.manage")),
+) -> ApiResponse[dict[str, object]]:
+    if not is_admin(current_user):
+        raise AppException(FORBIDDEN, detail="Chỉ admin được khôi phục nhân viên đã xoá mềm")
+    try:
+        service.restore_user(db, user_id=user_id, company_id=company_id)
+        return ok({"restored": True})
+    except ValueError as e:
+        raise AppException(BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/{user_id:int}/hard", response_model=ApiResponse[dict[str, object]])
+def hard_delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    current_user=Depends(require_permission("employees.manage")),
+) -> ApiResponse[dict[str, object]]:
+    if not is_admin(current_user):
+        raise AppException(FORBIDDEN, detail="Chỉ admin được xoá vĩnh viễn nhân viên")
+    try:
+        service.hard_delete_user(db, user_id=user_id, company_id=company_id)
+        return ok({"deleted": True, "hard_deleted": True})
     except ValueError as e:
         raise AppException(BAD_REQUEST, detail=str(e))
 

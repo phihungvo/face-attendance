@@ -321,7 +321,7 @@ export default function DashboardPage() {
             label: "Có mặt",
             value: today?.present_count ?? 0,
             icon: <CheckCircleOutlined/>,
-            foot: `${presentRate}% tổng quân số`,
+            foot: `${presentRate}% tổng nhân sự`,
             tone: "green"
         },
         {
@@ -329,7 +329,7 @@ export default function DashboardPage() {
             label: "Vắng mặt",
             value: today?.absent_count ?? 0,
             icon: <ExclamationCircleOutlined/>,
-            foot: `${absentRate}% tổng quân số`,
+            foot: `${absentRate}% tổng nhân sự`,
             tone: "rose"
         },
         {

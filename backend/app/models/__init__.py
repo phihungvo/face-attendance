@@ -7,6 +7,7 @@ from app.models.attendance_history import AttendanceHistory
 from app.models.attendance_evidence_setting import AttendanceEvidenceSetting
 from app.models.attendance_evidence_task import AttendanceEvidenceTask
 from app.models.attendance_policy import AttendancePolicy
+from app.models.app_setting import AppSetting
 from app.models.company_attendance_policy import CompanyAttendancePolicy
 from app.models.leave_request import LeaveRequest
 from app.models.notification import CompanyNotificationPolicy, Notification, NotificationPreference, NotificationRecipient
@@ -26,6 +27,7 @@ __all__ = [
     "AttendanceEvidenceSetting",
     "AttendanceEvidenceTask",
     "AttendancePolicy",
+    "AppSetting",
     "CompanyAttendancePolicy",
     "LeaveRequest",
     "Notification",

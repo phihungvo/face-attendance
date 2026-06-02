@@ -28,6 +28,8 @@ import {
     CloseOutlined
 } from "@ant-design/icons";
 import styles from "./NotificationsPage.module.scss";
+import {useAuth} from "../../../shared/auth/auth";
+import CompanyRequiredNotice from "../../../employee/components/CompanyRequiredNotice/CompanyRequiredNotice";
 
 const pageSize = 7;
 
@@ -106,6 +108,7 @@ function Toggle({
 }
 
 export default function NotificationsPage() {
+    const auth = useAuth();
     const nav = useNavigate();
     const [items, setItems] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -117,6 +120,10 @@ export default function NotificationsPage() {
     const [total, setTotal] = useState(0);
     const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
     const [prefsSaving, setPrefsSaving] = useState(false);
+    const isEmployeeOnly =
+        (auth.roleKeys.includes("employee") && !auth.roleKeys.includes("manager")) ||
+        (auth.permissionKeys.includes("employee.portal") && !auth.permissionKeys.includes("dashboard.read"));
+    const employeeWithoutCompany = Boolean(isEmployeeOnly && !auth.companyId);
 
     const categoryOptions = useMemo(
         () => [
@@ -143,6 +150,10 @@ export default function NotificationsPage() {
     );
 
     async function loadPreferences() {
+        if (employeeWithoutCompany) {
+            setPrefs(null);
+            return;
+        }
         try {
             const data = await getMyNotificationPreferences();
             setPrefs(data);
@@ -152,6 +163,14 @@ export default function NotificationsPage() {
     }
 
     async function reload(nextStatus = status, nextCategory = category, nextSeverity = severity, nextOffset = 0, append = false) {
+        if (employeeWithoutCompany) {
+            setItems([]);
+            setOffset(0);
+            setTotal(0);
+            setError(null);
+            setLoading(false);
+            return;
+        }
         try {
             setLoading(true);
             setError(null);
@@ -173,10 +192,12 @@ export default function NotificationsPage() {
     }
 
     useEffect(() => {
+        if (employeeWithoutCompany) return;
         void reload(status, category, severity, 0, false);
-    }, [status, category, severity]);
+    }, [status, category, severity, employeeWithoutCompany]);
 
     useEffect(() => {
+        if (employeeWithoutCompany) return;
         void loadPreferences();
         const onChanged = () => void reload(status, category, severity, 0, false);
         const onPrefsChanged = () => void loadPreferences();
@@ -186,16 +207,18 @@ export default function NotificationsPage() {
             window.removeEventListener("fa:notifications-changed", onChanged);
             window.removeEventListener("fa:notification-preferences-changed", onPrefsChanged);
         };
-    }, [status, category, severity]);
+    }, [status, category, severity, employeeWithoutCompany]);
 
     useEffect(() => {
+        if (employeeWithoutCompany) return;
         const timer = window.setInterval(() => {
             void reload(status, category, severity, 0, false);
         }, 15_000);
         return () => window.clearInterval(timer);
-    }, [status, category, severity]);
+    }, [status, category, severity, employeeWithoutCompany]);
 
     async function handleRead(item: NotificationItem) {
+        if (employeeWithoutCompany) return;
         try {
             if (!item.is_read) {
                 await markNotificationRead(item.id);
@@ -212,6 +235,7 @@ export default function NotificationsPage() {
     }
 
     async function handleReadAll() {
+        if (employeeWithoutCompany) return;
         try {
             await markAllNotificationsRead();
             setItems((prev) => prev.map((x) => ({
@@ -225,6 +249,7 @@ export default function NotificationsPage() {
     }
 
     async function handleArchive(item: NotificationItem) {
+        if (employeeWithoutCompany) return;
         try {
             await archiveNotification(item.id);
             setItems((prev) => prev.filter((x) => x.id !== item.id));
@@ -235,6 +260,7 @@ export default function NotificationsPage() {
     }
 
     async function handleDelete(item: NotificationItem) {
+        if (employeeWithoutCompany) return;
         try {
             await deleteNotification(item.id);
             setItems((prev) => prev.filter((x) => x.id !== item.id));
@@ -245,6 +271,7 @@ export default function NotificationsPage() {
     }
 
     async function savePrefs(next: NotificationPreferences) {
+        if (employeeWithoutCompany) return;
         try {
             setPrefsSaving(true);
             setError(null);
@@ -255,6 +282,10 @@ export default function NotificationsPage() {
         } finally {
             setPrefsSaving(false);
         }
+    }
+
+    if (employeeWithoutCompany) {
+        return <CompanyRequiredNotice title="Chưa có thông báo công ty" message="Thông báo sẽ hiển thị sau khi tài khoản của bạn được gán vào công ty." />;
     }
 
     return (

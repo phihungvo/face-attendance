@@ -9,6 +9,11 @@ class RegisterRequest(BaseModel):
     role: str = Field(default="employee", max_length=64)
 
 
+class AuthConfigResponse(BaseModel):
+    public_registration_enabled: bool
+    account_onboarding_mode: str
+
+
 class LoginRequest(BaseModel):
     # Allow login by username/email/employee code.
     # Accept both legacy `username` and new `identifier` keys.

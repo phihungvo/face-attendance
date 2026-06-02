@@ -1102,7 +1102,7 @@
 
 @media (max-width: 399px) {
   .statsGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .commandScore {

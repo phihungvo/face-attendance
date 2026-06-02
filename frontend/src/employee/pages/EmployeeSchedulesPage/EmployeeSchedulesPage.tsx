@@ -27,6 +27,8 @@ import {useCachedQuery} from "../../../shared/hooks/useCachedQuery";
 import {invalidateKey, setCached} from "../../../shared/lib/queryCache";
 import {useSearchParams} from "react-router-dom";
 import {empKeys} from "../../cacheKeys";
+import {useAuth} from "../../../shared/auth/auth";
+import CompanyRequiredNotice from "../../components/CompanyRequiredNotice/CompanyRequiredNotice";
 
 function todayYmd() {
     const d = new Date();
@@ -121,6 +123,8 @@ function listDaysInRange(from: string, to: string, limit = 186) {
 }
 
 export default function EmployeeSchedulesPage() {
+    const auth = useAuth();
+    const hasCompany = Boolean(auth.companyId);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -201,6 +205,13 @@ export default function EmployeeSchedulesPage() {
     }, [regs, scheduleById]);
 
     const reload = async (opts?: { keepError?: boolean }) => {
+        if (!hasCompany) {
+            setSchedules([]);
+            setRegs([]);
+            setLoading(false);
+            setError(null);
+            return;
+        }
         setLoading(true);
         if (!opts?.keepError) setError(null);
         try {
@@ -229,12 +240,14 @@ export default function EmployeeSchedulesPage() {
     const qSchedules = useCachedQuery({
         key: schedulesCacheKey,
         ttlMs: 5 * 60_000,
-        fetcher: () => listSchedules({limit: 500, offset: 0, status: "active"})
+        fetcher: () => listSchedules({limit: 500, offset: 0, status: "active"}),
+        enabled: hasCompany
     });
     const qRegs = useCachedQuery({
         key: regsCacheKey,
         ttlMs: 30_000,
-        fetcher: () => listAllMyScheduleRegistrations()
+        fetcher: () => listAllMyScheduleRegistrations(),
+        enabled: hasCompany
     });
 
     useEffect(() => {
@@ -309,6 +322,10 @@ export default function EmployeeSchedulesPage() {
     }, [cart, scheduleById]);
 
     const submitCart = async () => {
+        if (!hasCompany) {
+            setError("Bạn cần tham gia công ty trước khi đăng ký lịch làm.");
+            return;
+        }
         if (!cart.length) {
             setError("Chưa chọn ca nào.");
             return;
@@ -344,6 +361,10 @@ export default function EmployeeSchedulesPage() {
     };
 
     const cancel = async (r: WorkScheduleRegistration) => {
+        if (!hasCompany) {
+            setError("Bạn cần tham gia công ty trước khi huỷ lịch làm.");
+            return;
+        }
         // eslint-disable-next-line no-alert
         if (!confirm(`Huỷ đăng ký ngày ${normalizeYmd(r.day)}?`)) return;
         setError(null);
@@ -384,6 +405,10 @@ export default function EmployeeSchedulesPage() {
     useEffect(() => {
         setDetailPage(1);
     }, [regsSorted.length]);
+
+    if (!hasCompany) {
+        return <CompanyRequiredNotice title="Chưa có lịch làm" message="Lịch làm và đăng ký ca sẽ hiển thị sau khi tài khoản của bạn được gán vào công ty." />;
+    }
 
     return (
         <div className={styles.page}>

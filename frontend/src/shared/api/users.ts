@@ -1,7 +1,9 @@
 import { api, type ApiResponse } from "../lib/apiClient";
 import type { User } from "../types/user";
 
-export async function listUsers(params?: { q?: string; limit?: number; offset?: number }) {
+export type UserDeletedFilter = "active" | "deleted" | "all";
+
+export async function listUsers(params?: { q?: string; limit?: number; offset?: number; deleted?: UserDeletedFilter }) {
   const res = await api.get<ApiResponse<User[]>>("/users", { params });
   return res.data.result ?? [];
 }
@@ -49,6 +51,14 @@ export async function updateUser(
 
 export async function deleteUser(userId: number) {
   await api.delete(`/users/${userId}`);
+}
+
+export async function restoreUser(userId: number) {
+  await api.post(`/users/${userId}/restore`);
+}
+
+export async function hardDeleteUser(userId: number) {
+  await api.delete(`/users/${userId}/hard`);
 }
 
 export async function getMyProfile() {

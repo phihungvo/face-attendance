@@ -336,6 +336,16 @@
   color: var(--danger-text);
 }
 
+.deletedTag {
+  background: var(--muted-bg);
+  border-color: var(--border2);
+  color: var(--text3);
+}
+
+.deletedRow {
+  opacity: 0.78;
+}
+
 .rowActions {
   display: flex;
   gap: 6px;
@@ -416,6 +426,22 @@
 .empCard:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
+}
+
+.empCardDeleted {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.empCardDeleted:hover {
+  transform: none;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 10px 0 0;
 }
 
 .empBigAvatar {
@@ -705,7 +731,7 @@
 
 @media (max-width: 1100px) {
   .statsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

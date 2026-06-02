@@ -15,13 +15,16 @@ import {
   SafetyCertificateOutlined,
   SaveOutlined,
   SettingOutlined,
-  SoundOutlined
+  SoundOutlined,
+  UserAddOutlined
 } from "@ant-design/icons";
 import {
   getAttendanceEvidenceSettings,
   getAttendancePolicy,
+  getAuthRegistrationSettings,
   updateAttendanceEvidenceSettings,
-  updateAttendancePolicy
+  updateAttendancePolicy,
+  updateAuthRegistrationSettings
 } from "../../../shared/api/settings";
 import {
   getCompany,
@@ -104,11 +107,13 @@ function MapClickPicker({ onPick }: { onPick(next: LatLng): void }) {
 function Toggle({
   checked,
   onChange,
-  label
+  label,
+  disabled = false
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: string;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -117,6 +122,7 @@ function Toggle({
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
     />
   );
@@ -134,6 +140,7 @@ function sectionTitle(icon: ReactNode, label: string) {
 export default function SettingsPage() {
   const nav = useNavigate();
   const auth = useAuth();
+  const isSystemAdmin = auth.roleKeys.includes("admin");
   const [company, setCompany] = useState<string>("");
   const [companyAddr, setCompanyAddr] = useState<string>("");
   const [companyLat, setCompanyLat] = useState<string>("");
@@ -213,6 +220,10 @@ export default function SettingsPage() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
+  const [authRegEnabled, setAuthRegEnabled] = useState(false);
+  const [authRegLoading, setAuthRegLoading] = useState(false);
+  const [authRegSaving, setAuthRegSaving] = useState(false);
+  const [authRegError, setAuthRegError] = useState<string | null>(null);
 
   const languageLabel = useMemo(() => (language === "vi" ? "Tiếng Việt" : "English"), [language]);
   const themeLabel = useMemo(() => {
@@ -294,6 +305,39 @@ export default function SettingsPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.selectedCompanyId, auth.roleKeys.join("|")]);
+
+  useEffect(() => {
+    if (!isSystemAdmin) return;
+    (async () => {
+      try {
+        setAuthRegLoading(true);
+        setAuthRegError(null);
+        const cfg = await getAuthRegistrationSettings();
+        setAuthRegEnabled(Boolean(cfg.public_registration_enabled));
+      } catch (e) {
+        setAuthRegError(getApiErrorMessage(e));
+      } finally {
+        setAuthRegLoading(false);
+      }
+    })();
+  }, [isSystemAdmin]);
+
+  async function handleAuthRegistrationToggle(nextEnabled: boolean) {
+    const previous = authRegEnabled;
+    try {
+      setAuthRegEnabled(nextEnabled);
+      setAuthRegSaving(true);
+      setAuthRegError(null);
+      const next = await updateAuthRegistrationSettings({ public_registration_enabled: nextEnabled });
+      setAuthRegEnabled(Boolean(next.public_registration_enabled));
+      return;
+    } catch (e) {
+      setAuthRegEnabled(previous);
+      setAuthRegError(getApiErrorMessage(e));
+    } finally {
+      setAuthRegSaving(false);
+    }
+  }
 
   useEffect(() => {
     ensureLeafletDefaultIcon();
@@ -666,6 +710,32 @@ export default function SettingsPage() {
                 </div>
                 <Toggle checked={twoFactor} onChange={setTwoFactor} label="Bảo mật 2 lớp" />
               </div>
+
+              {isSystemAdmin ? (
+                <div className={styles.settingsItem}>
+                  <div className={`${styles.settingsIcon} ${styles.iconInfo}`}>
+                    <UserAddOutlined />
+                  </div>
+                  <div className={styles.settingsInfo}>
+                    <div className={styles.settingsLabel}>Tự đăng ký tài khoản</div>
+                    <div className={styles.settingsDesc}>
+                      {authRegError
+                        ? authRegError
+                        : authRegLoading
+                          ? "Đang tải cấu hình..."
+                          : authRegEnabled
+                            ? "Public register đang bật"
+                            : "Chỉ tạo tài khoản bằng hồ sơ nhân viên hoặc invite"}
+                    </div>
+                  </div>
+                  <Toggle
+                    checked={authRegEnabled}
+                    onChange={(next) => void handleAuthRegistrationToggle(next)}
+                    label="Tự đăng ký tài khoản"
+                    disabled={authRegLoading || authRegSaving}
+                  />
+                </div>
+              ) : null}
 
               <button className={`${styles.settingsItem} ${styles.settingsClickable}`} type="button" onClick={() => nav("/change-password")}>
                 <div className={`${styles.settingsIcon} ${styles.iconDanger}`}>

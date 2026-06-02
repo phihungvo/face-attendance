@@ -24,7 +24,8 @@ export default function EmployeeShell() {
   const { setMode } = useTheme();
   const auth = useAuth();
   const hideNav = pathname.startsWith("/employee/checkin");
-  const unreadCount = useUnreadNotificationCount([pathname]);
+  const employeeWithoutCompany = Boolean(auth.roleKeys.includes("employee") && !auth.companyId);
+  const unreadCount = useUnreadNotificationCount([pathname], !employeeWithoutCompany);
 
   useEffect(() => {
     // Default employee UI to dark on first visit, without overriding an explicit user preference.
@@ -202,6 +203,12 @@ export default function EmployeeShell() {
   };
 
   async function reloadLatest() {
+    if (employeeWithoutCompany) {
+      setLatestItems([]);
+      setNotifError(null);
+      setNotifLoading(false);
+      return;
+    }
     try {
       setNotifLoading(true);
       setNotifError(null);
@@ -241,6 +248,7 @@ export default function EmployeeShell() {
   }, [notifOpen]);
 
   async function handleRead(item: NotificationItem) {
+    if (employeeWithoutCompany) return;
     try {
       if (!item.is_read) {
         await markNotificationRead(item.id);
@@ -254,6 +262,7 @@ export default function EmployeeShell() {
   }
 
   async function handleReadAll() {
+    if (employeeWithoutCompany) return;
     try {
       await markAllNotificationsRead();
       setLatestItems((prev) => prev.map((row) => ({ ...row, is_read: true, read_at: row.read_at ?? new Date().toISOString() })));
@@ -310,11 +319,12 @@ export default function EmployeeShell() {
                       </button>
                     </div>
 
-                    {notifError ? <div className={styles.desktopNotifStateError}>{notifError}</div> : null}
-                    {notifLoading ? <div className={styles.desktopNotifState}>Đang tải thông báo...</div> : null}
-                    {!notifLoading && !latestItems.length ? <div className={styles.desktopNotifState}>Chưa có thông báo nào.</div> : null}
+                    {employeeWithoutCompany ? <div className={styles.desktopNotifState}>Thông báo sẽ hiển thị sau khi tài khoản được gán vào công ty.</div> : null}
+                    {!employeeWithoutCompany && notifError ? <div className={styles.desktopNotifStateError}>{notifError}</div> : null}
+                    {!employeeWithoutCompany && notifLoading ? <div className={styles.desktopNotifState}>Đang tải thông báo...</div> : null}
+                    {!employeeWithoutCompany && !notifLoading && !latestItems.length ? <div className={styles.desktopNotifState}>Chưa có thông báo nào.</div> : null}
 
-                    {!notifLoading && latestItems.length ? (
+                    {!employeeWithoutCompany && !notifLoading && latestItems.length ? (
                       <div className={styles.desktopNotifList}>
                         {latestItems.map((item) => (
                           <button

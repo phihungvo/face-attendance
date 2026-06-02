@@ -93,6 +93,21 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
     This is best-effort: safe to run multiple times.
     """
 
+    if not _table_exists(engine, table="app_settings", schema=schema):
+        _exec(
+            engine,
+            """
+            CREATE TABLE app_settings (
+                setting_key VARCHAR(128) NOT NULL,
+                setting_value VARCHAR(512) NOT NULL,
+                updated_by_user_id INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (setting_key)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """,
+        )
+
     # users table extensions (if project was created before these fields existed)
     if not _column_exists(engine, table="users", column="company_id", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN company_id INT NULL, ADD KEY ix_users_company_id (company_id)")
@@ -347,6 +362,8 @@ def run_lightweight_migrations(engine: Engine, *, schema: str) -> None:
     # users table extensions
     if not _column_exists(engine, table="users", column="face_enrolled_at", schema=schema):
         _exec(engine, "ALTER TABLE users ADD COLUMN face_enrolled_at DATETIME NULL")
+    if not _column_exists(engine, table="users", column="deleted_at", schema=schema):
+        _exec(engine, "ALTER TABLE users ADD COLUMN deleted_at DATETIME NULL, ADD KEY ix_users_deleted_at (deleted_at)")
 
     # attendance_logs geo fields
     if not _column_exists(engine, table="attendance_logs", column="latitude", schema=schema):

@@ -2,10 +2,14 @@ import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "../api/notifications";
 import { getApiErrorMessage } from "../lib/apiClient";
 
-export function useUnreadNotificationCount(deps: Array<string | number | null | undefined> = []) {
+export function useUnreadNotificationCount(deps: Array<string | number | null | undefined> = [], enabled = true) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    if (!enabled) {
+      setUnreadCount(0);
+      return;
+    }
     let alive = true;
 
     async function refreshUnread() {
@@ -30,7 +34,7 @@ export function useUnreadNotificationCount(deps: Array<string | number | null | 
       window.clearInterval(timer);
       window.removeEventListener("fa:notifications-changed", onChanged);
     };
-  }, deps);
+  }, [enabled, ...deps]);
 
   return unreadCount;
 }

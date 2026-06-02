@@ -25,6 +25,7 @@ class UserOut(BaseModel):
     invite_accepted_at: datetime | None = None
     department_id: int | None = None
     created_at: datetime
+    deleted_at: datetime | None = None
 
 
 class UserMeOut(UserOut):
