@@ -288,115 +288,92 @@ export default function EmployeesPage() {
           </div>
 
           {workflowTab === "employees" ? (
-            <div className={styles.tabGroup} role="tablist" aria-label="Kiểu hiển thị nhân viên">
-            <button
-              className={view === "grid" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              type="button"
-              role="tab"
-              aria-selected={view === "grid"}
-              onClick={() => setView("grid")}
-            >
-              <AppstoreOutlined /> Lưới
-            </button>
-            <button
-              className={view === "list" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              type="button"
-              role="tab"
-              aria-selected={view === "list"}
-              onClick={() => setView("list")}
-            >
-              <UnorderedListOutlined /> Danh sách
-            </button>
-          </div>
-          ) : null}
-
-          {workflowTab === "employees" ? (
             <>
-          <div className={styles.searchBoxCompact}>
-            <span className={styles.searchIcon}>
-              <SearchOutlined />
-            </span>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm tên, mã, email, SĐT, CCCD..." />
-          </div>
+              <div className={styles.searchBoxCompact}>
+                <span className={styles.searchIcon}>
+                  <SearchOutlined />
+                </span>
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm tên, mã, email, SĐT, CCCD..." />
+              </div>
 
-          <select className={styles.select} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} aria-label="Lọc phòng ban">
-            <option value="">Tất cả phòng ban</option>
-            {deptOptions.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </select>
+              <select className={styles.select} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} aria-label="Lọc phòng ban">
+                <option value="">Tất cả phòng ban</option>
+                {deptOptions.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
 
-          {isAdmin ? (
-            <select
-              className={styles.select}
-              value={deletedFilter}
-              onChange={async (e) => {
-                const next = e.target.value as UserDeletedFilter;
-                setDeletedFilter(next);
-                setPage(1);
-                await refresh(query, next);
-              }}
-              aria-label="Lọc trạng thái xoá mềm"
-            >
-              <option value="active">Chưa xoá mềm</option>
-              <option value="deleted">Đã xoá mềm</option>
-              <option value="all">Tất cả nhân viên</option>
-            </select>
-          ) : null}
+              {isAdmin ? (
+                <select
+                  className={styles.select}
+                  value={deletedFilter}
+                  onChange={async (e) => {
+                    const next = e.target.value as UserDeletedFilter;
+                    setDeletedFilter(next);
+                    setPage(1);
+                    await refresh(query, next);
+                  }}
+                  aria-label="Lọc trạng thái xoá mềm"
+                >
+                  <option value="active">Chưa xoá mềm</option>
+                  <option value="deleted">Đã xoá mềm</option>
+                  <option value="all">Tất cả nhân viên</option>
+                </select>
+              ) : null}
 
-          <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh(query)}>
-            {loading ? "Đang tải..." : "Làm mới"}
-          </button>
-          <button
-            className={styles.btnGhost}
-            type="button"
-            disabled={!filtered.length}
-            onClick={() => {
-              exportExcelHtml({
-                filename: `employees_${new Date().toLocaleDateString("en-CA")}.xls`,
-                title: "DANH SÁCH NHÂN VIÊN",
-                meta: { "Tổng": filtered.length, "Phòng ban": deptOptions.find((d) => d.id === deptFilter)?.label ?? "Tất cả" },
-                columns: [
-                  { key: "code", label: "Mã NV", widthPx: 110 },
-                  { key: "name", label: "Họ tên", widthPx: 220 },
-                  { key: "department", label: "Phòng ban", widthPx: 180 },
-                  { key: "role", label: "Chức vụ", widthPx: 150 },
-                  { key: "phone", label: "Số điện thoại", widthPx: 150 },
-                  { key: "citizen_id", label: "CCCD", widthPx: 160 },
-                  { key: "citizen_id_place", label: "Nơi cấp CCCD", widthPx: 200 },
-                  { key: "hire_date", label: "Ngày vào làm", widthPx: 150 },
-                  { key: "status", label: "Trạng thái", widthPx: 110 },
-                  { key: "email", label: "Email", widthPx: 220 },
-                  { key: "address", label: "Địa chỉ", widthPx: 260 }
-                ],
-                rows: filtered.map((u) => ({
-                  code: u.code || `#${u.id}`,
-                  name: u.name,
-                  department: u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—",
-                  role: u.role || "—",
-                  phone: u.phone || "—",
-                  citizen_id: u.citizen_id || "—",
-                  citizen_id_place: u.citizen_id_place || "—",
-                  hire_date: formatHireDateLabel(u.hire_date),
-                  status: u.status || "active",
-                  email: u.email || "—",
-                  address: u.address || "—"
-                }))
-              });
-            }}
-          >
-            <DownloadOutlined /> Xuất Excel
-          </button>
+              <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh(query)}>
+                {loading ? "..." : <ReloadOutlined />}
+              </button>
+              <button
+                className={styles.btnGhost}
+                type="button"
+                disabled={!filtered.length}
+                onClick={() => {
+                  exportExcelHtml({
+                    filename: `employees_${new Date().toLocaleDateString("en-CA")}.xls`,
+                    title: "DANH SÁCH NHÂN VIÊN",
+                    meta: { "Tổng": filtered.length, "Phòng ban": deptOptions.find((d) => d.id === deptFilter)?.label ?? "Tất cả" },
+                    columns: [
+                      { key: "code", label: "Mã NV", widthPx: 110 },
+                      { key: "name", label: "Họ tên", widthPx: 220 },
+                      { key: "department", label: "Phòng ban", widthPx: 180 },
+                      { key: "role", label: "Chức vụ", widthPx: 150 },
+                      { key: "phone", label: "Số điện thoại", widthPx: 150 },
+                      { key: "citizen_id", label: "CCCD", widthPx: 160 },
+                      { key: "citizen_id_place", label: "Nơi cấp CCCD", widthPx: 200 },
+                      { key: "hire_date", label: "Ngày vào làm", widthPx: 150 },
+                      { key: "status", label: "Trạng thái", widthPx: 110 },
+                      { key: "email", label: "Email", widthPx: 220 },
+                      { key: "address", label: "Địa chỉ", widthPx: 260 }
+                    ],
+                    rows: filtered.map((u) => ({
+                      code: u.code || `#${u.id}`,
+                      name: u.name,
+                      department: u.department_id ? deptById.get(u.department_id)?.name ?? `#${u.department_id}` : "—",
+                      role: u.role || "—",
+                      phone: u.phone || "—",
+                      citizen_id: u.citizen_id || "—",
+                      citizen_id_place: u.citizen_id_place || "—",
+                      hire_date: formatHireDateLabel(u.hire_date),
+                      status: u.status || "active",
+                      email: u.email || "—",
+                      address: u.address || "—"
+                    }))
+                  });
+                }}
+              >
+                <DownloadOutlined /> Excel
+              </button>
 
-          <button
-            className={styles.btnPrimary}
-            type="button"
-            onClick={openCreateModal}
-          >
-            <PlusOutlined /> Thêm nhân viên
-          </button>
+              <button
+                className={styles.btnPrimary}
+                type="button"
+                onClick={openCreateModal}
+              >
+                <PlusOutlined /> Thêm
+              </button>
             </>
           ) : (
             <button className={styles.btnGhost} type="button" disabled={loading} onClick={() => refresh(query)}>
@@ -405,6 +382,60 @@ export default function EmployeesPage() {
           )}
         </div>
       </Card>
+
+      {workflowTab === "employees" ? (
+        <div className={styles.employeeControls}>
+          <div className={styles.viewSwitch} role="tablist" aria-label="Kiểu hiển thị nhân viên">
+            <button
+              className={view === "grid" ? `${styles.viewBtn} ${styles.viewBtnActive}` : styles.viewBtn}
+              type="button"
+              role="tab"
+              aria-selected={view === "grid"}
+              onClick={() => setView("grid")}
+            >
+              <AppstoreOutlined /> Lưới
+            </button>
+            <button
+              className={view === "list" ? `${styles.viewBtn} ${styles.viewBtnActive}` : styles.viewBtn}
+              type="button"
+              role="tab"
+              aria-selected={view === "list"}
+              onClick={() => setView("list")}
+            >
+              <UnorderedListOutlined /> Danh sách
+            </button>
+          </div>
+
+          <div className={styles.pagination}>
+            <div className={styles.pageHint}>
+              {filtered.length === 0 ? "0 kết quả" : `Trang ${pageSafe}/${totalPages} • ${filtered.length} nhân viên`}
+            </div>
+            <div className={styles.pageControls}>
+              <button className={styles.pageBtn} type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
+                <LeftOutlined />
+              </button>
+              {pageButtons.map((p) => (
+                <button
+                  key={p}
+                  className={p === pageSafe ? `${styles.pageBtn} ${styles.pageBtnActive}` : styles.pageBtn}
+                  type="button"
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                className={styles.pageBtn}
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={pageSafe >= totalPages}
+              >
+                <RightOutlined />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {workflowTab === "requests" ? (
         <Card
@@ -798,35 +829,6 @@ export default function EmployeesPage() {
           {filtered.length === 0 ? <div className={styles.empty}>Chưa có nhân viên (hoặc không khớp tìm kiếm).</div> : null}
         </Card>
       )}
-
-      {workflowTab === "employees" ? <div className={styles.pagination}>
-        <div className={styles.pageHint}>
-          {filtered.length === 0 ? "0 kết quả" : `Trang ${pageSafe}/${totalPages} • ${filtered.length} nhân viên`}
-        </div>
-        <div className={styles.pageControls}>
-          <button className={styles.pageBtn} type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
-            <LeftOutlined />
-          </button>
-          {pageButtons.map((p) => (
-            <button
-              key={p}
-              className={p === pageSafe ? `${styles.pageBtn} ${styles.pageBtnActive}` : styles.pageBtn}
-              type="button"
-              onClick={() => setPage(p)}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            className={styles.pageBtn}
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={pageSafe >= totalPages}
-          >
-            <RightOutlined />
-          </button>
-        </div>
-      </div> : null}
 
       <Modal
         open={modalOpen}

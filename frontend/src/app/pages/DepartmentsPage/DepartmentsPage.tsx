@@ -81,13 +81,17 @@ export default function DepartmentsPage() {
         ))}
       </div>
 
-      <Card
-        title={
-          <span className={styles.cardTitle}>
-            <ApartmentOutlined /> Danh sách phòng ban
-          </span>
-        }
-        right={
+      <Card>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitleWrap}>
+            <span className={styles.sectionIcon}>
+              <ApartmentOutlined />
+            </span>
+            <div>
+              <div className={styles.sectionTitle}>Danh sách phòng ban</div>
+              <div className={styles.sectionSub}>Quản lý mã, tên và địa điểm làm việc theo từng phòng ban.</div>
+            </div>
+          </div>
           <div className={styles.actions}>
             <div className={styles.searchBox}>
               <span className={styles.searchIcon}>
@@ -99,7 +103,7 @@ export default function DepartmentsPage() {
               <ReloadOutlined /> {loading ? "Đang tải..." : "Làm mới"}
             </button>
             <button
-              className={styles.btnGhost}
+              className={styles.btnPrimary}
               type="button"
               onClick={() => {
                 setEditing(null);
@@ -112,8 +116,7 @@ export default function DepartmentsPage() {
               <PlusOutlined /> Thêm phòng ban
             </button>
           </div>
-        }
-      >
+        </div>
         {error ? <div className={styles.error}>{error}</div> : null}
         <Table>
           <thead>
