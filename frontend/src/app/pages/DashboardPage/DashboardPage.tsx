@@ -17,6 +17,7 @@ import {
     NumberOutlined,
     RiseOutlined,
     TeamOutlined,
+    TrophyOutlined,
     WarningOutlined
 } from "@ant-design/icons";
 import Card from "../../components/Card/Card";
@@ -27,12 +28,15 @@ import {
     getManagerDashboardRecentLogs,
     getManagerDashboardToday,
     getManagerDashboardTrend,
+    getManagerDashboardWorkHours,
     type ManagerDashboardDepartmentRow,
     type ManagerDashboardLeaveSummary,
     type ManagerDashboardPendingLeaveItem,
     type ManagerDashboardRecentLogItem,
     type ManagerDashboardTodaySummary,
-    type ManagerDashboardTrendPoint
+    type ManagerDashboardTrendPoint,
+    type ManagerDashboardWorkHoursPeriod,
+    type ManagerDashboardWorkHoursSummary
 } from "../../../shared/api/attendance";
 import {useAuth} from "../../../shared/auth/auth";
 import {getApiErrorMessage} from "../../../shared/lib/apiClient";
@@ -101,6 +105,57 @@ function formatLongDate(day: string) {
     });
 }
 
+function toDateInputValue(value: Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function todayInputValue() {
+    return toDateInputValue(new Date());
+}
+
+function getIsoWeekValue(day: string) {
+    const dateValue = new Date(`${day}T12:00:00`);
+    const target = new Date(dateValue.valueOf());
+    const dayNumber = (target.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNumber + 3);
+    const firstThursday = new Date(target.getFullYear(), 0, 4);
+    const firstDayNumber = (firstThursday.getDay() + 6) % 7;
+    const week = 1 + Math.round(((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + firstDayNumber) / 7);
+    return `${target.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function isoWeekToDate(value: string) {
+    const match = /^(\d{4})-W(\d{2})$/.exec(value);
+    if (!match) return todayInputValue();
+    const year = Number(match[1]);
+    const week = Number(match[2]);
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const day = (simple.getDay() + 6) % 7;
+    const weekStart = new Date(simple.valueOf());
+    if (day <= 3) {
+        weekStart.setDate(simple.getDate() - day);
+    } else {
+        weekStart.setDate(simple.getDate() + 7 - day);
+    }
+    return toDateInputValue(weekStart);
+}
+
+function workHoursInputValue(period: ManagerDashboardWorkHoursPeriod, anchorDate: string) {
+    if (period === "week") return getIsoWeekValue(anchorDate);
+    if (period === "year") return anchorDate.slice(0, 4);
+    return anchorDate.slice(0, 7);
+}
+
+function anchorDateFromInput(period: ManagerDashboardWorkHoursPeriod, value: string) {
+    if (!value) return todayInputValue();
+    if (period === "week") return isoWeekToDate(value);
+    if (period === "year") return `${value}-06-15`;
+    return `${value}-15`;
+}
+
 function formatDateTime(value: string) {
     return new Date(value).toLocaleString("vi-VN", {
         day: "2-digit",
@@ -120,6 +175,12 @@ function attendanceTypeVi(type: "checkin" | "checkout") {
 
 function attendanceIcon(type: "checkin" | "checkout") {
     return type === "checkin" ? <LoginOutlined/> : <LogoutOutlined/>;
+}
+
+function formatHours(value: number) {
+    if (!Number.isFinite(value)) return "0h";
+    const rounded = Math.round(value * 10) / 10;
+    return `${rounded.toLocaleString("vi-VN")}h`;
 }
 
 function getInitials(name: string) {
@@ -156,7 +217,7 @@ function departmentRiskScore(row: ManagerDashboardDepartmentRow) {
     return row.absent_count * 3 + row.late_count * 2 + (100 - row.attendance_rate);
 }
 
-function SectionError({message}: {message: string}) {
+function SectionError({message}: { message: string }) {
     return <div className={styles.sectionError}>{message}</div>;
 }
 
@@ -183,33 +244,70 @@ function ChartSkeleton() {
                     </div>
                 </div>
                 <div className={`${styles.chartCanvas} ${styles.chartCanvasSkeleton}`}>
-                    <span className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineOne}`}/>
-                    <span className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineTwo}`}/>
-                    <span className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineThree}`}/>
+                    <span
+                        className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineOne}`}/>
+                    <span
+                        className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineTwo}`}/>
+                    <span
+                        className={`${styles.skeletonLine} ${styles.chartSkeletonLine} ${styles.chartSkeletonLineThree}`}/>
                 </div>
                 <div className={styles.chartAxisRow}>
                     {Array.from({length: 7}).map((_, index) => (
                         <span key={index} className={`${styles.skeletonLine} ${styles.axisSkeleton}`}/>
                     ))}
                 </div>
-                <div className={styles.chartDetailGrid}>
-                    {Array.from({length: 3}).map((_, index) => (
-                        <article key={index} className={styles.chartDetailCard}>
-                            <span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/>
-                            <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>
-                            <span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/>
-                        </article>
-                    ))}
-                </div>
+                {/*<div className={styles.chartDetailGrid}>*/}
+                {/*    {Array.from({length: 3}).map((_, index) => (*/}
+                {/*        <article key={index} className={styles.chartDetailCard}>*/}
+                {/*            <span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/>*/}
+                {/*            <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>*/}
+                {/*            <span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/>*/}
+                {/*        </article>*/}
+                {/*    ))}*/}
+                {/*</div>*/}
             </div>
             <div className={styles.trendFacts}>
                 {Array.from({length: 3}).map((_, index) => (
                     <div key={index} className={styles.factCard}>
                         <span className={`${styles.skeletonLine} ${styles.factIconSkeleton}`}/>
                         <div>
-                            <div className={styles.factLabel}><span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/></div>
-                            <strong className={styles.factValue}><span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/></strong>
-                            <div className={styles.factSub}><span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/></div>
+                            <div className={styles.factLabel}><span
+                                className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/></div>
+                            <strong className={styles.factValue}><span
+                                className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/></strong>
+                            <div className={styles.factSub}><span
+                                className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function WorkHoursSkeleton() {
+    return (
+        <div className={styles.workHoursChart}>
+            <div className={styles.workHoursSummary}>
+                {Array.from({length: 3}).map((_, index) => (
+                    <div key={index} className={styles.workHoursMetric}>
+                        <span className={`${styles.skeletonLine} ${styles.textSkeletonSm}`}/>
+                        <strong><span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/></strong>
+                    </div>
+                ))}
+            </div>
+            <div className={styles.workHoursList}>
+                {Array.from({length: 3}).map((_, index) => (
+                    <div key={index} className={styles.workHoursRow}>
+                        <span className={`${styles.skeletonLine} ${styles.workRankSkeleton}`}/>
+                        <div className={styles.workHoursMain}>
+                            <div className={styles.workHoursTopLine}>
+                                <span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/>
+                                <span className={`${styles.skeletonLine} ${styles.timeSkeleton}`}/>
+                            </div>
+                            <div className={styles.workHoursBarTrack}>
+                                <span className={`${styles.skeletonLine} ${styles.progressSkeleton}`}/>
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -238,7 +336,8 @@ function DepartmentSkeleton() {
                                 <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>
                                 <div className={styles.departmentMeta}>
                                     {Array.from({length: 4}).map((__, pillIndex) => (
-                                        <span key={pillIndex} className={`${styles.skeletonLine} ${styles.pillSkeleton}`}/>
+                                        <span key={pillIndex}
+                                              className={`${styles.skeletonLine} ${styles.pillSkeleton}`}/>
                                     ))}
                                 </div>
                             </div>
@@ -267,7 +366,7 @@ function LeaveSummarySkeleton() {
     );
 }
 
-function QueueSkeleton({rows = 3}: {rows?: number}) {
+function QueueSkeleton({rows = 3}: { rows?: number }) {
     return (
         <div className={styles.queueList}>
             {Array.from({length: rows}).map((_, index) => (
@@ -278,7 +377,8 @@ function QueueSkeleton({rows = 3}: {rows?: number}) {
                             <span className={`${styles.skeletonLine} ${styles.textSkeletonLg}`}/>
                             <span className={`${styles.skeletonLine} ${styles.timeSkeleton}`}/>
                         </div>
-                        <div className={styles.queueSub}><span className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/></div>
+                        <div className={styles.queueSub}><span
+                            className={`${styles.skeletonLine} ${styles.textSkeletonMd}`}/></div>
                         <div className={styles.queueMeta}>
                             {Array.from({length: 3}).map((__, pillIndex) => (
                                 <span key={pillIndex} className={`${styles.skeletonLine} ${styles.pillSkeleton}`}/>
@@ -299,6 +399,9 @@ export default function DashboardPage() {
     const [departmentsState, setDepartmentsState] = useState<DashboardSectionState<ManagerDashboardDepartmentRow[]>>(() => createSectionState());
     const [pendingLeavesState, setPendingLeavesState] = useState<DashboardSectionState<ManagerDashboardPendingLeaveItem[]>>(() => createSectionState());
     const [recentLogsState, setRecentLogsState] = useState<DashboardSectionState<ManagerDashboardRecentLogItem[]>>(() => createSectionState());
+    const [workHoursState, setWorkHoursState] = useState<DashboardSectionState<ManagerDashboardWorkHoursSummary>>(() => createSectionState());
+    const [workHoursPeriod, setWorkHoursPeriod] = useState<ManagerDashboardWorkHoursPeriod>("month");
+    const [workHoursAnchorDate, setWorkHoursAnchorDate] = useState(() => todayInputValue());
     const [activeTrendIndex, setActiveTrendIndex] = useState(0);
     const [shouldAnimatePage] = useState(() => consumeDashboardIntroFlag() || isDashboardReload());
     const dashboardScopeKey = `${auth.selectedCompanyId ?? auth.companyId ?? "default"}`;
@@ -306,7 +409,7 @@ export default function DashboardPage() {
     useEffect(() => {
         let cancelled = false;
 
-        const runSection = async <T,>(
+        const runSection = async <T, >(
             setState: (state: DashboardSectionState<T>) => void,
             request: () => Promise<T>
         ) => {
@@ -343,18 +446,44 @@ export default function DashboardPage() {
         };
     }, [dashboardScopeKey]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        setWorkHoursState({status: "loading", data: null, error: null});
+        getManagerDashboardWorkHours({
+            period: workHoursPeriod,
+            anchor_date: workHoursAnchorDate,
+            limit: 3
+        })
+            .then((result) => {
+                if (cancelled) return;
+                setWorkHoursState({status: "success", data: result, error: null});
+            })
+            .catch((e) => {
+                if (cancelled) return;
+                setWorkHoursState({status: "error", data: null, error: getApiErrorMessage(e)});
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [dashboardScopeKey, workHoursAnchorDate, workHoursPeriod]);
+
     const today = todayState.data;
     const leaveSummary = leaveSummaryState.data;
     const trend = trendState.data ?? [];
     const departments = departmentsState.data ?? [];
     const pendingLeaves = pendingLeavesState.data ?? [];
     const recentLogs = recentLogsState.data ?? [];
+    const workHours = workHoursState.data;
+    const workHoursEmployees = workHours?.employees ?? [];
     const todayWaiting = isWaiting(todayState);
     const leaveSummaryWaiting = isWaiting(leaveSummaryState);
     const trendWaiting = isWaiting(trendState);
     const departmentsWaiting = isWaiting(departmentsState);
     const pendingLeavesWaiting = isWaiting(pendingLeavesState);
     const recentLogsWaiting = isWaiting(recentLogsState);
+    const workHoursWaiting = isWaiting(workHoursState);
 
     const averageAttendance = useMemo(() => averageRate(trend), [trend]);
     const presentRate = today?.attendance_rate ?? 0;
@@ -415,6 +544,11 @@ export default function DashboardPage() {
     const activeTrendPrev = activeTrendIndex > 0 ? trend[activeTrendIndex - 1] ?? null : null;
     const activeTrendDelta =
         activeTrend && activeTrendPrev ? Math.round((activeTrend.attendance_rate - activeTrendPrev.attendance_rate) * 10) / 10 : null;
+    const maxWorkHours = useMemo(
+        () => Math.max(1, ...workHoursEmployees.map((item) => Number(item.total_work_hours) || 0)),
+        [workHoursEmployees]
+    );
+    const workHoursRangeLabel = workHours ? `${formatDate(workHours.from_date)} - ${formatDate(workHours.to_date)}` : "--";
 
     useEffect(() => {
         if (!trend.length) {
@@ -573,15 +707,10 @@ export default function DashboardPage() {
             waiting: leaveSummaryWaiting,
             error: leaveSummaryState.error
         },
-        // {
-        //   key: "departments",
-        //   label: "Phòng ban",
-        //   value: departments.length,
-        //   icon: <ApartmentOutlined />,
-        //   foot: `${bestDepartment?.department_name ?? "--"} đang cao nhất`,
-        //   tone: "slate"
-        // }
     ] as const;
+
+    const workHoursInputType = workHoursPeriod === "week" ? "week" : workHoursPeriod === "month" ? "month" : "number";
+    const workHoursInputLabel = workHoursPeriod === "week" ? "Chọn tuần" : workHoursPeriod === "month" ? "Chọn tháng" : "Chọn năm";
 
     function moveTrendFocus(direction: number) {
         if (!trend.length || direction === 0) return;
@@ -594,85 +723,6 @@ export default function DashboardPage() {
         <div className={pageClassName}>
 
             <section className={styles.heroGrid}>
-                {/*<article className={styles.commandCard}>*/}
-                {/*  <div className={styles.commandTop}>*/}
-                {/*    <div>*/}
-                {/*      <div className={styles.eyebrow}>Bảng điều hành hôm nay</div>*/}
-                {/*      <h1 className={styles.commandTitle}>{today ? formatLongDate(today.day) : "Đang tải dữ liệu"}</h1>*/}
-                {/*    </div>*/}
-                {/*    <div className={styles.generatedBadge}>*/}
-                {/*      <CalendarOutlined />*/}
-                {/*      {data?.generated_at ? formatDateTime(data.generated_at) : "--"}*/}
-                {/*    </div>*/}
-                {/*  </div>*/}
-
-                {/*  <div className={styles.commandBody}>*/}
-                {/*    <div className={styles.commandScoreBlock}>*/}
-                {/*      <div className={styles.commandScore}>{loading && !data ? "..." : `${Math.round(presentRate)}%`}</div>*/}
-                {/*      <div className={styles.commandScoreMeta}>*/}
-                {/*        <span>Tỷ lệ hiện diện</span>*/}
-                {/*        <strong>*/}
-                {/*          {today?.present_count ?? 0}/{today?.total_users ?? 0} nhân sự có mặt*/}
-                {/*        </strong>*/}
-                {/*      </div>*/}
-                {/*    </div>*/}
-
-                {/*    <div className={styles.commandQuickStats}>*/}
-                {/*      <div className={styles.quickStat}>*/}
-                {/*        <span className={styles.quickLabel}>Trung bình 7 ngày</span>*/}
-                {/*        <strong>{averageAttendance}%</strong>*/}
-                {/*      </div>*/}
-                {/*      <div className={styles.quickStat}>*/}
-                {/*        <span className={styles.quickLabel}>Xu hướng hôm nay</span>*/}
-                {/*        <strong>*/}
-                {/*          {trendDelta == null ? "--" : `${trendDelta > 0 ? "+" : ""}${trendDelta}%`}*/}
-                {/*        </strong>*/}
-                {/*      </div>*/}
-                {/*      <div className={styles.quickStat}>*/}
-                {/*        <span className={styles.quickLabel}>Đơn cần xử lý</span>*/}
-                {/*        <strong>{data?.leave_summary.pending_count ?? 0}</strong>*/}
-                {/*      </div>*/}
-                {/*    </div>*/}
-                {/*  </div>*/}
-
-                {/*  <div className={styles.heroMetaRow}>*/}
-                {/*    <span className={styles.heroMetaPill}>*/}
-                {/*      <TeamOutlined />*/}
-                {/*      {today?.total_users ?? 0} nhân sự*/}
-                {/*    </span>*/}
-                {/*    <span className={styles.heroMetaPill}>*/}
-                {/*      <FieldTimeOutlined />*/}
-                {/*      {today?.working_count ?? 0} đang làm*/}
-                {/*    </span>*/}
-                {/*    <span className={styles.heroMetaPill}>*/}
-                {/*      <ClockCircleOutlined />*/}
-                {/*      {today?.late_count ?? 0} đi muộn*/}
-                {/*    </span>*/}
-                {/*    <span className={styles.heroMetaPill}>*/}
-                {/*      <AuditOutlined />*/}
-                {/*      {data?.leave_summary.pending_count ?? 0} chờ duyệt*/}
-                {/*    </span>*/}
-                {/*  </div>*/}
-                {/*</article>*/}
-
-                {/*<aside className={styles.attentionCard}>*/}
-                {/*  <div className={styles.attentionHeader}>*/}
-                {/*    <div className={styles.eyebrow}>Điểm cần chú ý</div>*/}
-                {/*    <span className={styles.attentionCount}>{dashboardAlerts.length}</span>*/}
-                {/*  </div>*/}
-
-                {/*  <div className={styles.alertList}>*/}
-                {/*    {dashboardAlerts.map((alert) => (*/}
-                {/*      <article key={alert.key} className={`${styles.alertRow} ${styles[`alert${alert.tone[0].toUpperCase()}${alert.tone.slice(1)}`]}`}>*/}
-                {/*        <div className={styles.alertIcon}>{alert.icon}</div>*/}
-                {/*        <div className={styles.alertBody}>*/}
-                {/*          <strong>{alert.title}</strong>*/}
-                {/*          <span>{alert.sub}</span>*/}
-                {/*        </div>*/}
-                {/*      </article>*/}
-                {/*    ))}*/}
-                {/*  </div>*/}
-                {/*</aside>*/}
             </section>
 
             <section className={styles.statsGrid}>
@@ -684,8 +734,10 @@ export default function DashboardPage() {
                         </div>
                         {item.waiting ? (
                             <>
-                                <div className={styles.statValue}><span className={`${styles.skeletonLine} ${styles.statValueSkeleton}`}/></div>
-                                <div className={styles.statFoot}><span className={`${styles.skeletonLine} ${styles.statFootSkeleton}`}/></div>
+                                <div className={styles.statValue}><span
+                                    className={`${styles.skeletonLine} ${styles.statValueSkeleton}`}/></div>
+                                <div className={styles.statFoot}><span
+                                    className={`${styles.skeletonLine} ${styles.statFootSkeleton}`}/></div>
                             </>
                         ) : item.error ? (
                             <>
@@ -703,228 +755,259 @@ export default function DashboardPage() {
             </section>
 
             <section className={styles.analyticsGrid}>
-                <div className={styles.spanFull}>
+                <div className={styles.chartGridItem}>
                     <Card
                         title={
                             <span className={styles.sectionTitle}>
                 <BarChartOutlined/>
-                <span>Xu hướng hiện diện 7 ngày</span>
+                <span>Xu hướng 7 ngày</span>
               </span>
                         }
-                        right={trendWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{averageAttendance}% trung bình</span>}
                     >
-                        {trendWaiting ? <ChartSkeleton/> : trendState.error ? <SectionError message={trendState.error}/> : (
-                        <div className={styles.chartLayout}>
-                            <div className={styles.chartPanel}>
-                                {chartGeometry ? (
-                                    <>
-                                        <div className={styles.chartSummary}>
-                                            <div className={styles.chartHeadline}>
-                                                <div
-                                                    className={styles.chartHeadlineValue}>{Math.round(activeTrend?.attendance_rate ?? averageAttendance)}%
-                                                </div>
-                                                <div className={styles.chartHeadlineMeta}>
-                                                    <span>{activeTrend?.label ?? "Hôm nay"}</span>
-                                                    <strong>{activeTrend ? formatDate(activeTrend.day) : "--"}</strong>
-                                                </div>
-                                            </div>
+                        {trendWaiting ? <ChartSkeleton/> : trendState.error ?
+                            <SectionError message={trendState.error}/> : (
+                                <div className={styles.chartLayout}>
+                                    <div className={styles.chartPanel}>
+                                        {chartGeometry ? (
+                                            <>
+                                                <div className={styles.chartSummary}>
+                                                    <div className={styles.chartHeadline}>
+                                                        <div
+                                                            className={styles.chartHeadlineValue}>{Math.round(activeTrend?.attendance_rate ?? averageAttendance)}%
+                                                        </div>
+                                                    </div>
 
-                                            <div className={styles.chartPills}>
+                                                    <div className={styles.chartPills}>
                         <span className={styles.summaryPill}>
                           <CheckCircleOutlined/>
                             {activeTrend?.present_count ?? 0} có mặt
                         </span>
-                                                <span className={styles.summaryPill}>
+                                                        <span className={styles.summaryPill}>
                           <ExclamationCircleOutlined/>
-                                                    {activeTrend?.absent_count ?? 0} vắng
+                                                            {activeTrend?.absent_count ?? 0} vắng
                         </span>
-                                                <span className={styles.summaryPill}>
+                                                        <span className={styles.summaryPill}>
                           <ClockCircleOutlined/>
-                                                    {activeTrend?.late_count ?? 0} muộn
+                                                            {activeTrend?.late_count ?? 0} muộn
                         </span>
-                                                {activeTrendDelta != null ? (
-                                                    <span className={styles.summaryPill}>
+                                                        {activeTrendDelta != null ? (
+                                                            <span className={styles.summaryPill}>
                             {activeTrendDelta >= 0 ? <ArrowUpOutlined/> : <ArrowDownOutlined/>}
-                                                        {activeTrendDelta > 0 ? "+" : ""}
-                                                        {activeTrendDelta}%
+                                                                {activeTrendDelta > 0 ? "+" : ""}
+                                                                {activeTrendDelta}%
                           </span>
-                                                ) : null}
-                                                <span className={styles.chartWheelHint}>
-                          <InfoCircleOutlined/>
-                          Cuộn để đổi ngày
-                        </span>
-                                            </div>
-                                        </div>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
 
-                                        <div
-                                            className={styles.chartCanvas}
-                                            onWheel={(event) => {
-                                                if (!trend.length) return;
-                                                event.preventDefault();
-                                                const direction = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? Math.sign(event.deltaX) : Math.sign(event.deltaY);
-                                                moveTrendFocus(direction);
-                                            }}
-                                        >
-                                            <div className={styles.chartYAxis}>
-                                                {chartGeometry.gridValues.map((value, index) => (
-                                                    <span key={`${value}-${index}`}>{value}%</span>
-                                                ))}
-                                            </div>
-
-                                            <svg
-                                                className={styles.chartSvg}
-                                                viewBox={`0 0 ${chartGeometry.width} ${chartGeometry.height}`}
-                                                role="img"
-                                                aria-label="Biểu đồ hiện diện 7 ngày"
-                                            >
-                                                <defs>
-                                                    <linearGradient id="dashboardTrendArea" x1="0" x2="0" y1="0" y2="1">
-                                                        <stop offset="0%" stopColor="rgba(14, 165, 233, 0.28)"/>
-                                                        <stop offset="100%" stopColor="rgba(14, 165, 233, 0.02)"/>
-                                                    </linearGradient>
-                                                    <linearGradient id="dashboardTrendLine" x1="0" x2="1" y1="0" y2="0">
-                                                        <stop offset="0%" stopColor="#0ea5e9"/>
-                                                        <stop offset="100%" stopColor="#22c55e"/>
-                                                    </linearGradient>
-                                                </defs>
-
-                                                {chartGeometry.gridValues.map((value, index) => {
-                                                    const y =
-                                                        chartGeometry.height -
-                                                        chartGeometry.padBottom -
-                                                        ((value - chartGeometry.lower) / Math.max(chartGeometry.upper - chartGeometry.lower, 1)) *
-                                                        chartGeometry.usableHeight;
-                                                    return (
-                                                        <line
-                                                            key={`${value}-${index}`}
-                                                            x1={chartGeometry.padLeft}
-                                                            y1={y}
-                                                            x2={chartGeometry.width - chartGeometry.padRight}
-                                                            y2={y}
-                                                            className={styles.chartGridLine}
-                                                        />
-                                                    );
-                                                })}
-
-                                                <path d={chartGeometry.areaPath} className={styles.chartArea}/>
-                                                <path d={chartGeometry.linePath} className={styles.chartLine}/>
-
-                                                {activeTrend ? (
-                                                    <line
-                                                        x1={chartGeometry.points[activeTrendIndex]?.x ?? chartGeometry.padLeft}
-                                                        y1={chartGeometry.padBottom / 2}
-                                                        x2={chartGeometry.points[activeTrendIndex]?.x ?? chartGeometry.padLeft}
-                                                        y2={chartGeometry.height - chartGeometry.padBottom}
-                                                        className={styles.chartFocusLine}
-                                                    />
-                                                ) : null}
-
-                                                {chartGeometry.points.map((point, index) => (
-                                                    <g
-                                                        key={point.day}
-                                                        className={index === activeTrendIndex ? styles.chartPointActive : undefined}
-                                                        onMouseEnter={() => setActiveTrendIndex(index)}
-                                                        onFocus={() => setActiveTrendIndex(index)}
-                                                    >
-                                                        {index === activeTrendIndex ?
-                                                            <circle cx={point.x} cy={point.y} r="14"
-                                                                    className={styles.chartPointHalo}/> : null}
-                                                        <circle cx={point.x} cy={point.y} r="6"
-                                                                className={styles.chartPointOuter}/>
-                                                        <circle cx={point.x} cy={point.y} r="3.5"
-                                                                className={styles.chartPointInner}/>
-                                                    </g>
-                                                ))}
-                                            </svg>
-                                        </div>
-
-                                        <div className={styles.chartAxisRow}>
-                                            {chartGeometry.points.map((point, index) => (
-                                                <button
-                                                    key={point.day}
-                                                    type="button"
-                                                    className={index === activeTrendIndex ? `${styles.chartAxisItem} ${styles.chartAxisItemActive}` : styles.chartAxisItem}
-                                                    onMouseEnter={() => setActiveTrendIndex(index)}
-                                                    onFocus={() => setActiveTrendIndex(index)}
-                                                    onClick={() => setActiveTrendIndex(index)}
+                                                <div
+                                                    className={styles.chartCanvas}
+                                                    onWheel={(event) => {
+                                                        if (!trend.length) return;
+                                                        event.preventDefault();
+                                                        const direction = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? Math.sign(event.deltaX) : Math.sign(event.deltaY);
+                                                        moveTrendFocus(direction);
+                                                    }}
                                                 >
-                                                    <strong>{point.label}</strong>
-                                                    <span>{formatDate(point.day)}</span>
-                                                </button>
-                                            ))}
-                                        </div>
+                                                    <div className={styles.chartYAxis}>
+                                                        {chartGeometry.gridValues.map((value, index) => (
+                                                            <span key={`${value}-${index}`}>{value}%</span>
+                                                        ))}
+                                                    </div>
 
-                                        <div className={styles.chartDetailGrid}>
-                                            <article className={styles.chartDetailCard}>
-                                                <span className={styles.chartDetailLabel}>Ngày đang xem</span>
-                                                <strong
-                                                    className={styles.chartDetailValue}>{activeTrend ? formatLongDate(activeTrend.day) : "--"}</strong>
-                                            </article>
-                                            <article className={styles.chartDetailCard}>
-                                                <span className={styles.chartDetailLabel}>Hiện diện</span>
-                                                <strong
-                                                    className={styles.chartDetailValue}>{activeTrend ? `${activeTrend.attendance_rate}%` : "--"}</strong>
-                                                <span className={styles.chartDetailSub}>
-                          {activeTrend?.present_count ?? 0} có mặt • {activeTrend?.absent_count ?? 0} vắng
-                        </span>
-                                            </article>
-                                            <article className={styles.chartDetailCard}>
-                                                <span className={styles.chartDetailLabel}>Đi muộn</span>
-                                                <strong
-                                                    className={styles.chartDetailValue}>{activeTrend?.late_count ?? 0}</strong>
-                                                <span className={styles.chartDetailSub}>
-                          {activeTrendDelta == null ? "Chưa đủ dữ liệu so sánh" : `${activeTrendDelta > 0 ? "+" : ""}${activeTrendDelta}% so với ngày trước`}
-                        </span>
-                                            </article>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className={styles.emptyState}>Chưa có dữ liệu xu hướng để hiển thị.</div>
-                                )}
+                                                    <svg
+                                                        className={styles.chartSvg}
+                                                        viewBox={`0 0 ${chartGeometry.width} ${chartGeometry.height}`}
+                                                        role="img"
+                                                        aria-label="Biểu đồ hiện diện 7 ngày"
+                                                    >
+                                                        <defs>
+                                                            <linearGradient id="dashboardTrendArea" x1="0" x2="0" y1="0"
+                                                                            y2="1">
+                                                                <stop offset="0%" stopColor="rgba(14, 165, 233, 0.28)"/>
+                                                                <stop offset="100%"
+                                                                      stopColor="rgba(14, 165, 233, 0.02)"/>
+                                                            </linearGradient>
+                                                            <linearGradient id="dashboardTrendLine" x1="0" x2="1" y1="0"
+                                                                            y2="0">
+                                                                <stop offset="0%" stopColor="#0ea5e9"/>
+                                                                <stop offset="100%" stopColor="#22c55e"/>
+                                                            </linearGradient>
+                                                        </defs>
+
+                                                        {chartGeometry.gridValues.map((value, index) => {
+                                                            const y =
+                                                                chartGeometry.height -
+                                                                chartGeometry.padBottom -
+                                                                ((value - chartGeometry.lower) / Math.max(chartGeometry.upper - chartGeometry.lower, 1)) *
+                                                                chartGeometry.usableHeight;
+                                                            return (
+                                                                <line
+                                                                    key={`${value}-${index}`}
+                                                                    x1={chartGeometry.padLeft}
+                                                                    y1={y}
+                                                                    x2={chartGeometry.width - chartGeometry.padRight}
+                                                                    y2={y}
+                                                                    className={styles.chartGridLine}
+                                                                />
+                                                            );
+                                                        })}
+
+                                                        <path d={chartGeometry.areaPath} className={styles.chartArea}/>
+                                                        <path d={chartGeometry.linePath} className={styles.chartLine}/>
+
+                                                        {activeTrend ? (
+                                                            <line
+                                                                x1={chartGeometry.points[activeTrendIndex]?.x ?? chartGeometry.padLeft}
+                                                                y1={chartGeometry.padBottom / 2}
+                                                                x2={chartGeometry.points[activeTrendIndex]?.x ?? chartGeometry.padLeft}
+                                                                y2={chartGeometry.height - chartGeometry.padBottom}
+                                                                className={styles.chartFocusLine}
+                                                            />
+                                                        ) : null}
+
+                                                        {chartGeometry.points.map((point, index) => (
+                                                            <g
+                                                                key={point.day}
+                                                                className={index === activeTrendIndex ? styles.chartPointActive : undefined}
+                                                                onMouseEnter={() => setActiveTrendIndex(index)}
+                                                                onFocus={() => setActiveTrendIndex(index)}
+                                                            >
+                                                                {index === activeTrendIndex ?
+                                                                    <circle cx={point.x} cy={point.y} r="14"
+                                                                            className={styles.chartPointHalo}/> : null}
+                                                                <circle cx={point.x} cy={point.y} r="6"
+                                                                        className={styles.chartPointOuter}/>
+                                                                <circle cx={point.x} cy={point.y} r="3.5"
+                                                                        className={styles.chartPointInner}/>
+                                                            </g>
+                                                        ))}
+                                                    </svg>
+                                                </div>
+
+                                                <div className={styles.chartAxisRow}>
+                                                    {chartGeometry.points.map((point, index) => (
+                                                        <button
+                                                            key={point.day}
+                                                            type="button"
+                                                            className={index === activeTrendIndex ? `${styles.chartAxisItem} ${styles.chartAxisItemActive}` : styles.chartAxisItem}
+                                                            onMouseEnter={() => setActiveTrendIndex(index)}
+                                                            onFocus={() => setActiveTrendIndex(index)}
+                                                            onClick={() => setActiveTrendIndex(index)}
+                                                        >
+                                                            <strong>{point.label}</strong>
+                                                            <span>{formatDate(point.day)}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className={styles.emptyState}>Chưa có dữ liệu xu hướng để hiển
+                                                thị.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                    </Card>
+                </div>
+
+                <div className={styles.chartGridItem}>
+                    <Card
+                        title={
+                            <span className={styles.sectionTitle}>
+                <TrophyOutlined/>
+                <span>Xếp hạng</span>
+              </span>
+                        }
+                        right={
+                            <div className={styles.periodControls}>
+                                <div className={styles.periodTabs} role="tablist" aria-label="Lọc kỳ thống kê giờ làm">
+                                    {([
+                                        ["week", "Tuần"],
+                                        ["month", "Tháng"],
+                                        ["year", "Năm"]
+                                    ] as const).map(([period, label]) => (
+                                        <button
+                                            key={period}
+                                            type="button"
+                                            className={workHoursPeriod === period ? `${styles.periodTab} ${styles.periodTabActive}` : styles.periodTab}
+                                            onClick={() => setWorkHoursPeriod(period)}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <label className={styles.periodInputWrap}>
+                                    <CalendarOutlined/>
+                                    <span className={styles.srOnly}>{workHoursInputLabel}</span>
+                                    <input
+                                        className={styles.periodInput}
+                                        type={workHoursInputType}
+                                        min={workHoursPeriod === "year" ? "2020" : undefined}
+                                        max={workHoursPeriod === "year" ? "2100" : undefined}
+                                        value={workHoursInputValue(workHoursPeriod, workHoursAnchorDate)}
+                                        onChange={(event) => setWorkHoursAnchorDate(anchorDateFromInput(workHoursPeriod, event.target.value))}
+                                    />
+                                </label>
                             </div>
+                        }
+                    >
+                        {workHoursWaiting ? <WorkHoursSkeleton/> : workHoursState.error ?
+                            <SectionError message={workHoursState.error}/> : (
+                                <div className={styles.workHoursChart}>
+                                    <div className={styles.workHoursSummary}>
+                                        <div className={styles.workHoursMetric}>
+                                            <span>Tổng giờ</span>
+                                            <strong>{formatHours(workHours?.total_work_hours ?? 0)}</strong>
+                                        </div>
+                                        <div className={styles.workHoursMetric}>
+                                            <span>Trung bình</span>
+                                            <strong>{formatHours(workHours?.average_work_hours ?? 0)}</strong>
+                                        </div>
+                                        <div className={styles.workHoursMetric}>
+                                            <span>Khoảng thời gian</span>
+                                            <strong>{workHoursRangeLabel}</strong>
+                                        </div>
+                                    </div>
 
-                            <div className={styles.trendFacts}>
-                                <div className={styles.factCard}>
-                  <span className={styles.factIcon}>
-                    <RiseOutlined/>
-                  </span>
-                                    <div>
-                                        <div className={styles.factLabel}>Ngày tốt nhất</div>
-                                        <strong
-                                            className={styles.factValue}>{bestTrendDay ? `${bestTrendDay.attendance_rate}%` : "--"}</strong>
-                                        <div
-                                            className={styles.factSub}>{bestTrendDay ? `${bestTrendDay.label} • ${formatDate(bestTrendDay.day)}` : "Chưa có dữ liệu"}</div>
+                                    <div className={styles.workHoursList}>
+                                        {workHoursEmployees.map((employee) => {
+                                            const ratio = clamp((employee.total_work_hours / maxWorkHours) * 100, 4, 100);
+                                            return (
+                                                <article key={employee.user_id} className={styles.workHoursRow}>
+                                                    <div
+                                                        className={employee.rank <= 3 ? `${styles.workRank} ${styles.workRankTop}` : styles.workRank}>
+                                                        {employee.rank}
+                                                    </div>
+                                                    <div className={styles.workHoursMain}>
+                                                        <div className={styles.workHoursTopLine}>
+                                                            <div className={styles.workHoursIdentity}>
+                                                                <strong>{employee.user_code + ' - ' + employee.user_name}</strong>
+                                                            </div>
+                                                            <div
+                                                                className={styles.workHoursValue}>{formatHours(employee.total_work_hours)}</div>
+                                                        </div>
+                                                        <div className={styles.workHoursBarTrack}>
+                                                            <span className={styles.workHoursBar}
+                                                                  style={{width: `${ratio}%`}}/>
+                                                        </div>
+                                                        <div className={styles.workHoursMeta}>
+                                                            <span>{employee.working_days} ngày công</span>
+                                                            <span>{formatHours(employee.average_hours_per_day)}/ngày</span>
+                                                            <span>{employee.late_days} đi muộn</span>
+                                                        </div>
+                                                    </div>
+                                                </article>
+                                            );
+                                        })}
+
+                                        {!workHoursEmployees.length ? (
+                                            <div className={styles.emptyState}>Chưa có dữ liệu giờ làm trong kỳ
+                                                này.</div>
+                                        ) : null}
                                     </div>
                                 </div>
-
-                                <div className={styles.factCard}>
-                  <span className={styles.factIcon}>
-                    <FireOutlined/>
-                  </span>
-                                    <div>
-                                        <div className={styles.factLabel}>Ngày yếu nhất</div>
-                                        <strong
-                                            className={styles.factValue}>{weakTrendDay ? `${weakTrendDay.attendance_rate}%` : "--"}</strong>
-                                        <div
-                                            className={styles.factSub}>{weakTrendDay ? `${weakTrendDay.label} • ${formatDate(weakTrendDay.day)}` : "Chưa có dữ liệu"}</div>
-                                    </div>
-                                </div>
-
-                                <div className={styles.factCard}>
-                  <span className={styles.factIcon}>
-                    <FieldTimeOutlined/>
-                  </span>
-                                    <div>
-                                        <div className={styles.factLabel}>Mốc đang focus</div>
-                                        <strong
-                                            className={styles.factValue}>{activeTrend ? `${activeTrend.present_count}/${today?.total_users ?? 0}` : "--"}</strong>
-                                        <div
-                                            className={styles.factSub}>{activeTrend ? `${activeTrend.late_count} đi muộn • ${activeTrend.absent_count} vắng` : "Chưa có dữ liệu"}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        )}
+                            )}
                     </Card>
                 </div>
 
@@ -936,76 +1019,78 @@ export default function DashboardPage() {
                 <span>Tình hình theo phòng ban</span>
               </span>
                         }
-                        right={departmentsWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{departments.length} phòng ban</span>}
+                        right={departmentsWaiting ? <LoadingBadge/> :
+                            <span className={styles.softBadge}>{departments.length} phòng ban</span>}
                     >
-                        {departmentsWaiting ? <DepartmentSkeleton/> : departmentsState.error ? <SectionError message={departmentsState.error}/> : (
-                        <div className={styles.departmentOverview}>
-                            <div className={styles.calloutGrid}>
-                                <div className={styles.calloutCard}>
-                                    <span className={styles.calloutLabel}>Phòng ban nổi bật</span>
-                                    <strong
-                                        className={styles.calloutValue}>{bestDepartment?.department_name ?? "--"}</strong>
-                                    <span
-                                        className={styles.calloutSub}>{bestDepartment ? `${bestDepartment.attendance_rate}% hiện diện` : "Chưa có dữ liệu"}</span>
-                                </div>
-                                <div className={styles.calloutCard}>
-                                    <span className={styles.calloutLabel}>Phòng ban cần theo dõi</span>
-                                    <strong
-                                        className={styles.calloutValue}>{riskDepartment?.department_name ?? "--"}</strong>
-                                    <span className={styles.calloutSub}>
+                        {departmentsWaiting ? <DepartmentSkeleton/> : departmentsState.error ?
+                            <SectionError message={departmentsState.error}/> : (
+                                <div className={styles.departmentOverview}>
+                                    <div className={styles.calloutGrid}>
+                                        <div className={styles.calloutCard}>
+                                            <span className={styles.calloutLabel}>Phòng ban nổi bật</span>
+                                            <strong
+                                                className={styles.calloutValue}>{bestDepartment?.department_name ?? "--"}</strong>
+                                            <span
+                                                className={styles.calloutSub}>{bestDepartment ? `${bestDepartment.attendance_rate}% hiện diện` : "Chưa có dữ liệu"}</span>
+                                        </div>
+                                        <div className={styles.calloutCard}>
+                                            <span className={styles.calloutLabel}>Phòng ban cần theo dõi</span>
+                                            <strong
+                                                className={styles.calloutValue}>{riskDepartment?.department_name ?? "--"}</strong>
+                                            <span className={styles.calloutSub}>
                     {riskDepartment ? `${riskDepartment.absent_count} vắng • ${riskDepartment.late_count} muộn` : "Chưa có dữ liệu"}
                   </span>
-                                </div>
-                            </div>
+                                        </div>
+                                    </div>
 
-                            <div className={styles.departmentList}>
-                                {departmentRanking.slice(0, 8).map((dept) => (
-                                    <article key={`${dept.department_id ?? "none"}-${dept.department_name}`}
-                                             className={styles.departmentRow}>
-                                        <div className={styles.departmentHead}>
-                                            <div>
-                                                <strong
-                                                    className={styles.departmentName}>{dept.department_name}</strong>
-                                                <div className={styles.departmentMeta}>
+                                    <div className={styles.departmentList}>
+                                        {departmentRanking.slice(0, 8).map((dept) => (
+                                            <article key={`${dept.department_id ?? "none"}-${dept.department_name}`}
+                                                     className={styles.departmentRow}>
+                                                <div className={styles.departmentHead}>
+                                                    <div>
+                                                        <strong
+                                                            className={styles.departmentName}>{dept.department_name}</strong>
+                                                        <div className={styles.departmentMeta}>
                           <span className={styles.metaPill}>
                             <TeamOutlined/>
                               {dept.total_users} người
                           </span>
-                                                    <span className={styles.metaPill}>
+                                                            <span className={styles.metaPill}>
                             <CheckCircleOutlined/>
-                                                        {dept.present_count} có mặt
+                                                                {dept.present_count} có mặt
                           </span>
-                                                    <span className={styles.metaPill}>
+                                                            <span className={styles.metaPill}>
                             <ClockCircleOutlined/>
-                                                        {dept.late_count} muộn
+                                                                {dept.late_count} muộn
                           </span>
-                                                    <span className={styles.metaPill}>
+                                                            <span className={styles.metaPill}>
                             <ExclamationCircleOutlined/>
-                                                        {dept.absent_count} vắng
+                                                                {dept.absent_count} vắng
                           </span>
-                                                </div>
-                                            </div>
-                                            <span
-                                                className={`${styles.rateBadge} ${
-                                                    dept.attendance_rate >= 95 ? styles.rateGood : dept.attendance_rate >= 85 ? styles.rateWarn : styles.rateBad
-                                                }`}
-                                            >
+                                                        </div>
+                                                    </div>
+                                                    <span
+                                                        className={`${styles.rateBadge} ${
+                                                            dept.attendance_rate >= 95 ? styles.rateGood : dept.attendance_rate >= 85 ? styles.rateWarn : styles.rateBad
+                                                        }`}
+                                                    >
                         {dept.attendance_rate}%
                       </span>
-                                        </div>
-                                        <div className={styles.progressTrack}>
+                                                </div>
+                                                <div className={styles.progressTrack}>
                                             <span className={styles.progressFill}
                                                   style={{width: `${clamp(dept.attendance_rate, 0, 100)}%`}}/>
-                                        </div>
-                                    </article>
-                                ))}
+                                                </div>
+                                            </article>
+                                        ))}
 
-                                {!departmentRanking.length ?
-                                    <div className={styles.emptyState}>Chưa có dữ liệu phòng ban để hiển
-                                        thị.</div> : null}
-                            </div>
-                        </div>
-                        )}
+                                        {!departmentRanking.length ?
+                                            <div className={styles.emptyState}>Chưa có dữ liệu phòng ban để hiển
+                                                thị.</div> : null}
+                                    </div>
+                                </div>
+                            )}
                     </Card>
                 </div>
 
@@ -1016,7 +1101,8 @@ export default function DashboardPage() {
               <span>Hàng đợi nghỉ phép</span>
             </span>
                     }
-                    right={leaveSummaryWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{leaveSummary?.pending_count ?? 0} chờ duyệt</span>}
+                    right={leaveSummaryWaiting ? <LoadingBadge/> :
+                        <span className={styles.softBadge}>{leaveSummary?.pending_count ?? 0} chờ duyệt</span>}
                 >
                     {leaveSummaryWaiting ? (
                         <LeaveSummarySkeleton/>
@@ -1044,37 +1130,37 @@ export default function DashboardPage() {
                     ) : pendingLeavesState.error ? (
                         <SectionError message={pendingLeavesState.error}/>
                     ) : (
-                    <div className={styles.queueList}>
-                        {pendingLeaves.map((item) => (
-                            <article key={item.id} className={styles.queueRow}>
-                                <div className={styles.queueAvatar}>{getInitials(item.user_name)}</div>
-                                <div className={styles.queueMain}>
-                                    <div className={styles.queueTop}>
-                                        <strong>{item.user_name}</strong>
-                                        <span className={styles.timeBadge}>{queueAge(item.created_at)}</span>
-                                    </div>
-                                    <div className={styles.queueSub}>{leaveTypeVi(item.type)}</div>
-                                    <div className={styles.queueMeta}>
+                        <div className={styles.queueList}>
+                            {pendingLeaves.map((item) => (
+                                <article key={item.id} className={styles.queueRow}>
+                                    <div className={styles.queueAvatar}>{getInitials(item.user_name)}</div>
+                                    <div className={styles.queueMain}>
+                                        <div className={styles.queueTop}>
+                                            <strong>{item.user_name}</strong>
+                                            <span className={styles.timeBadge}>{queueAge(item.created_at)}</span>
+                                        </div>
+                                        <div className={styles.queueSub}>{leaveTypeVi(item.type)}</div>
+                                        <div className={styles.queueMeta}>
                     <span className={styles.metaPill}>
                       <CalendarOutlined/>
                         {formatDate(item.start_date)} - {formatDate(item.end_date)}
                     </span>
-                                        <span className={styles.metaPill}>
+                                            <span className={styles.metaPill}>
                       <NumberOutlined/>
-                                            {item.user_code || "--"}
+                                                {item.user_code || "--"}
                     </span>
-                                        <span className={styles.metaPill}>
+                                            <span className={styles.metaPill}>
                       <ApartmentOutlined/>
-                                            {item.department_name || "Chưa phân phòng ban"}
+                                                {item.department_name || "Chưa phân phòng ban"}
                     </span>
+                                        </div>
                                     </div>
-                                </div>
-                            </article>
-                        ))}
+                                </article>
+                            ))}
 
-                        {!pendingLeaves.length ?
-                            <div className={styles.emptyState}>Không có đơn nghỉ phép đang chờ duyệt.</div> : null}
-                    </div>
+                            {!pendingLeaves.length ?
+                                <div className={styles.emptyState}>Không có đơn nghỉ phép đang chờ duyệt.</div> : null}
+                        </div>
                     )}
                 </Card>
 
@@ -1085,44 +1171,45 @@ export default function DashboardPage() {
               <span>Chấm công gần nhất</span>
             </span>
                     }
-                    right={recentLogsWaiting ? <LoadingBadge/> : <span className={styles.softBadge}>{recentLogs.length} bản ghi</span>}
+                    right={recentLogsWaiting ? <LoadingBadge/> :
+                        <span className={styles.softBadge}>{recentLogs.length} bản ghi</span>}
                 >
                     {recentLogsWaiting ? (
                         <QueueSkeleton rows={4}/>
                     ) : recentLogsState.error ? (
                         <SectionError message={recentLogsState.error}/>
                     ) : (
-                    <div className={styles.queueList}>
-                        {recentLogs.map((item) => (
-                            <article key={item.id} className={styles.queueRow}>
-                                <div className={styles.queueAvatar}>{getInitials(item.user_name)}</div>
-                                <div className={styles.queueMain}>
-                                    <div className={styles.queueTop}>
-                                        <strong>{item.user_name}</strong>
-                                        <span className={styles.timeBadge}>{formatDateTime(item.timestamp)}</span>
-                                    </div>
-                                    <div className={styles.queueSub}>{attendanceTypeVi(item.type)}</div>
-                                    <div className={styles.queueMeta}>
+                        <div className={styles.queueList}>
+                            {recentLogs.map((item) => (
+                                <article key={item.id} className={styles.queueRow}>
+                                    <div className={styles.queueAvatar}>{getInitials(item.user_name)}</div>
+                                    <div className={styles.queueMain}>
+                                        <div className={styles.queueTop}>
+                                            <strong>{item.user_name}</strong>
+                                            <span className={styles.timeBadge}>{formatDateTime(item.timestamp)}</span>
+                                        </div>
+                                        <div className={styles.queueSub}>{attendanceTypeVi(item.type)}</div>
+                                        <div className={styles.queueMeta}>
                     <span className={styles.metaPill}>
                       {attendanceIcon(item.type)}
                         {attendanceTypeVi(item.type)}
                     </span>
-                                        <span className={styles.metaPill}>
+                                            <span className={styles.metaPill}>
                       <NumberOutlined/>
-                                            {item.user_code || "--"}
+                                                {item.user_code || "--"}
                     </span>
-                                        <span className={styles.metaPill}>
+                                            <span className={styles.metaPill}>
                       <CheckCircleOutlined/>
-                                            {item.confidence.toFixed(3)}
+                                                {item.confidence.toFixed(3)}
                     </span>
+                                        </div>
                                     </div>
-                                </div>
-                            </article>
-                        ))}
+                                </article>
+                            ))}
 
-                        {!recentLogs.length ?
-                            <div className={styles.emptyState}>Chưa có log chấm công gần đây.</div> : null}
-                    </div>
+                            {!recentLogs.length ?
+                                <div className={styles.emptyState}>Chưa có log chấm công gần đây.</div> : null}
+                        </div>
                     )}
                 </Card>
             </section>

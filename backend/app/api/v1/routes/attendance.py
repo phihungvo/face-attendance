@@ -29,6 +29,7 @@ from app.schemas.attendance import (
     ManagerDashboardSummary,
     ManagerDashboardTodaySummary,
     ManagerDashboardTrendPoint,
+    ManagerDashboardWorkHoursSummary,
     MonthlyReportRow,
     TimelogRow,
     TimelogUpsertRequest,
@@ -710,6 +711,28 @@ def dashboard_trend(
     _: object = Depends(require_permission("dashboard.read")),
 ) -> ApiResponse[list[ManagerDashboardTrendPoint]]:
     return ok([ManagerDashboardTrendPoint(**item) for item in service.manager_dashboard_trend(db, company_id=company_id, days=days)])
+
+
+@router.get("/dashboard/work-hours", response_model=ApiResponse[ManagerDashboardWorkHoursSummary])
+def dashboard_work_hours(
+    period: str = Query("month", pattern="^(week|month|year)$"),
+    anchor_date: date | None = None,
+    limit: int = Query(3, ge=1, le=20),
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[ManagerDashboardWorkHoursSummary]:
+    return ok(
+        ManagerDashboardWorkHoursSummary(
+            **service.manager_dashboard_work_hours(
+                db,
+                company_id=company_id,
+                period=period,
+                anchor_day=anchor_date,
+                limit=limit,
+            )
+        )
+    )
 
 
 @router.get("/dashboard/departments", response_model=ApiResponse[list[ManagerDashboardDepartmentRow]])

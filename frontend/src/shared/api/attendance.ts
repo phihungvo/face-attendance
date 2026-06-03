@@ -83,6 +83,33 @@ export type ManagerDashboardRecentLogItem = {
   timestamp: string;
 };
 
+export type ManagerDashboardWorkHoursPeriod = "week" | "month" | "year";
+
+export type ManagerDashboardWorkHoursEmployee = {
+  rank: number;
+  user_id: number;
+  user_name: string;
+  user_code?: string | null;
+  department_id?: number | null;
+  department_name?: string | null;
+  total_work_hours: number;
+  working_days: number;
+  late_days: number;
+  absent_days: number;
+  average_hours_per_day: number;
+};
+
+export type ManagerDashboardWorkHoursSummary = {
+  period: ManagerDashboardWorkHoursPeriod;
+  from_date: string;
+  to_date: string;
+  total_work_hours: number;
+  average_work_hours: number;
+  employee_count: number;
+  top_employee_name?: string | null;
+  employees: ManagerDashboardWorkHoursEmployee[];
+};
+
 export type ManagerDashboardSummary = {
   generated_at: string;
   today: ManagerDashboardTodaySummary;
@@ -253,6 +280,16 @@ export async function getManagerDashboardToday() {
 export async function getManagerDashboardTrend(params?: { days?: number }) {
   const res = await api.get<ApiResponse<ManagerDashboardTrendPoint[]>>("/attendance/dashboard/trend", { params });
   return res.data.result ?? [];
+}
+
+export async function getManagerDashboardWorkHours(params?: {
+  period?: ManagerDashboardWorkHoursPeriod;
+  anchor_date?: string;
+  limit?: number;
+}) {
+  const res = await api.get<ApiResponse<ManagerDashboardWorkHoursSummary>>("/attendance/dashboard/work-hours", { params });
+  if (!res.data.result) throw new Error("Không lấy được thống kê giờ làm");
+  return res.data.result;
 }
 
 export async function getManagerDashboardDepartments() {

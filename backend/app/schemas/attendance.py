@@ -176,6 +176,31 @@ class ManagerDashboardRecentLogItem(BaseModel):
     timestamp: datetime
 
 
+class ManagerDashboardWorkHoursEmployee(BaseModel):
+    rank: int
+    user_id: int
+    user_name: str
+    user_code: str | None = None
+    department_id: int | None = None
+    department_name: str | None = None
+    total_work_hours: float
+    working_days: int
+    late_days: int
+    absent_days: int
+    average_hours_per_day: float
+
+
+class ManagerDashboardWorkHoursSummary(BaseModel):
+    period: str
+    from_date: str
+    to_date: str
+    total_work_hours: float
+    average_work_hours: float
+    employee_count: int
+    top_employee_name: str | None = None
+    employees: list[ManagerDashboardWorkHoursEmployee]
+
+
 class ManagerDashboardSummary(BaseModel):
     generated_at: datetime
     today: ManagerDashboardTodaySummary

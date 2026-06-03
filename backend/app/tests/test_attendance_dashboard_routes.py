@@ -50,6 +50,49 @@ class TestAttendanceDashboardRoutes(unittest.TestCase):
         self.assertEqual(service.manager_dashboard_trend.call_args.kwargs["days"], 14)
 
     @patch("app.api.v1.routes.attendance.service")
+    def test_dashboard_work_hours_accepts_period_anchor_and_limit(self, service) -> None:
+        service.manager_dashboard_work_hours.return_value = {
+            "period": "month",
+            "from_date": "2026-06-01",
+            "to_date": "2026-06-30",
+            "total_work_hours": 168.5,
+            "average_work_hours": 84.25,
+            "employee_count": 2,
+            "top_employee_name": "Nguyen Van A",
+            "employees": [
+                {
+                    "rank": 1,
+                    "user_id": 4,
+                    "user_name": "Nguyen Van A",
+                    "user_code": "NV004",
+                    "department_id": 3,
+                    "department_name": "Van phong",
+                    "total_work_hours": 92.0,
+                    "working_days": 12,
+                    "late_days": 1,
+                    "absent_days": 18,
+                    "average_hours_per_day": 7.67,
+                }
+            ],
+        }
+
+        res = attendance.dashboard_work_hours(
+            period="month",
+            anchor_date=attendance.date(2026, 6, 3),
+            limit=6,
+            db=object(),
+            company_id=7,
+            _=object(),
+        )
+
+        self.assertEqual(res.result.period, "month")
+        self.assertEqual(res.result.employees[0].rank, 1)
+        service.manager_dashboard_work_hours.assert_called_once()
+        self.assertEqual(service.manager_dashboard_work_hours.call_args.kwargs["company_id"], 7)
+        self.assertEqual(service.manager_dashboard_work_hours.call_args.kwargs["period"], "month")
+        self.assertEqual(service.manager_dashboard_work_hours.call_args.kwargs["limit"], 6)
+
+    @patch("app.api.v1.routes.attendance.service")
     def test_dashboard_departments_returns_rows(self, service) -> None:
         service.manager_dashboard_departments.return_value = [
             {

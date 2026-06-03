@@ -964,6 +964,121 @@ class AttendanceService:
             )
         return trend
 
+    def manager_dashboard_work_hours(
+        self,
+        db: Session,
+        *,
+        company_id: int | None = None,
+        period: str = "month",
+        anchor_day: date | None = None,
+        limit: int = 3,
+    ) -> dict[str, object]:
+        policy, _generated_at, today = self._dashboard_today_context(db, company_id=company_id)
+        anchor = anchor_day or today
+        normalized_period = period if period in {"week", "month", "year"} else "month"
+
+        if normalized_period == "week":
+            from_day = anchor - timedelta(days=anchor.weekday())
+            to_day = from_day + timedelta(days=6)
+        elif normalized_period == "year":
+            from_day = date(anchor.year, 1, 1)
+            to_day = date(anchor.year, 12, 31)
+        else:
+            from_day = date(anchor.year, anchor.month, 1)
+            if anchor.month == 12:
+                next_month = date(anchor.year + 1, 1, 1)
+            else:
+                next_month = date(anchor.year, anchor.month + 1, 1)
+            to_day = next_month - timedelta(days=1)
+
+        bounded_limit = max(1, min(int(limit), 20))
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        start = datetime.combine(from_day, time(0, 0, 0))
+        end = datetime.combine(to_day + timedelta(days=1), time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
+
+        logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        departments = self._depts.list(db, company_id=company_id, limit=10000, offset=0)
+        dept_by_id = {int(dept.id): dept for dept in departments}
+        users_by_id = {int(user.id): user for user in users}
+
+        per_user_day: dict[tuple[int, date], dict[str, datetime]] = {}
+        for log in logs:
+            user_id = int(log.user_id)
+            if user_id not in users_by_id:
+                continue
+            attendance_day = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
+            if attendance_day < from_day or attendance_day > to_day:
+                continue
+            bucket = per_user_day.setdefault((user_id, attendance_day), {})
+            if log.type == "checkin":
+                prev = bucket.get("checkin")
+                if prev is None or log.timestamp < prev:
+                    bucket["checkin"] = log.timestamp
+            else:
+                prev = bucket.get("checkout")
+                if prev is None or log.timestamp > prev:
+                    bucket["checkout"] = log.timestamp
+
+        base_cfg = self._policy_cfg(policy)
+        user_ids = [int(user.id) for user in users]
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=from_day, to_day=to_day, user_ids=user_ids)
+        period_days = (to_day - from_day).days + 1
+        totals: dict[int, dict[str, float | int]] = {
+            int(user.id): {"total_work_hours": 0.0, "working_days": 0, "late_days": 0} for user in users
+        }
+
+        for (user_id, attendance_day), times in per_user_day.items():
+            cin = times.get("checkin")
+            if cin is None:
+                continue
+            cfg = cfg_map.get((user_id, attendance_day), base_cfg)
+            computed = compute_attendance(day=attendance_day, checkin_time=cin, checkout_time=times.get("checkout"), cfg=cfg)
+            bucket = totals[user_id]
+            bucket["working_days"] = int(bucket["working_days"]) + 1
+            bucket["total_work_hours"] = float(bucket["total_work_hours"]) + (computed.working_minutes / 60.0)
+            if computed.late_minutes > 0:
+                bucket["late_days"] = int(bucket["late_days"]) + 1
+
+        rows: list[dict[str, object]] = []
+        for user in users:
+            user_id = int(user.id)
+            total_hours = round(float(totals[user_id]["total_work_hours"]), 2)
+            working_days = int(totals[user_id]["working_days"])
+            dept_id = int(user.department_id) if getattr(user, "department_id", None) is not None else None
+            dept = dept_by_id.get(dept_id) if dept_id is not None else None
+            rows.append(
+                {
+                    "rank": 0,
+                    "user_id": user_id,
+                    "user_name": str(user.name),
+                    "user_code": user.code,
+                    "department_id": dept_id,
+                    "department_name": dept.name if dept is not None else None,
+                    "total_work_hours": total_hours,
+                    "working_days": working_days,
+                    "late_days": int(totals[user_id]["late_days"]),
+                    "absent_days": max(0, period_days - working_days),
+                    "average_hours_per_day": round(total_hours / working_days, 2) if working_days else 0.0,
+                }
+            )
+
+        rows.sort(key=lambda item: (-float(item["total_work_hours"]), -int(item["working_days"]), str(item["user_name"])))
+        ranked = [{**row, "rank": index + 1} for index, row in enumerate(rows)]
+        visible = ranked[:bounded_limit]
+        total_work_hours = round(sum(float(row["total_work_hours"]) for row in ranked), 2)
+
+        return {
+            "period": normalized_period,
+            "from_date": from_day.isoformat(),
+            "to_date": to_day.isoformat(),
+            "total_work_hours": total_work_hours,
+            "average_work_hours": round(total_work_hours / len(ranked), 2) if ranked else 0.0,
+            "employee_count": len(ranked),
+            "top_employee_name": str(ranked[0]["user_name"]) if ranked else None,
+            "employees": visible,
+        }
+
     def manager_dashboard_departments(self, db: Session, *, company_id: int | None = None) -> list[dict[str, object]]:
         policy, _generated_at, today = self._dashboard_today_context(db, company_id=company_id)
         users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
