@@ -6,8 +6,12 @@ import { ProfileOutlined } from "@ant-design/icons";
 import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
 import { empKeys } from "../../cacheKeys";
 import AttendanceEvidenceHistoryPanel from "../../../shared/attendanceEvidence/AttendanceEvidenceHistoryPanel";
+import { useAuth } from "../../../shared/auth/auth";
+import CompanyRequiredNotice from "../../components/CompanyRequiredNotice/CompanyRequiredNotice";
 
 export default function EmployeeTimesheetPage() {
+  const auth = useAuth();
+  const hasCompany = Boolean(auth.companyId);
   const now = useMemo(() => new Date(), []);
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [active, setActive] = useState(currentMonth);
@@ -32,7 +36,8 @@ export default function EmployeeTimesheetPage() {
       const lastDay = new Date(y, m, 0).getDate();
       const to = `${active}-${String(lastDay).padStart(2, "0")}`;
       return listMyTimelog({ from_date: from, to_date: to });
-    }
+    },
+    enabled: hasCompany
   });
 
   useEffect(() => {
@@ -40,6 +45,10 @@ export default function EmployeeTimesheetPage() {
     else setError(null);
     if (q.data) setRows(q.data);
   }, [q.data, q.error]);
+
+  if (!hasCompany) {
+    return <CompanyRequiredNotice title="Chưa có lịch sử chấm công" message="Lịch sử chấm công sẽ mở sau khi tài khoản của bạn được gán vào một công ty." />;
+  }
 
   return (
     <div className={styles.page}>

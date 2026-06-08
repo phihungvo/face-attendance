@@ -7,6 +7,12 @@ import {getMyLeaveBalance} from "../../../shared/api/leaves";
 import {useTheme} from "../../../shared/theme/theme";
 import {useAuth} from "../../../shared/auth/auth";
 import {
+    acceptCompanyInvitation,
+    createCompanyJoinRequest,
+    declineCompanyInvitation,
+    getMyCompanyMembership
+} from "../../../shared/api/companyMembership";
+import {
     listMyScheduleRegistrations,
     listSchedules,
     type WorkSchedule,
@@ -23,6 +29,7 @@ import {
     MoonOutlined,
     StopOutlined,
     SunOutlined,
+    TeamOutlined,
     WarningOutlined
 } from "@ant-design/icons";
 import {useCachedQuery} from "../../../shared/hooks/useCachedQuery";
@@ -31,6 +38,10 @@ import {empKeys} from "../../cacheKeys";
 export default function EmployeeHomePage() {
     const auth = useAuth();
     const {resolvedTheme, toggle} = useTheme();
+    const hasCompany = Boolean(auth.companyId);
+    const [joinCode, setJoinCode] = useState("");
+    const [membershipActionLoading, setMembershipActionLoading] = useState(false);
+    const [membershipActionError, setMembershipActionError] = useState<string | null>(null);
     const [today, setToday] = useState<{ checkin: string; checkout: string; worked: string; status: "in" | "idle" }>({
         checkin: "—",
         checkout: "—",
@@ -77,10 +88,18 @@ export default function EmployeeHomePage() {
     });
     const me = qMe.data;
 
+    const qMembership = useCachedQuery({
+        key: empKeys.companyMembership(),
+        ttlMs: 30_000,
+        fetcher: getMyCompanyMembership
+    });
+    const membership = qMembership.data;
+
     const qSchedules = useCachedQuery({
         key: empKeys.schedules("active-summary"),
         ttlMs: 5 * 60_000,
-        fetcher: () => listSchedules({status: "active", limit: 200, offset: 0})
+        fetcher: () => listSchedules({status: "active", limit: 200, offset: 0}),
+        enabled: hasCompany
     });
     const schedules = qSchedules.data ?? [];
 
@@ -90,14 +109,16 @@ export default function EmployeeHomePage() {
         fetcher: () => {
             const today = new Date().toISOString().slice(0, 10);
             return listMyScheduleRegistrations({from_date: today, to_date: today, limit: 20, offset: 0});
-        }
+        },
+        enabled: hasCompany
     });
     const regs = qRegs.data ?? [];
 
     const qLeaveBalance = useCachedQuery({
         key: empKeys.myLeaveBalance(null),
         ttlMs: 2 * 60_000,
-        fetcher: () => getMyLeaveBalance()
+        fetcher: () => getMyLeaveBalance(),
+        enabled: hasCompany
     });
 
     useEffect(() => {
@@ -114,7 +135,8 @@ export default function EmployeeHomePage() {
             const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
             const to = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
             return listMyTimelog({from_date: from, to_date: to});
-        }
+        },
+        enabled: hasCompany
     });
 
     useEffect(() => {
@@ -300,8 +322,163 @@ export default function EmployeeHomePage() {
         .slice(-2)
         .map((s) => s[0]?.toUpperCase() ?? "")
         .join("");
-    const companyName = auth.companyName || "Công ty của bạn";
-    const companyInitial = companyName.trim().slice(0, 1).toUpperCase() || "C";
+    async function refreshMembershipAfterAction() {
+        qMembership.refresh();
+        qMe.refresh();
+        await auth.refreshMe().catch(() => undefined);
+    }
+
+    if (!hasCompany) {
+        const invitations = membership?.invitations ?? [];
+        const pendingRequest = membership?.pending_request ?? null;
+        return (
+            <div className={styles.page}>
+                <div className={styles.mainHeader}>
+                    <div className={styles.headerTop}>
+                        <div className={styles.greetingWrap}>
+                            <div className={styles.greetingName}>Xin chào, {(me?.name || "Bạn").split(" ").slice(-1)[0]}!</div>
+                            <div className={styles.greetingSub}>Bạn chưa tham gia công ty nào</div>
+                        </div>
+                        <div className={styles.headerActions}>
+                            <button className={styles.themeBtn} type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện">
+                                {resolvedTheme === "dark" ? <MoonOutlined/> : <SunOutlined/>}
+                            </button>
+                            <Link to="/employee/profile" className={styles.headerAvatar} aria-label="Hồ sơ">
+                                {initials || "ME"}
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <div className={styles.membershipPanel}>
+                    {membershipActionError ? <div className={styles.membershipError}>{membershipActionError}</div> : null}
+
+                    {invitations.length > 0 ? (
+                        <div className={styles.membershipCard}>
+                            <div className={styles.membershipCardHead}>
+                                <TeamOutlined/>
+                                <div>
+                                    <div className={styles.membershipTitle}>Lời mời tham gia</div>
+                                    <div className={styles.membershipSub}>Bạn có {invitations.length} lời mời đang chờ phản hồi</div>
+                                </div>
+                            </div>
+                            {invitations.map((invitation) => (
+                                <div key={invitation.id} className={styles.membershipItem}>
+                                    <div>
+                                        <div className={styles.membershipCompany}>{invitation.company?.name ?? `Công ty #${invitation.company_id}`}</div>
+                                        <div className={styles.membershipCode}>{invitation.company?.code ?? "—"}</div>
+                                    </div>
+                                    <div className={styles.membershipActions}>
+                                        <button
+                                            className={styles.membershipPrimary}
+                                            type="button"
+                                            disabled={membershipActionLoading}
+                                            onClick={async () => {
+                                                try {
+                                                    setMembershipActionLoading(true);
+                                                    setMembershipActionError(null);
+                                                    await acceptCompanyInvitation(invitation.id);
+                                                    await refreshMembershipAfterAction();
+                                                } catch (e) {
+                                                    setMembershipActionError(getApiErrorMessage(e));
+                                                } finally {
+                                                    setMembershipActionLoading(false);
+                                                }
+                                            }}
+                                        >
+                                            Chấp nhận
+                                        </button>
+                                        <button
+                                            className={styles.membershipGhost}
+                                            type="button"
+                                            disabled={membershipActionLoading}
+                                            onClick={async () => {
+                                                try {
+                                                    setMembershipActionLoading(true);
+                                                    setMembershipActionError(null);
+                                                    await declineCompanyInvitation(invitation.id);
+                                                    qMembership.refresh();
+                                                } catch (e) {
+                                                    setMembershipActionError(getApiErrorMessage(e));
+                                                } finally {
+                                                    setMembershipActionLoading(false);
+                                                }
+                                            }}
+                                        >
+                                            Từ chối
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : null}
+
+                    {pendingRequest ? (
+                        <div className={styles.membershipCard}>
+                            <div className={styles.membershipCardHead}>
+                                <ClockCircleOutlined/>
+                                <div>
+                                    <div className={styles.membershipTitle}>Yêu cầu tham gia</div>
+                                    <div className={styles.membershipSub}>Trạng thái: Đang chờ duyệt</div>
+                                </div>
+                            </div>
+                            <div className={styles.membershipItem}>
+                                <div>
+                                    <div className={styles.membershipCompany}>{pendingRequest.company?.name ?? `Công ty #${pendingRequest.company_id}`}</div>
+                                    <div className={styles.membershipCode}>{pendingRequest.company?.code ?? "—"}</div>
+                                </div>
+                                <span className={styles.membershipPending}>PENDING</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={styles.membershipCard}>
+                            <div className={styles.membershipCardHead}>
+                                <TeamOutlined/>
+                                <div>
+                                    <div className={styles.membershipTitle}>Tham gia công ty</div>
+                                    <div className={styles.membershipSub}>Nhập mã công ty để gửi yêu cầu cho quản lý duyệt</div>
+                                </div>
+                            </div>
+                            <div className={styles.joinForm}>
+                                <input
+                                    className={styles.joinInput}
+                                    value={joinCode}
+                                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                    placeholder="Mã công ty"
+                                />
+                                <button
+                                    className={styles.membershipPrimary}
+                                    type="button"
+                                    disabled={membershipActionLoading || !joinCode.trim()}
+                                    onClick={async () => {
+                                        try {
+                                            setMembershipActionLoading(true);
+                                            setMembershipActionError(null);
+                                            await createCompanyJoinRequest(joinCode.trim());
+                                            setJoinCode("");
+                                            qMembership.refresh();
+                                        } catch (e) {
+                                            setMembershipActionError(getApiErrorMessage(e));
+                                        } finally {
+                                            setMembershipActionLoading(false);
+                                        }
+                                    }}
+                                >
+                                    {membershipActionLoading ? "Đang gửi..." : "Tham gia công ty"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {!me?.email ? (
+                        <div className={styles.membershipHint}>
+                            Cập nhật email trong hồ sơ để nhận lời mời từ quản lý.
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={styles.page}>

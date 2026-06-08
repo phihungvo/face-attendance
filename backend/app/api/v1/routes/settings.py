@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_company_scope_id, get_current_user, require_permission
-from app.core.errors import BAD_REQUEST, AppException
+from app.api.deps import get_company_scope_id, get_current_user, is_admin, require_permission
+from app.core.errors import BAD_REQUEST, FORBIDDEN, AppException
 from app.core.response import ok
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
@@ -13,6 +13,8 @@ from app.schemas.settings import (
     AttendanceEvidenceSettingsUpdateRequest,
     AttendancePolicyOut,
     AttendancePolicyUpdateRequest,
+    AuthRegistrationSettingsOut,
+    AuthRegistrationSettingsUpdateRequest,
 )
 from app.services.notifications import NotificationService
 from app.services.settings import SettingsService
@@ -20,6 +22,38 @@ from app.services.settings import SettingsService
 router = APIRouter()
 service = SettingsService()
 notification_service = NotificationService()
+
+
+def _require_admin_user(user) -> None:
+    if not is_admin(user):
+        raise AppException(FORBIDDEN, detail="Chỉ admin hệ thống được cấu hình tính năng đăng ký tài khoản")
+
+
+@router.get("/auth-registration", response_model=ApiResponse[AuthRegistrationSettingsOut])
+def get_auth_registration_settings(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[AuthRegistrationSettingsOut]:
+    _require_admin_user(user)
+    return ok(AuthRegistrationSettingsOut(**service.get_auth_registration_settings(db)))
+
+
+@router.put("/auth-registration", response_model=ApiResponse[AuthRegistrationSettingsOut])
+def update_auth_registration_settings(
+    payload: AuthRegistrationSettingsUpdateRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+) -> ApiResponse[AuthRegistrationSettingsOut]:
+    _require_admin_user(user)
+    return ok(
+        AuthRegistrationSettingsOut(
+            **service.update_auth_registration_settings(
+                db,
+                public_registration_enabled=payload.public_registration_enabled,
+                actor_user_id=int(user.id),
+            )
+        )
+    )
 
 
 @router.get("/attendance", response_model=ApiResponse[AttendancePolicyOut])

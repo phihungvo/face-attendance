@@ -69,3 +69,12 @@ class AttendanceEvidenceSettingsUpdateRequest(BaseModel):
     image_max_width: int = Field(..., ge=240, le=4096)
     image_format: str = Field(..., pattern=r"^(webp|jpeg)$")
     image_retention_days: int = Field(..., ge=1, le=3650)
+
+
+class AuthRegistrationSettingsOut(BaseModel):
+    public_registration_enabled: bool
+    account_onboarding_mode: str
+
+
+class AuthRegistrationSettingsUpdateRequest(BaseModel):
+    public_registration_enabled: bool

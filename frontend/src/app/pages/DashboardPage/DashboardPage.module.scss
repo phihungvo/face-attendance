@@ -5,6 +5,82 @@
   margin-top: -20px;
 }
 
+.pageAnimated {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  animation: dashboardPageEnter 0.46s cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+@keyframes dashboardPageEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes dashboardBlockEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes dashboardSoftRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes dashboardChartDraw {
+  from {
+    stroke-dashoffset: 1200;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dashboardChartAreaEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes dashboardProgressEnter {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
 .errorBox {
   padding: 12px 14px;
   border-radius: 16px;
@@ -275,6 +351,34 @@
   min-width: 0;
 }
 
+.pageAnimated .statCard {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0) scale(0.985);
+  animation: dashboardBlockEnter 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.statCard:nth-child(1) {
+  animation-delay: 140ms;
+}
+
+.statCard:nth-child(2) {
+  animation-delay: 190ms;
+}
+
+.statCard:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.statCard:nth-child(4) {
+  animation-delay: 290ms;
+}
+
+.statCard:nth-child(5) {
+  animation-delay: 340ms;
+}
+
 .statCard::after {
   content: '';
   position: absolute;
@@ -366,8 +470,52 @@
   min-width: 0;
 }
 
+.analyticsGrid > * {
+  min-width: 0;
+}
+
+.pageAnimated .analyticsGrid > * {
+  opacity: 0;
+  transform: translate3d(0, 30px, 0) scale(0.988);
+  animation: dashboardBlockEnter 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.analyticsGrid > *:nth-child(1) {
+  animation-delay: 390ms;
+}
+
+.analyticsGrid > *:nth-child(2) {
+  animation-delay: 470ms;
+}
+
+.analyticsGrid > *:nth-child(3) {
+  animation-delay: 550ms;
+}
+
+.analyticsGrid > *:nth-child(4) {
+  animation-delay: 630ms;
+}
+
 .spanFull {
   grid-column: 1 / -1;
+}
+
+.chartGridItem {
+  min-width: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .sectionTitle {
@@ -405,10 +553,252 @@
   font-weight: 900;
 }
 
+.periodControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.periodTabs {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface2) 84%, transparent);
+}
+
+.periodTab {
+  min-width: 54px;
+  height: 26px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.periodTab:hover {
+  color: var(--text);
+}
+
+.periodTabActive {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
+}
+
+.periodInputWrap {
+  position: relative;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text3);
+}
+
+.periodInputWrap :global(.anticon) {
+  font-size: 14px;
+  color: var(--primary);
+}
+
+.periodInput {
+  width: 104px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.workHoursChart {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.workHoursSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workHoursMetric {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface2) 78%, transparent), color-mix(in oklab, var(--surface) 94%, transparent));
+  display: grid;
+  gap: 5px;
+}
+
+.workHoursMetric span {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.workHoursMetric strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.12;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workHoursList {
+  display: grid;
+  gap: 10px;
+}
+
+.workHoursRow {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 6px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface2) 78%, transparent), color-mix(in oklab, var(--surface) 94%, transparent));
+}
+
+.workRank {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.workRankTop {
+  color: #b45309;
+  background: linear-gradient(180deg, color-mix(in oklab, #f59e0b 16%, white), white);
+  border-color: color-mix(in oklab, #f59e0b 34%, var(--border));
+}
+
+.workHoursMain {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workHoursTopLine {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.workHoursIdentity {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workHoursIdentity strong {
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.2;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workHoursIdentity span {
+  color: var(--text3);
+  font-size: 11.5px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workHoursValue {
+  flex-shrink: 0;
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 1000;
+}
+
+.workHoursBarTrack {
+  position: relative;
+  width: 100%;
+  height: 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface2) 72%, var(--surface));
+  border: 1px solid var(--border);
+}
+
+.workHoursBar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 44%, #22c55e 100%);
+  box-shadow: 0 6px 14px rgba(14, 165, 233, 0.18);
+  transform-origin: left center;
+}
+
+.pageAnimated .workHoursBar {
+  animation: dashboardProgressEnter 0.52s cubic-bezier(0.16, 1, 0.3, 1) 560ms both;
+}
+
+.workHoursMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text3);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.workHoursMeta span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.workRankSkeleton {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+}
+
 .chartLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(250px, 0.8fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   min-width: 0;
 }
 
@@ -495,12 +885,13 @@
 
 .chartCanvas {
   position: relative;
-  min-height: 250px;
+  min-height: 230px;
   padding: 10px 10px 6px 42px;
-  border-radius: 22px;
+  border-radius: 18px;
   border: 1px solid var(--border);
-  background: radial-gradient(420px 180px at 0% 0%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 68%),
-  linear-gradient(180deg, color-mix(in oklab, var(--surface2) 82%, transparent), var(--surface));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface2) 86%, transparent), color-mix(in oklab, var(--surface) 96%, transparent)),
+    radial-gradient(420px 180px at 0% 0%, color-mix(in oklab, #0ea5e9 9%, transparent), transparent 68%);
   overflow: hidden;
   cursor: ew-resize;
 }
@@ -537,6 +928,13 @@
 
 .chartArea {
   fill: url(#dashboardTrendArea);
+  opacity: 1;
+}
+
+.pageAnimated .chartArea {
+  opacity: 0;
+  transform-origin: center bottom;
+  animation: dashboardChartAreaEnter 0.46s cubic-bezier(0.16, 1, 0.3, 1) 520ms both;
 }
 
 .chartFocusLine {
@@ -552,6 +950,12 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 8px 14px rgba(14, 165, 233, 0.14));
+}
+
+.pageAnimated .chartLine {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: dashboardChartDraw 0.72s cubic-bezier(0.16, 1, 0.3, 1) 560ms both;
 }
 
 .chartPointOuter {
@@ -647,24 +1051,44 @@
 
 .trendFacts {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
 .factCard {
-  padding: 16px;
-  border-radius: 18px;
+  padding: 14px;
+  border-radius: 16px;
   border: 1px solid var(--border);
   background: color-mix(in oklab, var(--surface2) 70%, transparent);
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
 }
 
+.pageAnimated .factCard {
+  opacity: 0;
+  animation: dashboardSoftRise 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.factCard:nth-child(1) {
+  animation-delay: 620ms;
+}
+
+.factCard:nth-child(2) {
+  animation-delay: 680ms;
+}
+
+.factCard:nth-child(3) {
+  animation-delay: 740ms;
+}
+
 .factIcon {
-  width: 38px;
-  height: 38px;
-  border-radius: 13px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   background: var(--surface);
@@ -685,7 +1109,7 @@
   display: block;
   margin-top: 4px;
   color: var(--text);
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1.05;
   font-weight: 950;
 }
@@ -835,6 +1259,11 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #0ea5e9, #22c55e);
+  transform-origin: left center;
+}
+
+.pageAnimated .progressFill {
+  animation: dashboardProgressEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) 560ms both;
 }
 
 .leaveSummaryStrip {
@@ -931,9 +1360,169 @@
   text-align: center;
 }
 
+.sectionError {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in oklab, var(--danger) 24%, var(--border));
+  background: color-mix(in oklab, var(--danger) 9%, var(--surface2));
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.skeletonLine {
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--surface2) 84%, var(--border)),
+    color-mix(in oklab, var(--surface2) 60%, var(--surface)),
+    color-mix(in oklab, var(--surface2) 84%, var(--border))
+  );
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+}
+
+.statValueSkeleton {
+  width: 68px;
+  height: 34px;
+}
+
+.statFootSkeleton {
+  width: 112px;
+  height: 13px;
+}
+
+.badgeSkeleton {
+  width: 92px;
+  height: 28px;
+}
+
+.chartValueSkeleton {
+  width: 108px;
+  height: 46px;
+  border-radius: 14px;
+}
+
+.textSkeletonSm {
+  width: 78px;
+  height: 11px;
+}
+
+.textSkeletonMd {
+  width: 128px;
+  height: 13px;
+}
+
+.textSkeletonLg {
+  width: 168px;
+  height: 18px;
+}
+
+.pillSkeleton {
+  width: 96px;
+  height: 32px;
+}
+
+.axisSkeleton {
+  min-width: 0;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.chartCanvasSkeleton {
+  display: grid;
+  align-content: center;
+  gap: 34px;
+}
+
+.chartSkeletonLine {
+  height: 3px;
+  border-radius: 999px;
+}
+
+.chartSkeletonLineOne {
+  width: 82%;
+  margin-left: 8%;
+}
+
+.chartSkeletonLineTwo {
+  width: 66%;
+  margin-left: 22%;
+}
+
+.chartSkeletonLineThree {
+  width: 74%;
+  margin-left: 12%;
+}
+
+.factIconSkeleton {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+}
+
+.avatarSkeleton {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.skeletonGrow {
+  min-width: 0;
+  width: 100%;
+}
+
+.rateSkeleton {
+  width: 62px;
+  height: 30px;
+}
+
+.progressSkeleton {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.summaryNumberSkeleton {
+  width: 42px;
+  height: 24px;
+}
+
+.timeSkeleton {
+  width: 88px;
+  height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .pageAnimated,
+  .statCard,
+  .analyticsGrid > *,
+  .chartArea,
+  .chartLine,
+  .factCard,
+  .progressFill {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .chartLine {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 @media (max-width: 1279px) {
   .heroGrid,
   .chartLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .trendFacts {
     grid-template-columns: 1fr;
   }
 
@@ -981,8 +1570,13 @@
   .analyticsGrid,
   .calloutGrid,
   .leaveSummaryStrip,
-  .chartDetailGrid {
+  .chartDetailGrid,
+  .workHoursSummary {
     grid-template-columns: 1fr;
+  }
+
+  .periodControls {
+    justify-content: flex-start;
   }
 
   .chartSummary,
@@ -1084,6 +1678,22 @@
     grid-template-columns: 1fr;
   }
 
+  .workHoursRow {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .workRank {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+
+  .workHoursTopLine {
+    align-items: flex-start;
+  }
+
   .queueAvatar {
     width: 40px;
     height: 40px;
@@ -1102,7 +1712,7 @@
 
 @media (max-width: 399px) {
   .statsGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .commandScore {

@@ -27,6 +27,11 @@ export type AttendanceEvidenceSettings = {
   image_retention_days: number;
 };
 
+export type AuthRegistrationSettings = {
+  public_registration_enabled: boolean;
+  account_onboarding_mode: "company_invite" | "public_register";
+};
+
 export async function getAttendancePolicy() {
   const res = await api.get<ApiResponse<AttendancePolicy>>("/settings/attendance");
   if (!res.data.result) throw new Error("Không lấy được attendance policy");
@@ -48,5 +53,17 @@ export async function getAttendanceEvidenceSettings() {
 export async function updateAttendanceEvidenceSettings(payload: AttendanceEvidenceSettings) {
   const res = await api.put<ApiResponse<AttendanceEvidenceSettings>>("/settings/attendance-evidence", payload);
   if (!res.data.result) throw new Error("Không cập nhật được attendance evidence settings");
+  return res.data.result;
+}
+
+export async function getAuthRegistrationSettings() {
+  const res = await api.get<ApiResponse<AuthRegistrationSettings>>("/settings/auth-registration");
+  if (!res.data.result) throw new Error("Không lấy được cấu hình đăng ký tài khoản");
+  return res.data.result;
+}
+
+export async function updateAuthRegistrationSettings(payload: { public_registration_enabled: boolean }) {
+  const res = await api.put<ApiResponse<AuthRegistrationSettings>>("/settings/auth-registration", payload);
+  if (!res.data.result) throw new Error("Không cập nhật được cấu hình đăng ký tài khoản");
   return res.data.result;
 }

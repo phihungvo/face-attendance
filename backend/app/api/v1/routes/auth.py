@@ -16,17 +16,24 @@ from app.core.response import ok
 from app.core.settings import settings
 from app.core.throttling import failed_attempt_limiter, get_client_ip, request_rate_limiter
 from app.db.session import get_db
-from app.schemas.auth import ActivateRequest, ChangePasswordRequest, LoginRequest, MeResponse, RegisterRequest, TokenResponse
+from app.schemas.auth import ActivateRequest, AuthConfigResponse, ChangePasswordRequest, LoginRequest, MeResponse, RegisterRequest, TokenResponse
 from app.schemas.common import ApiResponse
 from app.core.security import get_token_subject
 from app.models.user import User
 from app.services.auth import AuthService
 from app.api.deps import get_current_user
 from app.services.notifications import NotificationService
+from app.services.settings import SettingsService
 
 router = APIRouter()
 service = AuthService()
 notification_service = NotificationService()
+settings_service = SettingsService()
+
+
+@router.get("/config", response_model=ApiResponse[AuthConfigResponse])
+def config(db: Session = Depends(get_db)) -> ApiResponse[AuthConfigResponse]:
+    return ok(AuthConfigResponse(**settings_service.get_auth_registration_settings(db)))
 
 
 @router.post("/register", response_model=ApiResponse[TokenResponse])
@@ -39,9 +46,12 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
         block_seconds=int(settings.AUTH_WRITE_BLOCK_SECONDS),
         detail="Bạn gửi yêu cầu đăng ký quá nhiều. Vui lòng thử lại sau.",
     )
-    if not settings.AUTH_PUBLIC_REGISTRATION_ENABLED:
+    if not settings_service.get_public_registration_enabled(db):
         raise AppException(AUTH_PUBLIC_REGISTRATION_DISABLED)
-    token = service.register(db, username=payload.username, password=payload.password, role_key="employee")
+    try:
+        token = service.register(db, username=payload.username, password=payload.password, role_key="employee")
+    except ValueError as exc:
+        raise AppException(BAD_REQUEST, detail=str(exc))
     return ok(TokenResponse(access_token=token))
 
 

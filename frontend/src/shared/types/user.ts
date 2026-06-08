@@ -16,4 +16,5 @@ export type User = {
   invite_accepted_at?: string | null;
   department_id?: number | null;
   created_at: string;
+  deleted_at?: string | null;
 };

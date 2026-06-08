@@ -11,6 +11,7 @@ Thumbs.db
 
 # Env / secrets (keep *.sample)
 .env
+.env.hub
 **/.env
 !.env.sample
 !**/.env.sample

@@ -16,10 +16,65 @@
 }
 
 .toolbar {
+  --toolbar-item-height: 38px;
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: nowrap;
+//   overflow-x: auto;
+//   overflow-y: hidden;
+//   padding-bottom: 2px;
+//   min-width: 0;
+//   scrollbar-width: 1px;
+}
+
+.toolbar > * {
+//   flex: 0 0 auto;
+}
+
+.inviteBox {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.workflowList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workflowItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+.workflowTitle {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.workflowSub {
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.workflowActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 @media (max-width: 899px) {
@@ -45,17 +100,36 @@
   .searchBoxCompact {
     width: 100%;
   }
+
+  .inviteBox,
+  .workflowItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workflowActions {
+    justify-content: stretch;
+  }
+
+  .workflowActions .btnPrimary,
+  .workflowActions .btnGhost,
+  .inviteBox .btnPrimary {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 .tabGroup {
   display: flex;
   gap: 2px;
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  min-height: var(--toolbar-item-height, 38px);
   margin-right: auto;
 }
 
 .tab {
-  padding: 10px 14px;
+  height: var(--toolbar-item-height, 38px);
+  padding: 0 14px;
   font-size: 13px;
   font-weight: 900;
   color: var(--text3);
@@ -63,35 +137,93 @@
   border: none;
   background: none;
   font-family: var(--font);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border-radius: 10px;
   transition: all 0.15s;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .tab:hover {
   color: var(--text);
+  background: var(--muted-bg);
 }
 
 .tabActive {
   color: var(--primary);
-  border-bottom-color: var(--primary);
+  background: var(--info-bg);
+  box-shadow: inset 0 0 0 1px var(--info-border);
+}
+
+.employeeControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin-top: -4px;
+}
+
+.viewSwitch {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.viewBtn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.viewBtn:hover {
+  background: var(--muted-bg);
+  color: var(--text);
+}
+
+.viewBtnActive {
+  background: var(--info-bg);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--info-border);
 }
 
 .btnGhost {
+  height: var(--toolbar-item-height, 38px);
   background: var(--bg);
   border: 1px solid var(--border2);
   color: var(--text);
   border-radius: 10px;
-  padding: 6px 12px;
+  padding: 0 12px;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .btnGhost:hover {
@@ -104,7 +236,8 @@
 }
 
 .btnPrimary {
-  padding: 10px 14px;
+  height: var(--toolbar-item-height, 38px);
+  padding: 0 14px;
   border-radius: 12px;
   border: none;
   cursor: pointer;
@@ -114,7 +247,10 @@
   font-size: 13px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .btnPrimary:hover {
@@ -169,14 +305,16 @@
 }
 
 .searchBoxCompact {
+  height: var(--toolbar-item-height, 38px);
   display: flex;
   align-items: center;
   gap: 8px;
   background: var(--bg);
   border: 1px solid var(--border2);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 0 12px;
   width: 220px;
+  box-sizing: border-box;
 }
 
 .searchBoxCompact input {
@@ -194,8 +332,9 @@
 }
 
 .select {
+  height: var(--toolbar-item-height, 38px);
   width: 200px;
-  padding: 8px 10px;
+  padding: 0 10px;
   border-radius: 10px;
   border: 1px solid var(--border2);
   background: var(--bg);
@@ -204,6 +343,7 @@
   font-family: var(--font);
   font-size: 13px;
   font-weight: 800;
+  box-sizing: border-box;
 }
 
 .empCell {
@@ -272,6 +412,16 @@
   background: var(--danger-bg);
   border-color: var(--danger-border);
   color: var(--danger-text);
+}
+
+.deletedTag {
+  background: var(--muted-bg);
+  border-color: var(--border2);
+  color: var(--text3);
+}
+
+.deletedRow {
+  opacity: 0.78;
 }
 
 .rowActions {
@@ -354,6 +504,22 @@
 .empCard:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
+}
+
+.empCardDeleted {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.empCardDeleted:hover {
+  transform: none;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 10px 0 0;
 }
 
 .empBigAvatar {
@@ -459,27 +625,30 @@
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .pageHint {
   color: var(--text3);
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .pageControls {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   align-items: center;
+  flex: 0 0 auto;
 }
 
 .pageBtn {
-  min-width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 9px;
   border: 1px solid var(--border2);
   background: var(--bg);
   color: var(--text);
@@ -643,7 +812,7 @@
 
 @media (max-width: 1100px) {
   .statsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -656,11 +825,75 @@
     width: 100%;
     margin-right: 0;
   }
+
+  .toolbar .tabGroup {
+    width: auto;
+    margin-right: 0;
+  }
+
+  .toolbar .searchBoxCompact {
+    width: 220px;
+  }
+
+  .toolbar .select {
+    width: 200px;
+  }
+
+  .employeeControls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
   .pagination {
-    align-items: flex-start;
+    justify-content: flex-end;
   }
 
   .modalGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .employeeControls {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .viewSwitch {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .pagination {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pageControls {
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+}
+
+@media (max-width: 420px) {
+  .viewSwitch {
+    width: 100%;
+  }
+
+  .viewBtn {
+    flex: 1;
+    padding: 0 8px;
+  }
+
+  .pagination {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pageControls {
+    width: 100%;
   }
 }

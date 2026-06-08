@@ -7,6 +7,8 @@ import { CalendarOutlined, CheckCircleOutlined, ExclamationCircleOutlined, FormO
 import { useCachedQuery } from "../../../shared/hooks/useCachedQuery";
 import { invalidateKey } from "../../../shared/lib/queryCache";
 import { empKeys } from "../../cacheKeys";
+import { useAuth } from "../../../shared/auth/auth";
+import CompanyRequiredNotice from "../../components/CompanyRequiredNotice/CompanyRequiredNotice";
 
 const types = [
   { key: "annual", label: "Nghỉ phép", icon: <CalendarOutlined />, days: "12 ngày" },
@@ -16,6 +18,8 @@ const types = [
 ] as const;
 
 export default function EmployeeLeavePage() {
+  const auth = useAuth();
+  const hasCompany = Boolean(auth.companyId);
   const nav = useNavigate();
   const [type, setType] = useState<(typeof types)[number]["key"]>("annual");
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -30,7 +34,8 @@ export default function EmployeeLeavePage() {
   const qBalance = useCachedQuery({
     key: empKeys.myLeaveBalance(null),
     ttlMs: 2 * 60_000,
-    fetcher: () => getMyLeaveBalance()
+    fetcher: () => getMyLeaveBalance(),
+    enabled: hasCompany
   });
 
   useEffect(() => {
@@ -43,6 +48,10 @@ export default function EmployeeLeavePage() {
       .join(" • ");
     setBalanceHint(hint || null);
   }, [qBalance.data]);
+
+  if (!hasCompany) {
+    return <CompanyRequiredNotice title="Chưa thể gửi đơn nghỉ phép" message="Bạn cần được gán vào công ty trước khi xem phép còn lại hoặc gửi đơn nghỉ phép." />;
+  }
 
   return (
     <div className={styles.page}>

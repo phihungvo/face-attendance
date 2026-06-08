@@ -22,7 +22,14 @@ from app.schemas.attendance import (
     CheckOutResponse,
     ScanResponse,
     DailyAttendanceRow,
+    ManagerDashboardDepartmentRow,
+    ManagerDashboardLeaveSummary,
+    ManagerDashboardPendingLeaveItem,
+    ManagerDashboardRecentLogItem,
     ManagerDashboardSummary,
+    ManagerDashboardTodaySummary,
+    ManagerDashboardTrendPoint,
+    ManagerDashboardWorkHoursSummary,
     MonthlyReportRow,
     TimelogRow,
     TimelogUpsertRequest,
@@ -685,3 +692,82 @@ def dashboard_summary(
     _: object = Depends(require_permission("dashboard.read")),
 ) -> ApiResponse[ManagerDashboardSummary]:
     return ok(ManagerDashboardSummary(**service.manager_dashboard_summary(db, company_id=company_id)))
+
+
+@router.get("/dashboard/today", response_model=ApiResponse[ManagerDashboardTodaySummary])
+def dashboard_today(
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[ManagerDashboardTodaySummary]:
+    return ok(ManagerDashboardTodaySummary(**service.manager_dashboard_today(db, company_id=company_id)))
+
+
+@router.get("/dashboard/trend", response_model=ApiResponse[list[ManagerDashboardTrendPoint]])
+def dashboard_trend(
+    days: int = Query(7, ge=1, le=31),
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[list[ManagerDashboardTrendPoint]]:
+    return ok([ManagerDashboardTrendPoint(**item) for item in service.manager_dashboard_trend(db, company_id=company_id, days=days)])
+
+
+@router.get("/dashboard/work-hours", response_model=ApiResponse[ManagerDashboardWorkHoursSummary])
+def dashboard_work_hours(
+    period: str = Query("month", pattern="^(week|month|year)$"),
+    anchor_date: date | None = None,
+    limit: int = Query(3, ge=1, le=20),
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[ManagerDashboardWorkHoursSummary]:
+    return ok(
+        ManagerDashboardWorkHoursSummary(
+            **service.manager_dashboard_work_hours(
+                db,
+                company_id=company_id,
+                period=period,
+                anchor_day=anchor_date,
+                limit=limit,
+            )
+        )
+    )
+
+
+@router.get("/dashboard/departments", response_model=ApiResponse[list[ManagerDashboardDepartmentRow]])
+def dashboard_departments(
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[list[ManagerDashboardDepartmentRow]]:
+    return ok([ManagerDashboardDepartmentRow(**item) for item in service.manager_dashboard_departments(db, company_id=company_id)])
+
+
+@router.get("/dashboard/leaves/summary", response_model=ApiResponse[ManagerDashboardLeaveSummary])
+def dashboard_leave_summary(
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[ManagerDashboardLeaveSummary]:
+    return ok(ManagerDashboardLeaveSummary(**service.manager_dashboard_leave_summary(db, company_id=company_id)))
+
+
+@router.get("/dashboard/leaves/pending", response_model=ApiResponse[list[ManagerDashboardPendingLeaveItem]])
+def dashboard_pending_leaves(
+    limit: int = Query(5, ge=1, le=50),
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[list[ManagerDashboardPendingLeaveItem]]:
+    return ok([ManagerDashboardPendingLeaveItem(**item) for item in service.manager_dashboard_pending_leaves(db, company_id=company_id, limit=limit)])
+
+
+@router.get("/dashboard/recent-logs", response_model=ApiResponse[list[ManagerDashboardRecentLogItem]])
+def dashboard_recent_logs(
+    limit: int = Query(8, ge=1, le=50),
+    db: Session = Depends(get_db),
+    company_id: int | None = Depends(get_company_scope_id),
+    _: object = Depends(require_permission("dashboard.read")),
+) -> ApiResponse[list[ManagerDashboardRecentLogItem]]:
+    return ok([ManagerDashboardRecentLogItem(**item) for item in service.manager_dashboard_recent_logs(db, company_id=company_id, limit=limit)])

@@ -83,6 +83,33 @@ export type ManagerDashboardRecentLogItem = {
   timestamp: string;
 };
 
+export type ManagerDashboardWorkHoursPeriod = "week" | "month" | "year";
+
+export type ManagerDashboardWorkHoursEmployee = {
+  rank: number;
+  user_id: number;
+  user_name: string;
+  user_code?: string | null;
+  department_id?: number | null;
+  department_name?: string | null;
+  total_work_hours: number;
+  working_days: number;
+  late_days: number;
+  absent_days: number;
+  average_hours_per_day: number;
+};
+
+export type ManagerDashboardWorkHoursSummary = {
+  period: ManagerDashboardWorkHoursPeriod;
+  from_date: string;
+  to_date: string;
+  total_work_hours: number;
+  average_work_hours: number;
+  employee_count: number;
+  top_employee_name?: string | null;
+  employees: ManagerDashboardWorkHoursEmployee[];
+};
+
 export type ManagerDashboardSummary = {
   generated_at: string;
   today: ManagerDashboardTodaySummary;
@@ -242,6 +269,48 @@ export async function getManagerDashboardSummary() {
   const res = await api.get<ApiResponse<ManagerDashboardSummary>>("/attendance/dashboard/summary");
   if (!res.data.result) throw new Error("Không lấy được dữ liệu dashboard");
   return res.data.result;
+}
+
+export async function getManagerDashboardToday() {
+  const res = await api.get<ApiResponse<ManagerDashboardTodaySummary>>("/attendance/dashboard/today");
+  if (!res.data.result) throw new Error("Không lấy được dữ liệu hôm nay");
+  return res.data.result;
+}
+
+export async function getManagerDashboardTrend(params?: { days?: number }) {
+  const res = await api.get<ApiResponse<ManagerDashboardTrendPoint[]>>("/attendance/dashboard/trend", { params });
+  return res.data.result ?? [];
+}
+
+export async function getManagerDashboardWorkHours(params?: {
+  period?: ManagerDashboardWorkHoursPeriod;
+  anchor_date?: string;
+  limit?: number;
+}) {
+  const res = await api.get<ApiResponse<ManagerDashboardWorkHoursSummary>>("/attendance/dashboard/work-hours", { params });
+  if (!res.data.result) throw new Error("Không lấy được thống kê giờ làm");
+  return res.data.result;
+}
+
+export async function getManagerDashboardDepartments() {
+  const res = await api.get<ApiResponse<ManagerDashboardDepartmentRow[]>>("/attendance/dashboard/departments");
+  return res.data.result ?? [];
+}
+
+export async function getManagerDashboardLeaveSummary() {
+  const res = await api.get<ApiResponse<ManagerDashboardLeaveSummary>>("/attendance/dashboard/leaves/summary");
+  if (!res.data.result) throw new Error("Không lấy được tổng quan nghỉ phép");
+  return res.data.result;
+}
+
+export async function getManagerDashboardPendingLeaves(params?: { limit?: number }) {
+  const res = await api.get<ApiResponse<ManagerDashboardPendingLeaveItem[]>>("/attendance/dashboard/leaves/pending", { params });
+  return res.data.result ?? [];
+}
+
+export async function getManagerDashboardRecentLogs(params?: { limit?: number }) {
+  const res = await api.get<ApiResponse<ManagerDashboardRecentLogItem[]>>("/attendance/dashboard/recent-logs", { params });
+  return res.data.result ?? [];
 }
 
 export type DailyAttendanceRow = {

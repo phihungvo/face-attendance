@@ -76,13 +76,14 @@ export default function NotificationRealtimeBridge() {
   const isEmployeeOnly =
     (auth.roleKeys.includes("employee") && !auth.roleKeys.includes("manager")) ||
     (auth.permissionKeys.includes("employee.portal") && !auth.permissionKeys.includes("dashboard.read"));
+  const employeeWithoutCompany = Boolean(isEmployeeOnly && !auth.companyId);
 
   useEffect(() => {
     prefsRef.current = prefs;
   }, [prefs]);
 
   useEffect(() => {
-    if (!auth.token || !auth.permissionKeys.includes("notifications.read")) return;
+    if (!auth.token || employeeWithoutCompany || !auth.permissionKeys.includes("notifications.read")) return;
     let alive = true;
     getMyNotificationPreferences()
       .then((next) => {
@@ -102,10 +103,10 @@ export default function NotificationRealtimeBridge() {
       alive = false;
       window.removeEventListener("fa:notification-preferences-changed", onPrefsChanged);
     };
-  }, [auth.token, auth.permissionKeys]);
+  }, [auth.token, auth.permissionKeys, employeeWithoutCompany]);
 
   useEffect(() => {
-    if (!auth.token || !auth.permissionKeys.includes("notifications.read")) return;
+    if (!auth.token || employeeWithoutCompany || !auth.permissionKeys.includes("notifications.read")) return;
     let disposed = false;
 
     function clearReconnect() {
@@ -146,7 +147,7 @@ export default function NotificationRealtimeBridge() {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [auth.companyId, auth.permissionKeys, auth.selectedCompanyId, auth.token]);
+  }, [auth.companyId, auth.permissionKeys, auth.selectedCompanyId, auth.token, employeeWithoutCompany]);
 
   useEffect(() => {
     if (!auth.token || !auth.permissionKeys.includes("notifications.read")) return;

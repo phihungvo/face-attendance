@@ -823,16 +823,83 @@ class AttendanceService:
         self._logs.delete_in_range(db, start=start, end=end, user_id=user_id)
         db.commit()
 
-    def manager_dashboard_summary(self, db: Session, *, company_id: int | None = None) -> dict[str, object]:
+    def _dashboard_today_context(self, db: Session, *, company_id: int | None = None):
         policy = self._policy.get_or_create(db, company_id=company_id)
         generated_at = _now_in_policy_tz(policy.timezone)
         today = generated_at.date()
-        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
-        departments = self._depts.list(db, company_id=company_id, limit=10000, offset=0)
-        dept_by_id = {int(dept.id): dept for dept in departments}
-        user_by_id = {int(user.id): user for user in users}
+        return policy, generated_at, today
 
-        today_rows = self.daily_report(db, company_id=company_id, day=today)
+    def _daily_rows_for_dashboard(
+        self,
+        db: Session,
+        *,
+        policy,
+        company_id: int | None,
+        day: date,
+        users: list[object] | None = None,
+        logs: list[object] | None = None,
+        cfg_map: dict[tuple[int, date], AttendanceConfig] | None = None,
+    ) -> list[DailyComputed]:
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        if users is None:
+            users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        if logs is None:
+            start = datetime.combine(day, time(0, 0, 0))
+            end = start + (timedelta(days=2) if overnight else timedelta(days=1))
+            logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+
+        by_user: dict[int, dict[str, datetime]] = {}
+        for log in logs:
+            if _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end) != day:
+                continue
+            bucket = by_user.setdefault(int(log.user_id), {})
+            if log.type == "checkin":
+                prev = bucket.get("checkin")
+                if prev is None or log.timestamp < prev:
+                    bucket["checkin"] = log.timestamp
+            else:
+                prev = bucket.get("checkout")
+                if prev is None or log.timestamp > prev:
+                    bucket["checkout"] = log.timestamp
+
+        user_ids = [int(user.id) for user in users]
+        base_cfg = self._policy_cfg(policy)
+        if cfg_map is None:
+            cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=day, to_day=day, user_ids=user_ids)
+
+        rows: list[DailyComputed] = []
+        for user in users:
+            user_id = int(user.id)
+            times = by_user.get(user_id, {})
+            cin = times.get("checkin")
+            cout = times.get("checkout")
+            absent = cin is None
+            late = False
+            work_hours = 0.0
+            if cin is not None:
+                cfg = cfg_map.get((user_id, day), base_cfg)
+                computed = compute_attendance(day=day, checkin_time=cin, checkout_time=cout, cfg=cfg)
+                late = computed.late_minutes > 0
+                work_hours = computed.working_minutes / 60.0
+            rows.append(
+                DailyComputed(
+                    user_id=user_id,
+                    user_name=str(user.name),
+                    day=day,
+                    checkin_time=cin,
+                    checkout_time=cout,
+                    work_hours=round(work_hours, 3),
+                    late=late,
+                    absent=absent,
+                )
+            )
+        rows.sort(key=lambda r: (r.absent, r.user_name))
+        return rows
+
+    def manager_dashboard_today(self, db: Session, *, company_id: int | None = None) -> dict[str, object]:
+        policy, _generated_at, today = self._dashboard_today_context(db, company_id=company_id)
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        today_rows = self._daily_rows_for_dashboard(db, policy=policy, company_id=company_id, day=today, users=users)
         total_users = len(today_rows)
         present_count = sum(1 for row in today_rows if not row.absent)
         absent_count = max(0, total_users - present_count)
@@ -841,10 +908,46 @@ class AttendanceService:
         working_count = sum(1 for row in today_rows if row.checkin_time is not None and row.checkout_time is None)
         attendance_rate = round((present_count / total_users) * 100, 1) if total_users else 0.0
 
+        return {
+            "day": today.isoformat(),
+            "total_users": total_users,
+            "present_count": present_count,
+            "absent_count": absent_count,
+            "late_count": late_count,
+            "checked_out_count": checked_out_count,
+            "working_count": working_count,
+            "attendance_rate": attendance_rate,
+        }
+
+    def manager_dashboard_trend(self, db: Session, *, company_id: int | None = None, days: int = 7) -> list[dict[str, object]]:
+        days = max(1, min(int(days), 31))
+        policy, _generated_at, today = self._dashboard_today_context(db, company_id=company_id)
+        from_day = today - timedelta(days=days - 1)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        start = datetime.combine(from_day, time(0, 0, 0))
+        end = datetime.combine(today + timedelta(days=1), time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+        cfg_map = self._schedule_cfg_map(
+            db,
+            company_id=company_id,
+            from_day=from_day,
+            to_day=today,
+            user_ids=[int(user.id) for user in users],
+        )
+
         trend: list[dict[str, object]] = []
-        for offset in range(6, -1, -1):
+        for offset in range(days - 1, -1, -1):
             day_cursor = today - timedelta(days=offset)
-            rows = self.daily_report(db, company_id=company_id, day=day_cursor)
+            rows = self._daily_rows_for_dashboard(
+                db,
+                policy=policy,
+                company_id=company_id,
+                day=day_cursor,
+                users=users,
+                logs=logs,
+                cfg_map=cfg_map,
+            )
             day_total = len(rows)
             day_present = sum(1 for row in rows if not row.absent)
             day_absent = max(0, day_total - day_present)
@@ -856,6 +959,281 @@ class AttendanceService:
                     "present_count": day_present,
                     "absent_count": day_absent,
                     "late_count": day_late,
+                    "attendance_rate": round((day_present / day_total) * 100, 1) if day_total else 0.0,
+                }
+            )
+        return trend
+
+    def manager_dashboard_work_hours(
+        self,
+        db: Session,
+        *,
+        company_id: int | None = None,
+        period: str = "month",
+        anchor_day: date | None = None,
+        limit: int = 3,
+    ) -> dict[str, object]:
+        policy, _generated_at, today = self._dashboard_today_context(db, company_id=company_id)
+        anchor = anchor_day or today
+        normalized_period = period if period in {"week", "month", "year"} else "month"
+
+        if normalized_period == "week":
+            from_day = anchor - timedelta(days=anchor.weekday())
+            to_day = from_day + timedelta(days=6)
+        elif normalized_period == "year":
+            from_day = date(anchor.year, 1, 1)
+            to_day = date(anchor.year, 12, 31)
+        else:
+            from_day = date(anchor.year, anchor.month, 1)
+            if anchor.month == 12:
+                next_month = date(anchor.year + 1, 1, 1)
+            else:
+                next_month = date(anchor.year, anchor.month + 1, 1)
+            to_day = next_month - timedelta(days=1)
+
+        bounded_limit = max(1, min(int(limit), 20))
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        start = datetime.combine(from_day, time(0, 0, 0))
+        end = datetime.combine(to_day + timedelta(days=1), time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
+
+        logs = self._logs.list_in_range(db, start=start, end=end, company_id=company_id)
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        departments = self._depts.list(db, company_id=company_id, limit=10000, offset=0)
+        dept_by_id = {int(dept.id): dept for dept in departments}
+        users_by_id = {int(user.id): user for user in users}
+
+        per_user_day: dict[tuple[int, date], dict[str, datetime]] = {}
+        for log in logs:
+            user_id = int(log.user_id)
+            if user_id not in users_by_id:
+                continue
+            attendance_day = _attendance_day_for_ts(log.timestamp, shift_start=policy.shift_start, shift_end=policy.shift_end)
+            if attendance_day < from_day or attendance_day > to_day:
+                continue
+            bucket = per_user_day.setdefault((user_id, attendance_day), {})
+            if log.type == "checkin":
+                prev = bucket.get("checkin")
+                if prev is None or log.timestamp < prev:
+                    bucket["checkin"] = log.timestamp
+            else:
+                prev = bucket.get("checkout")
+                if prev is None or log.timestamp > prev:
+                    bucket["checkout"] = log.timestamp
+
+        base_cfg = self._policy_cfg(policy)
+        user_ids = [int(user.id) for user in users]
+        cfg_map = self._schedule_cfg_map(db, company_id=company_id, from_day=from_day, to_day=to_day, user_ids=user_ids)
+        period_days = (to_day - from_day).days + 1
+        totals: dict[int, dict[str, float | int]] = {
+            int(user.id): {"total_work_hours": 0.0, "working_days": 0, "late_days": 0} for user in users
+        }
+
+        for (user_id, attendance_day), times in per_user_day.items():
+            cin = times.get("checkin")
+            if cin is None:
+                continue
+            cfg = cfg_map.get((user_id, attendance_day), base_cfg)
+            computed = compute_attendance(day=attendance_day, checkin_time=cin, checkout_time=times.get("checkout"), cfg=cfg)
+            bucket = totals[user_id]
+            bucket["working_days"] = int(bucket["working_days"]) + 1
+            bucket["total_work_hours"] = float(bucket["total_work_hours"]) + (computed.working_minutes / 60.0)
+            if computed.late_minutes > 0:
+                bucket["late_days"] = int(bucket["late_days"]) + 1
+
+        rows: list[dict[str, object]] = []
+        for user in users:
+            user_id = int(user.id)
+            total_hours = round(float(totals[user_id]["total_work_hours"]), 2)
+            working_days = int(totals[user_id]["working_days"])
+            dept_id = int(user.department_id) if getattr(user, "department_id", None) is not None else None
+            dept = dept_by_id.get(dept_id) if dept_id is not None else None
+            rows.append(
+                {
+                    "rank": 0,
+                    "user_id": user_id,
+                    "user_name": str(user.name),
+                    "user_code": user.code,
+                    "department_id": dept_id,
+                    "department_name": dept.name if dept is not None else None,
+                    "total_work_hours": total_hours,
+                    "working_days": working_days,
+                    "late_days": int(totals[user_id]["late_days"]),
+                    "absent_days": max(0, period_days - working_days),
+                    "average_hours_per_day": round(total_hours / working_days, 2) if working_days else 0.0,
+                }
+            )
+
+        rows.sort(key=lambda item: (-float(item["total_work_hours"]), -int(item["working_days"]), str(item["user_name"])))
+        ranked = [{**row, "rank": index + 1} for index, row in enumerate(rows)]
+        visible = ranked[:bounded_limit]
+        total_work_hours = round(sum(float(row["total_work_hours"]) for row in ranked), 2)
+
+        return {
+            "period": normalized_period,
+            "from_date": from_day.isoformat(),
+            "to_date": to_day.isoformat(),
+            "total_work_hours": total_work_hours,
+            "average_work_hours": round(total_work_hours / len(ranked), 2) if ranked else 0.0,
+            "employee_count": len(ranked),
+            "top_employee_name": str(ranked[0]["user_name"]) if ranked else None,
+            "employees": visible,
+        }
+
+    def manager_dashboard_departments(self, db: Session, *, company_id: int | None = None) -> list[dict[str, object]]:
+        policy, _generated_at, today = self._dashboard_today_context(db, company_id=company_id)
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        departments = self._depts.list(db, company_id=company_id, limit=10000, offset=0)
+        dept_by_id = {int(dept.id): dept for dept in departments}
+        user_by_id = {int(user.id): user for user in users}
+        today_rows = self._daily_rows_for_dashboard(db, policy=policy, company_id=company_id, day=today, users=users)
+
+        department_buckets: dict[int | None, dict[str, object]] = {}
+        for user in users:
+            dept_id = int(user.department_id) if getattr(user, "department_id", None) is not None else None
+            dept_name = dept_by_id[dept_id].name if dept_id is not None and dept_id in dept_by_id else "Chưa phân phòng ban"
+            bucket = department_buckets.setdefault(
+                dept_id,
+                {
+                    "department_id": dept_id,
+                    "department_name": dept_name,
+                    "total_users": 0,
+                    "present_count": 0,
+                    "absent_count": 0,
+                    "late_count": 0,
+                },
+            )
+            bucket["total_users"] = int(bucket["total_users"]) + 1
+
+        for row in today_rows:
+            user = user_by_id.get(int(row.user_id))
+            dept_id = int(user.department_id) if user is not None and getattr(user, "department_id", None) is not None else None
+            bucket = department_buckets.setdefault(
+                dept_id,
+                {
+                    "department_id": dept_id,
+                    "department_name": dept_by_id[dept_id].name if dept_id is not None and dept_id in dept_by_id else "Chưa phân phòng ban",
+                    "total_users": 0,
+                    "present_count": 0,
+                    "absent_count": 0,
+                    "late_count": 0,
+                },
+            )
+            if row.absent:
+                bucket["absent_count"] = int(bucket["absent_count"]) + 1
+            else:
+                bucket["present_count"] = int(bucket["present_count"]) + 1
+            if row.late:
+                bucket["late_count"] = int(bucket["late_count"]) + 1
+
+        department_rows: list[dict[str, object]] = []
+        for bucket in department_buckets.values():
+            dept_total = int(bucket["total_users"])
+            department_rows.append(
+                {
+                    **bucket,
+                    "attendance_rate": round((int(bucket["present_count"]) / dept_total) * 100, 1) if dept_total else 0.0,
+                }
+            )
+        department_rows.sort(key=lambda item: (-int(item["present_count"]), str(item["department_name"])))
+        return department_rows
+
+    def manager_dashboard_leave_summary(self, db: Session, *, company_id: int | None = None) -> dict[str, object]:
+        return {
+            "pending_count": self._leaves.count(db, company_id=company_id, status="pending"),
+            "approved_count": self._leaves.count(db, company_id=company_id, status="approved"),
+            "rejected_count": self._leaves.count(db, company_id=company_id, status="rejected"),
+        }
+
+    def manager_dashboard_pending_leaves(self, db: Session, *, company_id: int | None = None, limit: int = 5) -> list[dict[str, object]]:
+        departments = self._depts.list(db, company_id=company_id, limit=10000, offset=0)
+        dept_by_id = {int(dept.id): dept for dept in departments}
+        pending_leaves: list[dict[str, object]] = []
+        for leave, user in self._leaves.list(db, company_id=company_id, status="pending", limit=max(1, min(int(limit), 50)), offset=0):
+            dept = dept_by_id.get(int(user.department_id)) if getattr(user, "department_id", None) is not None else None
+            pending_leaves.append(
+                {
+                    "id": int(leave.id),
+                    "user_id": int(user.id),
+                    "user_name": str(user.name),
+                    "user_code": user.code,
+                    "department_name": dept.name if dept is not None else None,
+                    "type": str(leave.type),
+                    "start_date": leave.start_date.isoformat(),
+                    "end_date": leave.end_date.isoformat(),
+                    "status": str(leave.status),
+                    "created_at": leave.created_at,
+                }
+            )
+        return pending_leaves
+
+    def manager_dashboard_recent_logs(self, db: Session, *, company_id: int | None = None, limit: int = 8) -> list[dict[str, object]]:
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        user_by_id = {int(user.id): user for user in users}
+        recent_logs: list[dict[str, object]] = []
+        for log, user_name in self._logs.list_with_user(db, company_id=company_id, limit=max(1, min(int(limit), 50)), offset=0):
+            user = user_by_id.get(int(log.user_id))
+            recent_logs.append(
+                {
+                    "id": int(log.id),
+                    "user_id": int(log.user_id),
+                    "user_name": str(user_name),
+                    "user_code": getattr(user, "code", None),
+                    "type": str(log.type),
+                    "confidence": float(log.confidence),
+                    "timestamp": log.timestamp,
+                }
+            )
+        return recent_logs
+
+    def manager_dashboard_summary(self, db: Session, *, company_id: int | None = None) -> dict[str, object]:
+        policy, generated_at, today = self._dashboard_today_context(db, company_id=company_id)
+        users = self._users.list(db, company_id=company_id, limit=10000, offset=0)
+        departments = self._depts.list(db, company_id=company_id, limit=10000, offset=0)
+        dept_by_id = {int(dept.id): dept for dept in departments}
+        user_by_id = {int(user.id): user for user in users}
+
+        today_rows = self._daily_rows_for_dashboard(db, policy=policy, company_id=company_id, day=today, users=users)
+        total_users = len(today_rows)
+        present_count = sum(1 for row in today_rows if not row.absent)
+        absent_count = max(0, total_users - present_count)
+        late_count = sum(1 for row in today_rows if row.late)
+        checked_out_count = sum(1 for row in today_rows if row.checkout_time is not None)
+        working_count = sum(1 for row in today_rows if row.checkin_time is not None and row.checkout_time is None)
+
+        days = 7
+        from_day = today - timedelta(days=days - 1)
+        overnight = _is_overnight_shift(policy.shift_start, policy.shift_end)
+        trend_start = datetime.combine(from_day, time(0, 0, 0))
+        trend_end = datetime.combine(today + timedelta(days=1), time(0, 0, 0)) + (timedelta(days=1) if overnight else timedelta(days=0))
+        trend_logs = self._logs.list_in_range(db, start=trend_start, end=trend_end, company_id=company_id)
+        trend_cfg_map = self._schedule_cfg_map(
+            db,
+            company_id=company_id,
+            from_day=from_day,
+            to_day=today,
+            user_ids=[int(user.id) for user in users],
+        )
+        trend: list[dict[str, object]] = []
+        for offset in range(days - 1, -1, -1):
+            day_cursor = today - timedelta(days=offset)
+            rows = self._daily_rows_for_dashboard(
+                db,
+                policy=policy,
+                company_id=company_id,
+                day=day_cursor,
+                users=users,
+                logs=trend_logs,
+                cfg_map=trend_cfg_map,
+            )
+            day_total = len(rows)
+            day_present = sum(1 for row in rows if not row.absent)
+            trend.append(
+                {
+                    "day": day_cursor.isoformat(),
+                    "label": _weekday_label_vi(day_cursor),
+                    "present_count": day_present,
+                    "absent_count": max(0, day_total - day_present),
+                    "late_count": sum(1 for row in rows if row.late),
                     "attendance_rate": round((day_present / day_total) * 100, 1) if day_total else 0.0,
                 }
             )
@@ -958,7 +1336,7 @@ class AttendanceService:
                 "late_count": late_count,
                 "checked_out_count": checked_out_count,
                 "working_count": working_count,
-                "attendance_rate": attendance_rate,
+                "attendance_rate": round((present_count / total_users) * 100, 1) if total_users else 0.0,
             },
             "trend": trend,
             "departments": department_rows,

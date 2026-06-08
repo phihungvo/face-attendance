@@ -186,9 +186,10 @@ def seed_rbac(db: Session) -> None:
             display_name="Employee",
         )
 
-    # Best-effort backfill company_id for existing rows (legacy single-company DB).
+    # Best-effort backfill company_id for existing departments only. Users may now
+    # intentionally have no company until an invitation is accepted or a join
+    # request is approved.
     try:
-        db.query(User).filter(User.company_id.is_(None)).update({User.company_id: company.id})  # type: ignore[attr-defined]
         from app.models.department import Department
 
         db.query(Department).filter(Department.company_id.is_(None)).update({Department.company_id: company.id})  # type: ignore[attr-defined]

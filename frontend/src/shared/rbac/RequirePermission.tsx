@@ -5,6 +5,7 @@ import type { PermissionKey } from "./types";
 export default function RequirePermission({ permission, fallback, children }: { permission: PermissionKey; fallback?: ReactNode; children: ReactNode }) {
   const auth = useAuth();
   if (!auth.token) return fallback ?? null;
+  if (auth.meLoading) return null;
   if (!auth.permissionKeys.includes(permission)) return fallback ?? null;
   return <>{children}</>;
 }

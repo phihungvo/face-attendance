@@ -1,0 +1,57 @@
+.wrap {
+  min-height: 100%;
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.panel {
+  width: min(100%, 420px);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  text-align: center;
+}
+
+.icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  border-radius: 14px;
+  background: var(--indigo-light);
+  color: var(--indigo);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.message {
+  margin-top: 8px;
+  color: var(--ink2);
+  font-weight: 700;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.action {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--indigo);
+  color: #fff;
+  font-weight: 900;
+  text-decoration: none;
+}
