@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     JWT_SECRET_MIN_LENGTH: int = 32
 
     # Security / CORS
-    CORS_ALLOW_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    CORS_ALLOW_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8081,http://127.0.0.1:8081"
     AUTH_PUBLIC_REGISTRATION_ENABLED: bool = False
     LOGIN_MAX_FAILURES: int = 5
     LOGIN_WINDOW_SECONDS: int = 300
