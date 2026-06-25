@@ -1,0 +1,125 @@
+name: Deploy to VPS (Docker Hub)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+  BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/face-attendance-backend
+  FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/face-attendance-frontend
+  ML_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/face-attendance-ml
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 🔐 LOGIN DOCKER HUB
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: meta
+        run: echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      # ---------------- BACKEND ----------------
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.BACKEND_IMAGE }}:latest
+
+      # ---------------- ML ----------------
+      - name: Build & push ml
+        uses: docker/build-push-action@v6
+        with:
+          context: ./ml_service
+          file: ./ml_service/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ML_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ML_IMAGE }}:latest
+
+      # ---------------- FRONTEND ----------------
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload compose + env to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "docker-compose.hub.yml,.env.hub"
+          target: ${{ secrets.VPS_APP_DIR }}
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          BACKEND_IMAGE: ${{ env.BACKEND_IMAGE }}
+          FRONTEND_IMAGE: ${{ env.FRONTEND_IMAGE }}
+          ML_IMAGE: ${{ env.ML_IMAGE }}
+          FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: IMAGE_TAG,BACKEND_IMAGE,FRONTEND_IMAGE,ML_IMAGE,FRONTEND_PORT,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
+
+          script: |
+            set -e
+            cd "${{ secrets.VPS_APP_DIR }}"
+
+            # login docker hub on VPS
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+            export IMAGE_TAG="$IMAGE_TAG"
+            export BACKEND_IMAGE="$BACKEND_IMAGE"
+            export FRONTEND_IMAGE="$FRONTEND_IMAGE"
+            export ML_IMAGE="$ML_IMAGE"
+            export FRONTEND_PORT="${FRONTEND_PORT:-80}"
+
+            docker compose -f docker-compose.hub.yml pull
+            docker compose -f docker-compose.hub.yml up -d --remove-orphans
+
+            docker image prune -f || true
